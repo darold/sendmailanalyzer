@@ -1,0 +1,63 @@
+#!/bin/sh
+set -e
+
+# Create crontab entry
+cat > sendmailanalyzer.cron << _EOF_
+# SendmailAnalyzer log reporting daily cache
+#0 1 * * * /usr/bin/sa_cache > /dev/null 2>&1
+# Daemon restart after maillog logrotate (cron jobs at 4:41 every day)
+# Feel free to replace this line by an entry in /etc/logrotate.d/syslog
+#41 4 * * * /etc/init.d/sendmailanalyzer restart >/dev/null 2>&1
+# On huge MTA you may want to have five minutes caching
+#*/5 * * * * /usr/bin/sa_cache -a > /dev/null 2>&1
+_EOF_
+
+# Append crontab entry to root user
+cat sendmailanalyzer.cron > /etc/cron.d/sendmailanalyzer
+rm -f sendmailanalyzer.cron
+
+# Create default httpd configuration
+cat > httpd-sendmailanalyzer.conf << _EOF_
+#
+# By default SendmailAnalyzer statistics are only accessible from localhost.
+#
+#Alias /sareport /var/www/sendmailanalyzer
+#
+#<Directory /var/www/sendmailanalyzer>
+#    Options ExecCGI
+#    AddHandler cgi-script .cgi
+#    DirectoryIndex sa_report.cgi
+#    Order deny,allow
+#    Deny from all
+#    Allow from 127.0.0.1
+#    Allow from ::1
+#    # Allow from .example.com
+#</Directory>
+
+_EOF_
+
+# Append Apache configuration
+install -D -m 0644 httpd-sendmailanalyzer.conf /etc/apache2/conf.d/httpd-sendmailanalyzer.conf
+rm -f httpd-sendmailanalyzer.conf
+
+cat << _EOF_
+
+1. Start sendmailanalyzer daemon with: /etc/init.d/sendmailanalyzer start
+
+2. Uncomment the entries in /etc/apache2/conf.d/httpd-sendmailanalyzer.conf
+
+3. Restart and ensure that httpd is running.
+
+4. Browse to http://localhost/sareport/ to ensure that things are working
+   properly.
+
+5. If necessary, give additional hosts access to sendmailanalyzer by adding them
+   to /etc/httpd/extra/httpd-sendmailanalyzer.conf
+
+6. Setup a cronjob to run sa_cache and restart sendmailanalyzer daemon after
+   mail.log logrotate. Uncomment the entries in /etc/cron.d/sendmailanalyzer
+   or create a custom cronjob.
+
+_EOF_
+
+exit 0

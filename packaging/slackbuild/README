@@ -1,0 +1,20 @@
+SendmailAnalyzer (Perl Sendmail log analyser) continuously read your maillog
+file to generate periodical HTML and graph reports. All reports are shown
+throught a CGI web interface.
+
+It reports all you ever wanted to know about email trafic on your network.
+You can also use it in ISP environment with per domain report.
+
+To use this tool you need an httpd daemon with Perl CGI support and some
+libraries included in standard SlackWare distribution: libpng and libgd.
+You also need some extra Perl modules that can be download from CPAN at
+http://search.cpan.org/
+
+	GD
+	GD::Graph
+	GD::TextUtil
+	GD::Graph::bars3d;
+
+After installing the package you must follow the instructions displayed at
+the end.
+

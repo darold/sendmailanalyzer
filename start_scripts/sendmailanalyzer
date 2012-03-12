@@ -1,0 +1,68 @@
+#!/bin/sh
+# Start/stop/restart SendmailAnalyzer.
+# chkconfig: 35 40 40
+# description: Sendmail Log File Analyzer
+# processname: sendmailanalyzer
+# config: /etc/sendmailanalyzer.conf
+# pidfile: /var/run/sendmailanalyzer.pid
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+SALYZER=/usr/local/sendmailanalyzer/sendmailanalyzer
+PIDFILE=/var/run/sendmailanalyzer.pid
+LOCKFILE=/var/lock/subsys/sendmailanalyzer
+
+[ -x  $SALYZER ] || exit 0
+
+
+# Start SendmailAnalyzer:
+sa_start() {
+	if [ ! -x  $SALYZER ]; then
+		echo"ERROR: can't execute $SALYZER"
+		exit 1
+	fi
+	echo -n "Starting SendmailAnalyzer Daemon: "
+	daemon $SALYZER -f
+	RETVAL1=$?
+	if [ $RETVAL1 -eq 0 ]; then
+		touch $LOCKFILE
+	fi
+	echo
+}
+
+# Stop SendmailAnalyzer:
+sa_stop() {
+	echo -n "Stopping SendmailAnalyzer Daemon: "
+	kill `cat $PIDFILE`
+	rm -f $LOCKFILE
+	echo	
+}
+
+# Restart SendmailAnalyzer:
+sa_restart() {
+	sa_stop
+	sleep 2
+	sa_start
+}
+
+case "$1" in
+'start')
+	sa_start
+	;;
+'stop')
+	sa_stop
+	;;
+'restart')
+	sa_restart
+	;;
+'status')
+	status sendmailanalyzer
+	;;
+*)
+	echo "usage $0 start|stop|restart|status"
+esac
+

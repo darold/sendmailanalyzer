@@ -1,0 +1,49 @@
+RPM/
+	Holds sendmailanalyzer.spec need to build an RPM package for RH/Fedora.
+	It may also be usable for other RPM based distribution.
+
+	Copy the sendmailanalyzer source tarball here:
+
+		~/rpmbuild/SOURCES/
+
+	Then create the RPM binary package as follow:
+
+		rpmbuild -bb sendmailanalyzer.spec
+
+	The binary package may be found here:
+
+		~/rpmbuild/RPMS/noarch/sendmailanalyzer-8.2-1.noarch.rpm
+
+	To install run:
+
+		rpm -i ~/rpmbuild/RPMS/noarch/sendmailanalyzer-8.2-1.noarch.rpm
+
+
+slackbuild/
+	Holds all files necessary to build a Slackware package.
+	Copy the source tarball into the slackbuild directory and run
+
+		sh sendmailanalyzer.SlackBuild
+
+	then take a look at /tmp/build/ to find the Slackware package.
+	To install run the following command:
+
+		installpkg /tmp/build/sendmailanalyzer-8.2-i486-1gda.tgz
+
+
+debian/
+	Holds all files to build debian package.
+	First you need to execute script create-deb-tree.sh in the debian
+	directory to create the package tree. After that just run the following
+	command to generate the debian package:
+
+		dpkg -b sendmailanalyzer sendmailanalyzer.deb
+
+	To install the package, run:
+
+		dpkg -i sendmailanalyzer.deb
+
+
+
+Feel free to send me other.
+

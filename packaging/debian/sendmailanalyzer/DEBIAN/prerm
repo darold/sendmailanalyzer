@@ -1,0 +1,16 @@
+#!/bin/sh
+set -e
+
+# Remove cron entry
+rm -f /etc/cron.d/sendmailanalyzer
+
+# Remove httpd.conf entry
+rm -f /etc/apache2/conf.d/httpd-sendmailanalyzer.conf
+
+# Remove data entries
+rm -rf /var/lib/sendmailanalyzer
+
+# Remove CGI files
+rm -rf /usr/share/apache2/sendmailanalyzer
+
+exit 0

@@ -1,0 +1,1906 @@
+#!/usr/bin/perl
+#
+#    SendmailAnalyzer: maillog parser and statistics reports tool for Sendmail
+#    Copyright (C) 2002-2012 Gilles Darold
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+use vars qw($VERSION $AUTHOR $COPYRIGHT);
+ 
+use strict;
+
+use Getopt::Long;
+use POSIX ":sys_wait_h";
+use MIME::Base64;
+use MIME::QuotedPrint;
+
+
+$VERSION     = '8.2';
+$AUTHOR = "Gilles Darold <gilles\@darold.net>";
+$COPYRIGHT = "(c) 2002-2012 - Gilles Darold <gilles\@darold.net>";
+
+$SIG{'CHLD'} = 'DEFAULT';
+
+# Month translation
+my %MONTH_TO_NUM = (
+	'Jan' => '01',
+	'Feb' => '02',
+	'Mar' => '03',
+	'Apr' => '04',
+	'May' => '05',
+	'Jun' => '06',
+	'Jul' => '07',
+	'Aug' => '08',
+	'Sep' => '09',
+	'Oct' => '10',
+	'Nov' => '11',
+	'Dec' => '12'
+);
+
+
+# Configuration storage hash
+my %CONFIG = ();
+
+# Other configuration directives
+my $CONFIG_FILE = "/usr/local/sendmailanalyzer/sendmailanalyzer.conf";
+my $SHOW_VER    = 0;
+my $INTERACTIVE = 0;
+my $HELP        = 0;
+my $LAST_PARSE_FILE = 'LAST_PARSED';
+my $PID_FILE    = 'sendmailanalyzer.pid';
+
+# Global variable to store temporary parsed data
+my %SYSERR = ();
+my %DSN = ();
+my %FROM = ();
+my %TO = ();
+my %REJECT = ();
+my %SPAM = ();
+my %VIRUS = ();
+my $LAST_PARSED = '';
+my %ERRMSG = ();
+my %OTHER = ();
+my %SPAMDETAIL = ();
+my %AUTH = ();
+my %GREYLIST = ();
+my $KID = '';
+my %POSTGREY = ();
+
+# Collect command line arguments
+GetOptions (
+	'args|a=s' => \$CONFIG{TAIL_ARGS},
+	'break|b!' => \$CONFIG{BREAK},
+	'config|c=s' => \$CONFIG_FILE,
+	'debug|d!' => \$CONFIG{DEBUG},
+	'full|f!' => \$CONFIG{FULL},
+	'help|h!' => \$HELP,
+	'interactive|i!' => \$INTERACTIVE,
+	'log|l=s' => \$CONFIG{LOG_FILE},
+	'mailscanner|m=s' => \$CONFIG{MAILSCAN_NAME},
+	'clamd|n=s' => \$CONFIG{CLAMD_NAME},
+	'output|o=s' => \$CONFIG{OUT_DIR},
+	'tail|t=s' => \$CONFIG{TAIL_PROG},
+	'sendmail|s=s' => \$CONFIG{MTA_NAME},
+	'version|v!' => \$SHOW_VER,
+	'write-delay|w=i' => \$CONFIG{DELAY},
+	'zcat|z=s' => \$CONFIG{ZCAT_PROG},
+	'piddir|p=s' => \$CONFIG{PID_DIR},
+	'postgrey|g=s' => \$CONFIG{POSTGREY_NAME},
+	'spamd=s' => \$CONFIG{SPAMD_NAME},
+);
+
+&usage if ($HELP);
+
+# Read configuration file
+&read_config($CONFIG_FILE);
+
+# Check if output dir exist and we can write file
+if (!-d $CONFIG{OUT_DIR}) {
+	die "FATAL: Output directory $CONFIG{OUT_DIR} should exists !\n";
+} else {
+	open(OUT, ">$CONFIG{OUT_DIR}/test.dat") or die "FATAL: Output directory $CONFIG{OUT_DIR} should be writable !\n";
+	close(OUT);
+	unlink("$CONFIG{OUT_DIR}/test.dat");
+}
+
+if ($CONFIG{DEBUG}) {
+       print STDERR "Running in verbose mode...\n";
+}       
+if ($SHOW_VER || $CONFIG{DEBUG}) {
+	print STDERR "\n\tsendmailanalyzer v$VERSION. $COPYRIGHT\n\n";
+	exit 0 if ($SHOW_VER);
+}
+
+# Die on kill -2, -3 or -15 
+$SIG{'INT'} = $SIG{'QUIT'} = $SIG{'TERM'} = 'terminate';
+
+my $CURRENT_TIME = &format_time(localtime(time));
+
+# Run in interactive mode if required
+if ($INTERACTIVE) {
+	# Start in interactive mode
+	print "\n*** sendmailanalyzer v$VERSION (pid:$$) started at " . localtime(time) . "\n";
+} else {
+	# detach from terminal
+	my $pid = fork;
+	exit 0 if ($pid);
+	die "Couldn't fork: $!" unless defined($pid);
+	POSIX::setsid() or die "Can't detach: \$!"; 
+	&dprint("Detach from terminal with pid: $$");
+}
+
+# Set name of the program without path
+$0 = 'sendmailanalyzer';
+
+# Continuously read the maillog file using a pipe to tail program
+&dprint("Entering main loop...");
+&start_loop;
+unlink("$CONFIG{PID_DIR}/$PID_FILE");
+
+exit 0;
+
+#-------------------------------- ROUTINES ------------------------------------
+
+####
+#  Dump usage to STDERR
+####
+sub usage
+{
+	print STDERR qq{
+sendmailanalyzer v$VERSION usage:
+
+-c | --config file     : path to configuration file. Default is to read it from
+                         /etc/sendmailanalyzer.conf.
+-d | --debug           : turn on debug mode.
+-h | --help            : show this short help and exit.
+-v | --version         : show version and exit
+-i | --interactive     : run in interactive mode useful if you want day to day
+                       : report. Default is daemon mode, real time statistics.
+-l | --log file        : path to maillog file. Default is /var/log/maillog.
+-o | --output dir      : path to the output directory where data file will be
+                         written. Default /var/www/htdocs.
+-t | --tail tail_prog  : path to the tail system command. Default /usr/bin/tail.
+-a | --args "tail_args": tail command line arguments. Default "-n 0 -f".
+-s | --sendmail name   : syslog sendmail program name. Default sm-mta|sendmail.
+-m | --mailscanner name: syslog MailScanner program name. Default Mailscanner.
+-f | --full            : parse full maillog and compute stat. Default is to read
+			 LAST_PARSED file to start from last collected event.
+-b | --break           : do not run tail after parsing full maillog and exit.
+-w | --write-delay sec : memory storage delay in second before saving data
+                         to disk. Default: 60 secondes.
+-z | --zcat zcat_prog  : path to the zcat command for compressed maillog.
+                         Default /usr/bin/zcat.
+-p | --piddir dir      : path where pid file will be stored. Default /var/run/.
+};
+	exit 0;
+}
+  
+####
+# Function used to dump debugging information
+####
+sub dprint
+{
+    my $msg = shift;
+
+    print STDERR "DEBUG: $msg\n" if ($CONFIG{DEBUG});
+}
+
+####
+# Die cleanly on signal
+####
+sub terminate
+{
+	close(SA_PIPE);
+	&dprint("Received terminating signal.");
+	&flush_data();
+	unlink("$CONFIG{PID_DIR}/$PID_FILE");
+	exit 0;
+}
+
+####
+# Start reading maillog file
+####
+sub start_loop
+{
+	if ($CONFIG{FULL}) {
+		my $OLD_LAST_PARSED = '';
+		if (-e "$CONFIG{OUT_DIR}/$LAST_PARSE_FILE") {
+			if ( not open(IN, "$CONFIG{OUT_DIR}/$LAST_PARSE_FILE")) {
+				&logerror("Can't read file $CONFIG{OUT_DIR}/$LAST_PARSE_FILE: $!");
+			} else {
+				$OLD_LAST_PARSED = <IN>;
+				close(IN);
+			}
+		}
+		&dprint("Parsing full $CONFIG{LOG_FILE}");
+		if ($CONFIG{LOG_FILE} !~ /\.gz/) {
+			if (!($KID = open(SA_FILE, "$CONFIG{LOG_FILE}"))) {
+				unlink("$CONFIG{PID_DIR}/$PID_FILE");
+				die "$0: cannot read $CONFIG{LOG_FILE}: $!\n";
+			}
+		} else {
+			# Open a pipe to zcat program for compressed log
+			if (!($KID = open(SA_FILE, "$CONFIG{ZCAT_PROG} $CONFIG{LOG_FILE}|"))) {
+				unlink("$CONFIG{PID_DIR}/$PID_FILE");
+				die "$0: cannot read from pipe to \"$CONFIG{ZCAT_PROG} $CONFIG{LOG_FILE}\": $!\n";
+			}
+		}
+
+		# Write pid file
+		if (open(OUT, ">$CONFIG{PID_DIR}/$PID_FILE")) {
+			print OUT "$KID $$";
+			close(OUT);
+		}
+
+		while (my $l = <SA_FILE>) {
+			chomp($l);
+			$l =~ s/[\[\]\\]//g;
+			$l =~ s/ ID \d+ mail.\w//;
+			$LAST_PARSED = $l;
+			$l = '';
+			# Only catch relevant logs
+			if ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\d]+/) {
+				if ($OLD_LAST_PARSED) {
+				      my $ret = incremental_check($LAST_PARSED, $OLD_LAST_PARSED);
+				      $OLD_LAST_PARSED = '' if ($ret != 0);
+				      next if ($ret <= 0);
+				}
+				# Extract common fields and store data in memory
+				&store_data(&parse_common_fields(split(/\s+/, $LAST_PARSED)));
+			}
+			# Flush data to disk each 5 seconds ny default
+			my $check_time = &format_time(localtime(time));
+			if ($check_time > $CURRENT_TIME+$CONFIG{DELAY}) {
+				$CURRENT_TIME = $check_time;
+				&dprint("Flushing data to disk...");
+				&flush_data();
+			}
+		}
+		&dprint("Flushing data to disk...");
+		&flush_data();
+		exit 0 if ($CONFIG{BREAK});
+	}
+	# Daemon mode is not possible with compressed log file
+	if ($CONFIG{LOG_FILE} =~ /\.gz/) {
+		&dprint("Daemon mode is not possible with compressed log file");
+		exit 0;
+	}
+
+	&dprint("Opening pipe to $CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}");
+
+	# Open a pipe to the tail program
+	if ( !($KID = open(SA_PIPE, "$CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}|"))) {
+		unlink("$CONFIG{PID_DIR}/$PID_FILE");
+		die "$0: cannot read from pipe to \"$CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}\": $!\n";
+	}
+
+	# Write pid file
+	if (open(OUT, ">$CONFIG{PID_DIR}/$PID_FILE")) {
+		print OUT "$KID $$";
+		close(OUT);
+	}
+
+	# Read each incoming line
+	while (my $l = <SA_PIPE>) {
+		chomp($l);
+		$l =~ s/[\[\]\\]//g;
+		$l =~ s/ ID \d+ mail.\w//;
+		$LAST_PARSED = $l;
+		$l = '';
+		# Only catch relevant logs
+		if ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\d]+/) {
+			# Extract common fields and store data in memory
+			&store_data(&parse_common_fields(split(/\s+/, $LAST_PARSED)));
+		}
+		# Flush data to disk if write delay is over
+		my $check_time = &format_time(localtime(time));
+		if ($check_time > $CURRENT_TIME+$CONFIG{DELAY}) {
+			$CURRENT_TIME = $check_time;
+			&dprint("Flushing data to disk ($check_time > $CURRENT_TIME+$CONFIG{DELAY})...");
+			&flush_data();
+		}
+	}
+	&dprint("Flushing last data to disk...");
+	&flush_data();
+}
+
+####
+# Routine used to extract common field on maillog lines
+####
+sub parse_common_fields
+{
+	my ($month,$day,$time,$host,$type,@other) = @_;
+	
+	my $date = 1900+(localtime(time))[5] . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day);
+	my @f = split(/:/, $time);
+	$time = sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
+	$type =~ s/\://;
+
+	$host = $CONFIG{MERGING_HOST} if ($CONFIG{MERGING_HOST});
+
+	return ($date,"$time",$host,$type,join(' ', @other));
+}
+
+####
+# Routine used to store collected data
+####
+sub store_data
+{
+	my ($date,$time,$host,$type,$other) = @_;
+
+	if ($type =~ /^$CONFIG{MAILSCAN_NAME}|$CONFIG{CLAMD_NAME}/i) {
+		&parse_mailscanner($date,$time,$host,$other);
+	} elsif ($type =~ /^$CONFIG{AMAVIS_NAME}/i) {
+		&parse_amavis($date,$time,$host,$other);
+	# Allow multiple MTA name 
+	} elsif ($type =~ /^$CONFIG{MTA_NAME}/i) {
+		&parse_sendmail($date,$time,$host,$other);
+	} elsif ($type =~ /^$CONFIG{MD_NAME}/i) {
+		&parse_mimedefang($date,$time,$host,$other);
+	} elsif ($type =~ /^$CONFIG{POSTGREY_NAME}/i) {
+		&parse_postgrey($date,$time,$host,$other);
+	} elsif ($type =~ /^$CONFIG{SPAMD_NAME}/i) {
+		&parse_spamd($date,$time,$host,$other);
+	} else {
+		$type =~ s/(\d+)/\[$1\]/;
+		&dprint("Skipping unknown syslog report => $date $time $host $type $other");
+	}
+	 
+}
+
+####
+# Parse Sendmail syslog output
+####
+sub parse_sendmail
+{
+	my ($date,$time,$host,$str) = @_;
+
+	#### Store each relevant information per date and ids
+
+	# Parse MTA system error
+	if ($str =~ m#^([^:\s]+): SYSERR[^:]+: (.*)# ) {
+		$SYSERR{$host}{$1}{date} = $date . $time;
+		$SYSERR{$host}{$1}{message} = &clear_status($2);
+	# Skip message related to MCI caching module
+	} elsif ($str =~ m#^([^:\s]+): MCI\@#) {
+		next;
+	# Skip Debug message
+	} elsif ($str =~ m#^([^:\s]+):\s+\d+: fl=#) {
+		next;
+	# POSTFIX: Skip connect/disconnect message
+	} elsif ($str =~ m#^(DIS)?CONNECT #i) {
+		next;
+	# POSTFIX temporary blacklist/whitelist messsage
+	} elsif ($str =~ m#^(PASS OLD|PASS NEW|WHITELISTED|BLACKLISTED)#i) {
+		next;
+	# POSTFIX pregreet test
+	} elsif ($str =~ m#^(PREGREET|HANGUP)#i) {
+		next;
+	# POSTFIX dnsbl message
+	} elsif ($str =~ m#^DNSBL rank#i) {
+		next;
+	# POSTFIX dnsbl message ???
+	} elsif ($str =~ m#addr \d+\.\d+\.\d+\.\d+ listed#i) {
+		next;
+	# POSTFIX  postscreen messages: COMMAND (PIPELINING|COUNT LIMIT|TIME LIMIT)???
+	} elsif ($str =~ m#^COMMAND #i) {
+		next;
+	# POSTFIX: error messages
+	} elsif ($str =~ m#^(lost connection|timeout|too many errors) after ([^\s]+)#) {
+		$SYSERR{$host}{"$date$time"}{date} = $date . $time;
+		$SYSERR{$host}{"$date$time"}{message} = $1 . ' after ' . $2;
+	} elsif ($str =~ m#^connect to [^:]+: (.*)#) {
+		$SYSERR{$host}{"$date$time"}{date} = $date . $time;
+		$SYSERR{$host}{"$date$time"}{message} = $1;
+	# POSTFIX: Skip removed message
+	} elsif ($str =~ m#^([^:\s]+): removed#) {
+		next;
+	# Parse protocole error
+	} elsif ($str =~ m#^([^:\s]+): ([^:\s]+): (.*protocol error:.*)#) {
+		$SYSERR{$host}{$1}{date} = $date . $time;
+		$SYSERR{$host}{$1}{message} = $3;
+	# Parse virus found by clamav-milter
+	} elsif ($str =~ m#^([^:\s]+): Milter add: header: X-Virus-Status: Infected with (.*)#) {
+		$VIRUS{$host}{$1}{virus} = $2;
+		$VIRUS{$host}{$1}{file} = 'Inline';
+		$VIRUS{$host}{$1}{date} = $date . $time;
+	} elsif ($str =~ m#^([^:\s]+): Milter [^:]+: header: X-Virus-Status: Infected \((.*)\)#) {
+		$VIRUS{$host}{$1}{virus} = $2;
+		$VIRUS{$host}{$1}{file} = 'Inline';
+		$VIRUS{$host}{$1}{date} = $date . $time;
+	# Parse spam found by spamd-milter
+	} elsif ($str =~ m#^([^:\s]+): Milter (add|change): header: X-Spam-Status: Yes, score=([^\s]+) required=([^\s]+) tests=([^\s]+)#) {
+		my $id = $1;
+		$SPAM{$host}{$id}{spam} = 'spamdmilter';
+		$SPAM{$host}{$id}{date} = $date . $time;
+		if ($CONFIG{SPAM_DETAIL}) {
+			$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$id}{type} = 'spamdmilter';
+			$SPAMDETAIL{$host}{$id}{spam} = $5;
+			$SPAMDETAIL{$host}{$id}{required} = $4;
+			$SPAMDETAIL{$host}{$id}{score} = $3;
+			if ($SPAMDETAIL{$host}{$id}{spam} =~ s/(nt|\s)autolearn=([^\s,]+)//) {
+				$SPAMDETAIL{$host}{$id}{autolearn} = $2;
+			}
+			$SPAMDETAIL{$host}{$id}{spam} =~ s/,nt//g;
+		}
+	# Parse spam found by dnsbl-milter
+	} elsif ($str =~ m#^([^:\s]+): Milter: from=([^,]+), reject=(.*)#) {
+		my $id = $1;
+		my $spam = $3;
+		$spam =~ s/ See .*//;
+		$spam =~ s/\/.*//;
+		$SPAM{$host}{$id}{spam} = 'dnsblmilter';
+		$SPAM{$host}{$id}{date} = $date . $time;
+		$SPAM{$host}{$id}{from} = &edecode($2);
+		if ($CONFIG{SPAM_DETAIL}) {
+			$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$id}{type} = 'dnsblmilter';
+			$SPAMDETAIL{$host}{$id}{spam} = $spam;
+		}
+	# Parse spam found by jchkmail
+	} elsif ($str =~ m#^([^:\s]+): Milter (add|change): header: X-j-chkmail-Status: (Spam|Unsure)(.*)#) {
+		$SPAM{$host}{$1}{spam} = 'jchkmail';
+		$SPAM{$host}{$1}{date} = $date . $time;
+		if ($CONFIG{SPAM_DETAIL}) {
+			$SPAMDETAIL{$host}{$1}{type} = 'jchkmail';
+			$SPAMDETAIL{$host}{$1}{spam} = $3 . $4;
+			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
+		}
+	} elsif ($str =~ m#^([^:\s]+): Milter (add|change): header: X-j-chkmail-Score: .*> S=(.*)#) {
+		if ($CONFIG{SPAM_DETAIL}) {
+			$SPAMDETAIL{$host}{$1}{type} = 'jchkmail';
+			$SPAMDETAIL{$host}{$1}{score} = $3;
+		}
+	} elsif ($str =~ m#^([^:\s]+): Milter (delete|add|change): #) {
+		# Skip other milter header modication notice
+		next;
+	} elsif ($str =~ m#^([^:\s]+): Milter insert \(\d+\): #) {
+		# Skip other milter header insertion notice
+		next;
+	} elsif ($str =~ m#^([^:\s]+): Milter: connect: .*, ([^,]*)#) {
+		$SYSERR{$host}{$1}{date} = $date . $time;
+		$SYSERR{$host}{$1}{message} = &clear_status($2);
+	} elsif ($str =~ m#^([^:\s]+): Milter (delete|add|change) #) {
+		# Skip other milter modication notice
+		next;
+	} elsif ($str =~ m#^([^:\s]+): Milter: data, reject=(.*)#) {
+		my $id = $1;
+		my $status = $2;
+		if ($status =~ /Blocked by SpamAssassin/) {
+			$SPAM{$host}{$id}{spam} = 'Blocked by SpamAssassin';
+		} elsif ($status =~ /554 5\.7\.1 (.*) detected by ClamAV.*/) {
+			$SPAM{$host}{$id}{spam} = "ClamAv $1"
+		} elsif ($status =~ /554 5\.7\.1 Command rejected/) {
+			next # Already handle at Clamav virus report
+		} elsif ($status =~ /Please try again later/) {
+			next; # Skip greylist rejection
+		} else {
+			$SPAM{$host}{$id}{spam} = $status;
+		}
+	# Local failure
+	} elsif ($str =~ m#^([^:\s]+): <([^>]+)>\.\.\. (.*)#) {
+		my $id = $1;
+		my $to = $2;
+		my $status = &clear_status($3);
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		push(@{$TO{$host}{$id}{to}}, &edecode($to));
+		push(@{$TO{$host}{$id}{date}}, $date . $time);
+		push(@{$TO{$host}{$id}{status}}, $status);
+	# POSTFIX queue From clause
+	} elsif ($str =~ m#^([^:\s]+): from=([^,]*), size=(\d+), nrcpt=(\d+).*#) {
+		my $id = $1;
+		my $from = lc($2);
+		$from ||= 'empty';
+		my $size = $3;
+		my $nrcpts = $4;
+		$FROM{$host}{$id}{date} = $date . $time;
+		$FROM{$host}{$id}{from} = &edecode($from);
+		$FROM{$host}{$id}{size} = $size;
+		$FROM{$host}{$id}{nrcpts} = $nrcpts;
+	# POSTFIX message id
+	} elsif ($str =~ m#^([^:\s]+): message-id=([^,]*)#) {
+		my $id = $1;
+		my $msgid = $2;
+		$msgid =~ s/[<>]//g;
+		$FROM{$host}{$id}{msgid} = $msgid;
+	# POSTFIX local relay
+	} elsif ($str =~ m#^([^:\s]+): uid=\d+ from=#) {
+		my $id = $1;
+		$FROM{$host}{$id}{relay} = 'localhost';
+	# POSTFIX relay
+	} elsif ($str =~ m#^([^:\s]+): client=([^,]*)#) {
+		my $id = $1;
+		my $relay = &clean_relay(lc($2));
+		$FROM{$host}{$id}{relay} = $relay;
+		# Catch POSTFIX SASL SMTP AUTH
+		if ($str =~ m#sasl_method=([^,]*), sasl_username=([^,]*)#) {
+			my $authid = $2;
+			push(@{$AUTH{$host}{$authid}{type}}, 'SASL');
+			push(@{$AUTH{$host}{$authid}{mech}}, $1);
+			push(@{$AUTH{$host}{$authid}{date}}, $date . $time);
+			push(@{$AUTH{$host}{$authid}{relay}}, $relay);
+		}
+	# From clause
+	} elsif ($str =~ m#^([^:\s]+): from=([^,]*), size=(\d+),.*, nrcpts=(\d+), msgid=([^,]+),.*relay=([^,]+)#) {
+		my $id = $1;
+		my $from = lc($2);
+		$from ||= 'empty';
+		my $size = $3;
+		my $nrcpts = $4;
+		my $msgid = $5;
+		my $relay = &clean_relay(lc($6));
+		$msgid =~ s/[<>]//g;
+		$FROM{$host}{$id}{date} = $date . $time;
+		$FROM{$host}{$id}{from} = &edecode($from);
+		$FROM{$host}{$id}{size} = $size;
+		$FROM{$host}{$id}{nrcpts} = $nrcpts;
+		$FROM{$host}{$id}{msgid} = $msgid;
+		$FROM{$host}{$id}{relay} = $relay;
+	} elsif ($str =~ m#^([^:\s]+): from=([^,]*), size=(\d+),.*, nrcpts=(\d+),.*relay=([^,]+)#) {
+		my $id = $1;
+		my $from = lc($2);
+		$from ||= 'empty';
+		my $size = $3;
+		my $nrcpts = $4;
+		my $relay = &clean_relay(lc($5));
+		if (exists $GREYLIST{$id}) {
+			delete $GREYLIST{$id};
+			next;
+		} elsif (exists $REJECT{$host}{$id} && !$size) {
+			$REJECT{$host}{$id}{arg1} = &edecode($from);
+			$REJECT{$host}{$id}{relay} = $relay;
+			next;
+		}
+		$FROM{$host}{$id}{date} = $date . $time;
+		$FROM{$host}{$id}{from} = &edecode($from);
+		$FROM{$host}{$id}{size} = $size;
+		$FROM{$host}{$id}{nrcpts} = $nrcpts;
+		$FROM{$host}{$id}{relay} = $relay;
+	# POSTFIX To clause 
+	} elsif ($str =~ m#^([^:\s]+): to=([^,]+), relay=([^,]+),.*status=(.*)#) {
+		my $id = $1;
+		my $to = &edecode($2);
+		my $relay = &clean_relay($3);
+		my $status = &clear_status($4);
+		$status = 'Sent' if ($status eq 'sent'); 
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		foreach my $t (split(/,/, $to)) {
+			$t = &edecode($t);
+			next if ($t eq 'more');
+			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{relay}}, 'localhost');
+			push(@{$TO{$host}{$id}{to}}, $t);
+			push(@{$TO{$host}{$id}{status}}, $status);
+		}
+	# POSTFIX To clause with origine
+	} elsif ($str =~ m#^([^:\s]+): to=([^,]+), orig_to=([^,]+), relay=([^,]+),.*status=(.*)#) {
+		my $id = $1;
+		my $to = &edecode($2);
+		my $relay = &clean_relay($4);
+		my $status = &clear_status($5);
+		$status = 'Sent' if ($status eq 'sent'); 
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		foreach my $t (split(/,/, $to)) {
+			$t = &edecode($t);
+			next if ($t eq 'more');
+			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{relay}}, 'localhost');
+			push(@{$TO{$host}{$id}{to}}, $t);
+			push(@{$TO{$host}{$id}{status}}, $status);
+		}
+	# To clause queued
+	} elsif ($str =~ m#^([^:\s]+): to=(.*), delay=.* stat=queued#) {
+		my $id = $1;
+		push(@{$TO{$host}{$id}{queue_date}}, $date . $time);
+		push(@{$TO{$host}{$id}{queue_to}}, &edecode($2));
+	# To clause generated by a mailing list
+	} elsif ($str =~ m#^([^:\s]+): to=(.*), ctladdr=([^\s]+).*, mailer=prog,.*stat=(.*)#) {
+		my $id = $1;
+		my $prog = lc($2);
+		my $ctladdr = &edecode($3);
+		my $status = &clear_status($4);
+		$prog =~ s/\|//g;
+		# Skip vacation and procmail prog that double the recipient entry
+		next if ($prog =~ /(vacation|procmail)/);
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		push(@{$TO{$host}{$id}{date}}, $date . $time);
+		push(@{$TO{$host}{$id}{relay}}, 'localhost');
+		push(@{$TO{$host}{$id}{to}}, $ctladdr);
+		push(@{$TO{$host}{$id}{status}}, $status);
+	} elsif ($str =~ m#^([^:\s]+): to=(.*), ctladdr=([^\s]+).*, mailer=\*file\*,.*, stat=(.*)#) {
+		my $id = $1;
+		my $prog = lc($2);
+		my $ctladdr = &edecode($3);
+		my $status = &clear_status($4);
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		push(@{$TO{$host}{$id}{date}}, $date . $time);
+		push(@{$TO{$host}{$id}{relay}}, 'localhost');
+		push(@{$TO{$host}{$id}{to}}, &edecode($ctladdr));
+		push(@{$TO{$host}{$id}{status}}, $status);
+	} elsif ($str =~ m#^([^:\s]+): to=(.*), ctladdr=([^\s]+).*, mailer=local, .*, stat=(.*)#) {
+		my $id = $1;
+		my $to = &edecode($2);
+		my $ctladdr = &edecode($3);
+		my $status = &clear_status($4);
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		foreach my $t (split(/,/, $to)) {
+			$t = &edecode($t);
+			next if ($t eq 'more');
+			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{relay}}, 'localhost');
+			push(@{$TO{$host}{$id}{to}}, $t);
+			push(@{$TO{$host}{$id}{status}}, $status);
+		}
+
+	# To clause generated by a redirection
+	} elsif ($str =~ m#^([^:\s]+): to=(.*), ctladdr=([^\s]+).*, mailer=.*, relay=([^,]+),.*stat=(.*)#) {
+		my $id = $1;
+		my $to = &edecode($2);
+		my $ctladdr = &edecode($3);
+		my $relay = &clean_relay($4);
+		my $status = &clear_status($5);
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		foreach my $t (split(/,/, $to)) {
+			$t = &edecode($t);
+			next if ($t eq 'more');
+			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{relay}}, 'localhost');
+			push(@{$TO{$host}{$id}{to}}, $t);
+			push(@{$TO{$host}{$id}{status}}, $status);
+		}
+	# To close of intercepted virus by clamav-milter
+	} elsif ($str =~ m#^([^:\s]+): to=(.*), delay=.*, stat=(virus .*) detected by#) {
+		my $id = $1;
+		my $to = $2;
+		my $status = &clear_status($3);
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		foreach my $t (split(/,/, $to)) {
+			$t = &edecode($t);
+			next if ($t eq 'more');
+			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{to}}, $t);
+			push(@{$TO{$host}{$id}{status}}, $status);
+		}
+	# To clause with local distribution
+	} elsif ($str =~ m#^([^:\s]+): to=(.*), delay=.*, mailer=local,.*, stat=(.*)#) {
+		my $id = $1;
+		my $to = $2;
+		my $status = &clear_status($3);
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		foreach my $t (split(/,/, $to)) {
+			$t = &edecode($t);
+			next if ($t eq 'more');
+			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{relay}}, 'localhost');
+			push(@{$TO{$host}{$id}{to}}, $t);
+			push(@{$TO{$host}{$id}{status}}, $status);
+		}
+	# To clause
+	} elsif ($str =~ m#^([^:\s]+): to=(.*), delay=.*, relay=([^,]+),.*stat=(.*)#) {
+		my $id = $1;
+		my $to = $2;
+		my $relay = &clean_relay(lc($3));
+		my $status = &clear_status($4);
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		foreach my $t (split(/,/, $to)) {
+			$t = &edecode($t);
+			next if ($t eq 'more');
+			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{relay}}, $relay);
+			push(@{$TO{$host}{$id}{to}}, $t);
+			push(@{$TO{$host}{$id}{status}}, $status);
+		}
+	# To clause with no delivery. Most of the time follow a reject.
+	} elsif ($str =~ m#^([^:\s]+): to=(.*), delay=.*, pri=([^,]+), stat=(.*)#) {
+		my $id = $1;
+		my $to = $2;
+		my $status = &clear_status($4);
+		next if (exists $REJECT{$host}{$id});
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		foreach my $t (split(/,/, $to)) {
+			$t = &edecode($t);
+			next if ($t eq 'more');
+			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{to}}, $t);
+			push(@{$TO{$host}{$id}{status}}, $status);
+		}
+
+	# Ruleset reject clause
+	} elsif ($str =~ m#^([^:\s]+): ruleset=([^,]+), arg1=([^,]+), relay=([^,]+),.*reject=(.*)#) {
+		my $id = $1;
+		my $rule = $2;
+		my $arg1 = $3;
+		my $relay = &clean_relay(lc($4));
+		my $reject = $5;
+		$arg1 =~ s/[<>]+//g;
+		# Test Sendmail DNSBL spam scan
+		if ($reject =~ /553 5\.3\.0/i) {
+			$SPAM{$host}{$id}{relay} = $relay;
+			$SPAM{$host}{$id}{rule} = $rule;
+			$SPAM{$host}{$id}{spam} = 'DNSBL Spam blocked';
+			$SPAM{$host}{$id}{date} = $date . $time;
+			$SPAM{$host}{$id}{from} = $arg1;
+			if ($CONFIG{SPAM_DETAIL}) {
+				$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+				$SPAMDETAIL{$host}{$id}{type} = 'dnsbl';
+				$reject =~ s/.*(Spam blocked see: )/$1/;
+				$reject =~ s/.*(Spam blocked .* found in .*)/$1/;
+				$SPAMDETAIL{$host}{$id}{spam} = $reject;
+			}
+		} else {
+			$REJECT{$host}{$id}{relay} = $relay;
+			$REJECT{$host}{$id}{rule} = $rule;
+			$REJECT{$host}{$id}{status} = &clear_status($reject);
+			$REJECT{$host}{$id}{date} = $date . $time;
+			$REJECT{$host}{$id}{arg1} = &edecode($arg1);
+		}
+
+	# Ruleset reject clause
+	} elsif ($str =~ m#^ruleset=([^,]+), arg1=([^,]+),.* relay=([^,]+),.*reject=(.*)#) {
+		my $rule = $1;
+		my $arg1 = &clean_relay(lc($2));
+		my $relay = &clean_relay(lc($3));
+		my $reject = $4;
+		$arg1 =~ s/[<>]+//g;
+		my $id = &get_uniqueid();
+		# Test Sendmail DNSBL spam scan
+		if ($reject =~ /553 5\.3\.0/i) {
+			$SPAM{$host}{$id}{relay} = $relay;
+			$SPAM{$host}{$id}{rule} = $rule;
+			$SPAM{$host}{$id}{spam} = 'DNSBL Spam blocked';
+			$SPAM{$host}{$id}{date} = $date . $time;
+			$SPAM{$host}{$id}{from} = $arg1;
+			if ($CONFIG{SPAM_DETAIL}) {
+				$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+				$SPAMDETAIL{$host}{$id}{type} = 'dnsbl';
+				$reject =~ s/.*(Spam blocked see: )/$1/;
+				$reject =~ s/.*(Spam blocked .* found in .*)/$1/;
+				$SPAMDETAIL{$host}{$id}{spam} = $reject;
+			}
+		} else {
+			$REJECT{$host}{$id}{relay} = $relay;
+			$REJECT{$host}{$id}{rule} = $rule;
+			$REJECT{$host}{$id}{status} = &clear_status($reject);
+			$REJECT{$host}{$id}{date} = $date . $time;
+			$REJECT{$host}{$id}{arg1} = &edecode($arg1);
+		}
+
+	# Add support to milter recipient rejection report
+	} elsif ($str =~ m#^([^:\s]+): Milter: to=(.*), reject=(\d+ \d+\.\d+\.\d+\s+.*)#) {
+		my $id = $1;
+		my $to = $2;
+		my $status = $3;
+		if ($status =~ /Greylisting in action/) {
+			$GREYLIST{$id} = &edecode($to);
+			next;
+		}
+		push(@{$TO{$host}{$id}{date}}, $date . $time);
+		push(@{$TO{$host}{$id}{to}}, &edecode($to));
+		push(@{$TO{$host}{$id}{status}}, &clear_status($status));
+
+	# Add support to milter sender rejection
+	} elsif ($str =~ m#^([^:\s]+): Milter: from=(.*), reject=(\d+ \d+\.\d+\.\d+\s+.*)#) {
+		my $id = $1;
+		my $arg1 = $2;
+		my $reject = $3;
+		$arg1 =~ s/[<>]+//g;
+		if ($reject =~ /sender=(.*)\&ip=(.*)\&receiver=/) {
+			$REJECT{$host}{$id}{arg1} = &edecode($1);
+			$REJECT{$host}{$id}{relay} = $2;
+		} else {
+			$REJECT{$host}{$id}{arg1} = $arg1;
+		}
+		$REJECT{$host}{$id}{rule} = 'reject' if (!$REJECT{$host}{$id}{rule});
+		$REJECT{$host}{$id}{status} = &clear_status($reject);
+		$REJECT{$host}{$id}{date} = $date . $time;
+
+	# Try to find milter rejection rule (other fields will be overriden by the condition above)
+	} elsif ($str =~ m#^([^:\s]+): milter=([^,]+), action=([^,]+), reject=(\d+ \d+\.\d+\.\d+\s+.*)#) {
+		my $id = $1;
+		my $reject = $4;
+		$REJECT{$host}{$id}{rule} = $2;
+		$REJECT{$host}{$id}{action} = $3;
+		$REJECT{$host}{$id}{status} = &clear_status($reject);
+		$REJECT{$host}{$id}{date} = $date . $time;
+		if ($reject =~ /sender=(.*)\&ip=(.*)\&receiver=/) {
+			$REJECT{$host}{$id}{arg1} = &edecode($1);
+			$REJECT{$host}{$id}{relay} = $2;
+		}
+
+	# Store DSN id mapping
+	} elsif ($str =~ m#^([^:\s]+): ([^:\s]+): (DSN|return to sender|sender notify|postmaster notify): (.*)# ) {
+		my $previd = $1;
+		my $id = $2;
+		my $type = $3;
+		my $status = $4;
+		$status =~ s/(.*)\.\.\. //;
+		$DSN{$host}{$id}{srcid} = $previd;
+		$DSN{$host}{$id}{status} = &clear_status($type . " " . $status);
+		$DSN{$host}{$id}{date} = $date . $time;
+		$DSN{$host}{$id}{status} =~ s/ \((.*?)\)//g;
+		$FROM{$host}{$id}{date} = $date . $time;
+		$FROM{$host}{$id}{from} = 'DSN@localhost';
+		$FROM{$host}{$id}{size} = 0;
+		$FROM{$host}{$id}{nrcpts} = 1;
+		$FROM{$host}{$id}{relay} = 'localhost';
+	# POSTFIX reject messages
+	} elsif ($str =~ m#^([^:\s]+): reject: RCPT from ([^\s]+) (.*) from=<([^>]+)>[,]* to=<([^>]+)>#) {
+		my $relay = &clean_relay(lc($2));
+		my $reject = $3;
+		my $from = $4;
+		my $to = $5;
+		my $id = &get_uniqueid();
+		$reject =~ s/^([^;]+);//;
+		my $status = $1 || '';
+		$reject =~ s/^\s+//;
+		$reject =~ s/[\s;]+$//;
+		# Test PostFix DNSBL spam scan
+		if ($reject =~ /client .* (blocked using .*)/i) {
+			my $spamdetail = $1;
+			$SPAM{$host}{$id}{relay} = $relay;
+			$SPAM{$host}{$id}{rule} = 'reject';
+			$SPAM{$host}{$id}{spam} = 'DNSBL Spam blocked';
+			$SPAM{$host}{$id}{date} = $date . $time;
+			$SPAM{$host}{$id}{from} = &edecode($from);
+			$SPAM{$host}{$id}{to} = &edecode($to);
+			$SPAM{$host}{$id}{status} = &clear_status($status);
+			if ($CONFIG{SPAM_DETAIL}) {
+				$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+				$SPAMDETAIL{$host}{$id}{type} = 'dnsbl';
+				$SPAMDETAIL{$host}{$id}{spam} = &clear_status($spamdetail);
+			}
+		} elsif ($status =~ /(.* spam.*)/i) {
+			$SPAM{$host}{$id}{relay} = $relay;
+			$SPAM{$host}{$id}{rule} = 'reject';
+			$SPAM{$host}{$id}{spam} = 'Spam blocked';
+			$SPAM{$host}{$id}{date} = $date . $time;
+			$SPAM{$host}{$id}{from} = &edecode($from);
+			$SPAM{$host}{$id}{to} = &edecode($to);
+			$SPAM{$host}{$id}{status} = &clear_status($status);
+			if ($CONFIG{SPAM_DETAIL}) {
+				$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+				$SPAMDETAIL{$host}{$id}{type} = 'dnsbl';
+				$SPAMDETAIL{$host}{$id}{spam} = &clear_status($status);
+			}
+		} else {
+			$REJECT{$host}{$id}{relay} = $relay;
+			$REJECT{$host}{$id}{rule} = 'reject';
+			$REJECT{$host}{$id}{status} = &clear_status($status);
+			$REJECT{$host}{$id}{date} = $date . $time;
+			$REJECT{$host}{$id}{arg1} = &edecode($from);
+			$REJECT{$host}{$id}{to} = $to;
+		}
+
+	# POSTFIX milter reject message
+	} elsif ($str =~ m#^([^:\s]+): milter-reject: END-OF-MESSAGE from ([^\s]+) ([^;]+); from=<([^>]+)>[,]* to=<([^>]+)>#) {
+		my $relay = &clean_relay(lc($2));
+		my $rule = 'milter-reject';
+		my $status = $3;
+		my $from = $4;
+		my $to = $5;
+		my $id = $1;
+		$REJECT{$host}{$id}{relay} = $relay;
+		$REJECT{$host}{$id}{date} = $date . $time;
+		$REJECT{$host}{$id}{arg1} = &edecode($from);
+		$REJECT{$host}{$id}{to} = $to;
+		$REJECT{$host}{$id}{rule} = $rule;
+		if ($status =~ /(Rejected due to SPF policy)/i) {
+			$REJECT{$host}{$id}{rule} = 'spf-milter';
+			$REJECT{$host}{$id}{status} = $1;
+		} elsif ($status =~ /(Rejected due to Sender-ID policy)/i) {
+			$REJECT{$host}{$id}{rule} = 'sid-milter';
+			$REJECT{$host}{$id}{status} = $1;
+		} else {
+			$REJECT{$host}{$id}{status} = &clear_status($status);
+		}
+	# POSTFIX some error messages
+	} elsif ($str =~ m#^([^:\s]+): ([^=]+)\.\.\. (.*)#) {
+		my $id = $1;
+		my $to = $2;
+		my $status = &clear_status($3);
+		$SYSERR{$host}{$id}{date} = $date . $time;
+		$SYSERR{$host}{$id}{message} = $status . ': ' . $to;
+	# Skip lost connection after STARTTLS duplicate error
+	} elsif ($str =~ m#^SSL_accept error from#) {
+		next;
+	# Catch other messages with sendmail id
+	} elsif ($str =~ m#^([^:\s]+): (.*)#) {
+		my $id = $1;
+		my $err = $2 || '';
+		next if (length($id) != 14); # Skip debug lines
+		next if ($err =~ /clone|owner/); # Skip mailling list clone
+		next if ($err =~ /^(addr|Milter) /); # Skeep milter information
+		# Do not store if we already have it
+		next if (exists $SYSERR{$host}{$id} || exists $SPAM{$host}{$id} || exists $REJECT{$host}{$id} || exists $TO{$host}{$id}{status});
+		my $status = &clear_status($err);
+		next if ($status !~ /\s/); # on single word error abort
+		$SYSERR{$host}{$id}{date} = $date . $time;
+		$SYSERR{$host}{$id}{message} = &clear_status($status);
+	# Catch SMTP AUTH
+	} elsif ($str =~ m#AUTH=([^,]+), relay=([^,]+), authid=([^,]+), mech=([^,]+), bits=#) {
+		my $authid = $3;
+		push(@{$AUTH{$host}{$authid}{type}}, $1);
+		push(@{$AUTH{$host}{$authid}{mech}}, $4);
+		push(@{$AUTH{$host}{$authid}{date}}, $date . $time);
+		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay($2));
+	} else {
+		my $dt = $date . $time;
+		if ($str =~ /(\d{3} \d\.\d\.\d .*)/) {
+			$str = $1;
+		}
+		$str =~ s/.*reject=//;
+		$OTHER{$host}{$dt} = &clear_status($str);
+	}
+}
+
+####
+# Parse MailScanner syslog output
+####
+sub parse_mailscanner
+{
+	my ($date,$time,$host,$str) = @_;
+
+	return if ($str =~ /is too big for spam checks/);
+
+	if ($str =~ /RBL checks: ([^\s]+) found in (.*)/) {
+		$SPAM{$host}{$1}{spam} = 'RBL checks';
+		$SPAM{$host}{$1}{from} = $FROM{$host}{$1}{from};
+		$SPAM{$host}{$1}{to} = $TO{$host}{$1}{queue_to}[0];
+		$SPAM{$host}{$1}{relay} = $FROM{$host}{$1}{relay};
+		$SPAM{$host}{$1}{date} = $date . $time;
+		delete $TO{$host}{$1}{queue_date};
+		delete $TO{$host}{$1}{queue_to};
+		if ($CONFIG{SPAM_DETAIL}) {
+			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
+			#$SPAMDETAIL{$host}{$1}{type} = 'spamassassin';
+			$SPAMDETAIL{$host}{$1}{type} = 'dnsbl';
+			$SPAMDETAIL{$host}{$1}{spam} = $2;
+		}
+	} elsif ($str =~ /Message ([^\s]+) from (.*) to (.*) is polluriel, ([^\(]+) \((.*)\)/) {
+		my $id= $1;
+		next if ($SPAM{$host}{$id});
+		$SPAM{$host}{$id}{from} = $FROM{$host}{$id}{from} || $2;
+		$SPAM{$host}{$id}{to} = $TO{$host}{$id}{queue_to}[0] || &edecode($3);
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		$SPAM{$host}{$id}{spam} = 'SpamAssassin';
+		$SPAM{$host}{$id}{date} = $date . $time;
+		my $text = $5 || '';
+		if ($CONFIG{SPAM_DETAIL}) {
+			$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$id}{type} = 'spamassassin';
+			$SPAMDETAIL{$host}{$id}{spam} = $text;
+		}
+		if ($SPAM{$host}{$id}{from} =~ /(\d+\.\d+\.\d+\.\d+) \((.*)\)/) {
+			$SPAM{$host}{$id}{relay} = &clean_relay(lc($2));
+			$SPAM{$host}{$id}{from} = $1;
+		}
+		$SPAM{$host}{$id}{from} = &edecode($SPAM{$host}{$id}{from});
+		if ($CONFIG{SPAM_DETAIL}) {
+			if ($text =~ /(.*), score=(.*), requis [^,]+, (.*)/) {
+					$SPAMDETAIL{$host}{$id}{cache} = $1;
+					$SPAMDETAIL{$host}{$id}{score} = $2;
+					$text = $3;
+					if ($text =~ s/autolearn=([^,]+), //) {
+						$SPAMDETAIL{$host}{$id}{autolearn} = $1;
+					}
+					$SPAMDETAIL{$host}{$id}{spam} = $text;
+			}
+		}
+	} elsif ($str =~ /Message ([^\s]+) from (.*) to (.*) is (.*)/) {
+		my $id= $1;
+		next if ($SPAM{$host}{$id});
+		$SPAM{$host}{$id}{from} = $FROM{$host}{$id}{from} || $2;
+		$SPAM{$host}{$id}{to} = $TO{$host}{$id}{queue_to}[0] || &edecode($3);
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		$SPAM{$host}{$id}{spam} = 'RBL checks';
+		$SPAM{$host}{$id}{date} = $date . $time;
+		if ($CONFIG{SPAM_DETAIL}) {
+			$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$id}{type} = 'dnsbl';
+			$SPAMDETAIL{$host}{$id}{spam} = $4;
+		}
+		if ($SPAM{$host}{$id}{from} =~ /(\d+\.\d+\.\d+\.\d+) \((.*)\)/) {
+			$SPAM{$host}{$id}{relay} = &clean_relay(lc($2));
+			$SPAM{$host}{$id}{from} = $1;
+		}
+		$SPAM{$host}{$id}{from} = &edecode($SPAM{$host}{$id}{from});
+	} elsif ($str =~ /Infected message ([^\s]+) from (.*)/) {
+		$VIRUS{$host}{$1}{from} = $2;
+		$VIRUS{$host}{$1}{date} = $date . $time;
+	} elsif ($str =~ /\.\/([^\.]+)\.message: ([^\s]+) FOUND/) {
+		$VIRUS{$host}{$1}{file} = 'message';
+		$VIRUS{$host}{$1}{virus} = $2;
+		$VIRUS{$host}{$1}{date} = $date . $time;
+	} elsif ($str =~ /\/([^\/]+)\/([^\/]+): ([^\s]+) FOUND/) {
+		$VIRUS{$host}{$1}{file} = $2;
+		$VIRUS{$host}{$1}{virus} = $3;
+		$VIRUS{$host}{$1}{date} = $date . $time;
+	}
+}
+
+####
+# Parse Amavis syslog output
+####
+sub parse_amavis
+{
+	my ($date,$time,$host,$str) = @_;
+
+	if ($str =~ /\(([^\)]+)\) (Passed|Blocked) SPAM.* <([^>]*)> -> <([^>]*)>(.*) Message-ID: <([^>]*)>, /) {
+		my $pid = $1;
+		my $status = $2;
+		my $id = $6;
+		my $queueid = $5;
+		my $sender = &edecode($3);
+		my $to = &edecode($4);
+		if ($queueid =~ /Queue-ID: ([^,]+)/) {
+			$id = $1;
+		}
+		$SPAM{$host}{$id}{from} = $FROM{$host}{$id}{from} || &edecode($sender);
+		$SPAM{$host}{$id}{to} = $TO{$host}{$id}{queue_to}[0] || &edecode($to);
+		delete $TO{$host}{$id}{queue_date};
+		delete $TO{$host}{$id}{queue_to};
+		$SPAM{$host}{$id}{spam} = "Amavis $status Spam";
+		$SPAM{$host}{$id}{date} = $date . $time;
+		if ($CONFIG{SPAM_DETAIL}) {
+			if (exists $SPAMDETAIL{$host}{$pid}) {
+				foreach (keys %{$SPAM{$host}{$id}}) {
+					$SPAMDETAIL{$host}{$pid}{$_} = $SPAM{$host}{$id}{$_} if ($_ ne "spam");
+				}
+			}
+		}
+	} elsif ($str =~ /(Passed|Blocked) INFECTED \(([^\)]*)\), .* <([^>]*)> -> <([^>]*)>.* Message-ID: <([^>]*)>, /) {
+		my $id = $5;
+		$VIRUS{$host}{$id}{file} = 'Inline';
+		$VIRUS{$host}{$id}{virus} = $2;
+		$VIRUS{$host}{$id}{from} = $3;
+		$VIRUS{$host}{$id}{to} = $4;
+		$VIRUS{$host}{$id}{date} = $date . $time;
+	}
+	if ($CONFIG{SPAM_DETAIL}) {
+		if ($str =~ /\(([^\)]+)\) SPAM, .*, Yes, score=([^\s]+).* tests=(.*), autolearn=([^,]+)/) {
+			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$1}{type} = 'amavis';
+			$SPAMDETAIL{$host}{$1}{score} = $2;
+			$SPAMDETAIL{$host}{$1}{spam} = $3;
+			$SPAMDETAIL{$host}{$1}{autolearn} = $4;
+		} elsif ($str =~ /\(([^\)]+)\) SPAM, .*, Yes, score=([^\s]+).* tests=(.*)/) {
+			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$1}{type} = 'amavis';
+			$SPAMDETAIL{$host}{$1}{score} = $2;
+			$SPAMDETAIL{$host}{$1}{spam} = $3;
+		} elsif ($str =~ /\(([^\)]+)\) spam_scan: score=([^\s]+) autolearn=([^\s]+) tests=(.*),/) {
+			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$1}{type} = 'amavis';
+			$SPAMDETAIL{$host}{$1}{score} = $2;
+			$SPAMDETAIL{$host}{$1}{autolearn} = $3;
+			$SPAMDETAIL{$host}{$1}{spam} = $4;
+		} elsif ($str =~ /\(([^\)]+)\) SPAM, .*, Yes, hits=([^\s]+) .*tests=(.*), quarantine/) {
+			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$1}{type} = 'amavis';
+			$SPAMDETAIL{$host}{$1}{score} = $2;
+			$SPAMDETAIL{$host}{$1}{spam} = $3;
+		}
+	}
+}
+
+
+####
+# Parse MimeDefang syslog output
+####
+sub parse_mimedefang
+{
+	my ($date,$time,$host,$str) = @_;
+
+	#### Store each relevant information per date and ids
+	#MDLOG,sendmail_queue_id,spam,score,relay,<from@sender>,<to@sdest>,subject
+	#MDLOG,sendmail_queue_id,virus,virus_name,relay,<from@sender>,<to@sdest>,subject
+	if ($str =~ /MDLOG,([^,]+),spam,([^,]+),([^,]+),([^,]+),([^,]+),(.*)/) {
+		if ($CONFIG{SPAM_DETAIL}) {
+			$SPAMDETAIL{$host}{$1}{type} = 'mimedefang';
+			$SPAMDETAIL{$host}{$1}{score} = $2;
+			$SPAMDETAIL{$host}{$1}{spam} = $6;
+			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
+		}
+		$SPAM{$host}{$1}{spam} = 'mimedefang';
+		$SPAM{$host}{$1}{date} = $date . $time;
+		$SPAM{$host}{$1}{relay} = &clean_relay(lc($3));
+		$SPAM{$host}{$1}{from} = $FROM{$host}{$1}{from} || &edecode($4);
+		$SPAM{$host}{$1}{to} = $TO{$host}{$1}{queue_to}[0] || &edecode($5);
+		delete $TO{$host}{$1}{queue_date};
+		delete $TO{$host}{$1}{queue_to};
+	} elsif ($str =~ /MDLOG,([^,]+),virus,([^,]+),([^,]+),/) {
+		$VIRUS{$host}{$1}{virus} = $2;
+		$VIRUS{$host}{$1}{file} = 'Inline';
+		$VIRUS{$host}{$1}{date} = $date . $time;
+		$VIRUS{$host}{$1}{relay} = &clean_relay(lc($3));
+	}
+}
+
+####
+# Parse Postgrey syslog output
+####
+sub parse_postgrey
+{
+	my ($date,$time,$host,$str) = @_;
+
+	if ($str =~ /action=([^,]+), reason=([^,]+), client_name=([^,]+), client_address=([^,]+), sender=([^,]+), recipient=(.*)/) {
+		my $action = $1;
+		my $status = $2;
+		my $relay_name = $3;
+		my $relay_ip = $4;
+		my $sender = &edecode($5);
+		my $to = &edecode($6);
+		my $id = &get_uniqueid();
+		$status =~ s/ \(.*//;
+		$POSTGREY{$host}{$id}{action} = $action;
+		$POSTGREY{$host}{$id}{relay} = $relay_name || $relay_ip;
+		$POSTGREY{$host}{$id}{from} = &edecode($sender);
+		$POSTGREY{$host}{$id}{to} = &edecode($to);
+		$POSTGREY{$host}{$id}{status} = $status;
+		$POSTGREY{$host}{$id}{date} = $date . $time;
+	}
+	
+}
+
+####
+# Parse spamd syslog output
+####
+sub parse_spamd
+{
+	my ($date,$time,$host,$str) = @_;
+
+	#### Store each relevant information per date and ids
+	if ($str =~ /result: Y ([^\s]+) - (.*) scantime=.*mid=<(.$)>,autolearn=(.*)/) {
+		my $id = &get_uniqueid();
+		if ($CONFIG{SPAM_DETAIL}) {
+			$SPAMDETAIL{$host}{$id}{type} = 'spamd';
+			$SPAMDETAIL{$host}{$id}{score} = $1;
+			$SPAMDETAIL{$host}{$id}{spam} = $2;
+			$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$id}{mid} = $3;
+			$SPAMDETAIL{$host}{$id}{autolearn} = $4;
+		}
+		$SPAM{$host}{$id}{spam} = 'spamd';
+		$SPAM{$host}{$id}{date} = $date . $time;
+		$SPAM{$host}{$id}{mid} = $3;
+	}
+}
+
+
+
+####
+# Decode email address and keep only email part
+####
+sub edecode
+{
+	my ($addr) = @_;
+
+	if ($addr =~ /=\?[^\?]+\?(.)\?(.*)?=/s) {
+		if (uc($1) eq 'B') {
+			$addr = decode_base64($1);
+		} elsif (uc($1) eq 'Q') {
+			$addr = decode_qp($1);
+		}
+	}
+	$addr =~ s#^\s+##;
+	$addr =~ s#\s+$##;
+	$addr =~ s#[<>]##g;
+	$addr =~ s#,$##;
+	$addr =~ s#:##g;
+	$addr =~ s#'##g;
+	$addr =~ s# \(\d+/\d+\)##g;
+	if ($addr !~ /\@/) {
+		$addr .= $CONFIG{DEFAULT_DOMAIN} || '@localhost';
+	}
+
+	return lc($addr);
+}
+
+####
+# Clean relay address
+####
+sub clean_relay
+{
+	my ($relay) = @_;
+	
+	if ($relay =~ m#(\d+\.\d+\.\d+\.\d+) \(may be forged#i) {
+		return $1;
+	} elsif ($relay =~ m#localhost|127\.0\.0\.1#) {
+		return 'localhost';
+	} elsif ($relay =~ /^(.*[^\d])(\d+\.\d+\.\d+\.\d+)/) {
+		if (lc($1) eq 'unknown') {
+			return $2;
+		} else {
+			return $1;
+		}
+	}
+	$relay =~ s#^\s+##;
+	$relay =~ s#\s+.*##;
+	$relay =~ s#\.$##;
+	$relay =~ s#:.*##;
+	$relay =~ s#\s.*##g;
+
+	return lc($relay);
+}
+
+####
+# Set script internal date/time format from localtime call
+# Format: YYYYMMDDHHMMSS
+####
+sub format_time
+{
+	my ($sec,$min,$hour,$mday,$mon,$year) = @_;
+
+	return 1900+$year . sprintf("%02d", $mon+1) . sprintf("%02d", $mday) . sprintf("%02d", $hour) . sprintf("%02d", $min) . sprintf("%02d",$sec);
+}
+
+####
+# Flush memory stored data to disk
+####
+sub flush_data
+{
+	####
+	# Data are saved on disk as follow:
+	# 	$host/$year/$month/$day/filename.dat
+	####
+	
+	# Init greylisting temporary storage
+	%GREYLIST = ();
+
+	# Save senders informations first
+	&dprint("Writing sender data to disk...");
+	my $nobj = 0;
+	foreach my $host (keys %FROM) {
+		my %senders = ();
+		foreach my $id (keys %{$FROM{$host}}) {
+			next if ($FROM{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+			# Key: year/month/day, Format: Hour:Id:Sender:Size:Nrcpts:Relay
+			$senders{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $FROM{$host}{$id}{from} . ':' . $FROM{$host}{$id}{size} . ':' . $FROM{$host}{$id}{nrcpts} . ':' . $FROM{$host}{$id}{relay} . "\n";
+			$nobj++;
+			# Complete Spam information
+			if (exists $SPAM{$host}{$id}) {
+				$SPAM{$host}{$id}{date} = $FROM{$host}{$id}{date};
+				$SPAM{$host}{$id}{from} = $FROM{$host}{$id}{from};
+			}
+
+			# Find real sendmail id for Amavis virus message
+			my $msgid = $FROM{$host}{$id}{msgid} || '';
+			if ($msgid && exists($VIRUS{$host}{"$msgid"})) {
+				foreach my $k (keys %{$VIRUS{$host}{"$msgid"}}) {
+					$VIRUS{$host}{$id}{$k} = $VIRUS{$host}{"$msgid"}{$k};
+				}
+				delete $VIRUS{$host}{"$msgid"};
+			}
+			# Find real sendmail id for Amavis spam message
+			if ($msgid && exists($SPAM{$host}{"$msgid"})) {
+				foreach my $k (keys %{$SPAM{$host}{"$msgid"}}) {
+					$SPAM{$host}{$id}{$k} = $SPAM{$host}{"$msgid"}{$k};
+				}
+				delete $SPAM{$host}{"$msgid"};
+			}
+			if ($msgid && exists($SPAMDETAIL{$host}{"$msgid"})) {
+				foreach my $k (keys %{$SPAMDETAIL{$host}{"$msgid"}}) {
+					$SPAMDETAIL{$host}{$id}{$k} = $SPAMDETAIL{$host}{"$msgid"}{$k};
+				}
+				delete $SPAMDETAIL{$host}{"$msgid"};
+			}
+		}
+		delete $FROM{$host};
+		foreach my $dir (keys %senders) {
+			if (!-d "$CONFIG{OUT_DIR}/$host/$dir") {
+				&create_directory("$host/$dir");
+			}
+			if (not open(OUT, ">>$CONFIG{OUT_DIR}/$host/$dir/senders.dat") ) {
+				&logerror("Can't write to file $CONFIG{OUT_DIR}/$host/$dir/senders.dat: $!");
+				&logerror("Data will be lost.");
+				next;
+			} else {
+				print OUT $senders{$dir};
+				close(OUT);
+			}
+		}
+	}
+	&dprint("\tWrote $nobj sender objects");
+	# clear all senders memory storage
+	%FROM = ();
+	
+	&dprint("Writing reject data to disk...");
+	$nobj = 0;
+	# Save rejected messages
+	foreach my $host (keys %REJECT) {
+		my %rejected = ();
+		foreach my $id (keys %{$REJECT{$host}}) {
+			$REJECT{$host}{$id}{date} =~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/;
+			# Key: year/month/day, Format: Hour:Id:Rule:Relay:Arg1:Status
+			$rejected{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $REJECT{$host}{$id}{rule} . ':' . $REJECT{$host}{$id}{relay} . ':' . $REJECT{$host}{$id}{arg1} . ':' . $REJECT{$host}{$id}{status} . "\n";
+			$nobj++;
+		}
+		delete $REJECT{$host};
+		foreach my $dir (keys %rejected) {
+			if (!-d "$CONFIG{OUT_DIR}/$host/$dir") {
+				&create_directory("$host/$dir");
+			}
+			if (not open(OUT, ">>$CONFIG{OUT_DIR}/$host/$dir/rejected.dat") ) {
+				&logerror("Can't write to file $CONFIG{OUT_DIR}/$host/$dir/rejected.dat: $!");
+				&logerror("Data will be lost.");
+				next;
+			} else {
+				print OUT $rejected{$dir};
+				close(OUT);
+			}
+		}
+	}
+	&dprint("\tWrote $nobj reject object.");
+	# clear all senders memory storage
+	%REJECT = ();
+		
+	&dprint("Writing DSN data to disk...");
+	$nobj = 0;
+	# Save DSN messages
+	foreach my $host (keys %DSN) {
+		my %dsned = ();
+		foreach my $id (keys %{$DSN{$host}}) {
+			next if ($DSN{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+			# Key: year/month/day, Format: Hour:Id:SourceId:Status
+			$dsned{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $DSN{$host}{$id}{srcid} . ':' . $DSN{$host}{$id}{status} . "\n";
+			$nobj++;
+		}
+		delete $DSN{$host};
+		foreach my $dir (keys %dsned) {
+			if (!-d "$CONFIG{OUT_DIR}/$host/$dir") {
+				&create_directory("$host/$dir");
+			}
+			if (not open(OUT, ">>$CONFIG{OUT_DIR}/$host/$dir/dsn.dat") ) {
+				&logerror("Can't write to file $CONFIG{OUT_DIR}/$host/$dir/dsn.dat: $!");
+				&logerror("Data will be lost.");
+				next;
+			} else {
+				print OUT $dsned{$dir};
+				close(OUT);
+			}
+		}
+	}
+	&dprint("\tWrote $nobj DSN object.");
+	# clear all senders memory storage
+	%DSN = ();
+	
+	# Save recipients informations
+	&dprint("Writing recipient data to disk...");
+	$nobj = 0;
+	foreach my $host (keys %TO) {
+		my %rcpts = ();
+		foreach my $id (keys %{$TO{$host}}) {
+			for (my $i = 0; $i <= $#{$TO{$host}{$id}{date}}; $i++) { 
+				# Key: year/month/day, Format: Hour:Id:Rcpt:Relay:Status
+				next if ($TO{$host}{$id}{date}[$i] !~ /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+				$rcpts{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $TO{$host}{$id}{to}[$i] . ':' . $TO{$host}{$id}{relay}[$i] . ':' . $TO{$host}{$id}{status}[$i] . "\n";
+				$nobj++;
+			}
+			for (my $i = 0; $i <= $#{$TO{$host}{$id}{queue_date}}; $i++) { 
+				# Key: year/month/day, Format: Hour:Id:Rcpt:Relay:Status
+				next if ($TO{$host}{$id}{queue_date}[$i] !~ /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+				$rcpts{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $TO{$host}{$id}{queue_to}[$i] . ":none:Queued\n";
+				$nobj++;
+			}
+			# Complete Spam information
+			if (exists $SPAM{$host}{$id} && !exists $SPAM{$host}{$id}{to}) {
+				$SPAM{$host}{$id}{to} = $TO{$host}{$id}{to}[0];
+			}
+		}
+		delete $TO{$host};
+		foreach my $dir (keys %rcpts) {
+			if (!-d "$CONFIG{OUT_DIR}/$host/$dir") {
+				&create_directory("$host/$dir");
+			}
+			if (not open(OUT, ">>$CONFIG{OUT_DIR}/$host/$dir/recipient.dat") ) {
+				&logerror("Can't write to file $CONFIG{OUT_DIR}/$host/$dir/recipient.dat: $!");
+				&logerror("Data will be lost.");
+				next;
+			} else {
+				print OUT $rcpts{$dir};
+				close(OUT);
+			}
+		}
+	}
+	&dprint("\tWrote $nobj recipient object.");
+	# clear all recipients memory storage
+	%TO = ();
+
+	# Save Spam objects
+	&dprint("Writing Spam data to disk...");
+	$nobj = 0;
+	foreach my $host (keys %SPAM) {
+		my %spams = ();
+		foreach my $id (keys %{$SPAM{$host}}) {
+			next if ($SPAM{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+			# Key: year/month/day, Format: Hour:Id:from:to:spam
+			$spams{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $SPAM{$host}{$id}{from} . ':' . $SPAM{$host}{$id}{to} . ':' . $SPAM{$host}{$id}{spam} . "\n";
+			$nobj++;
+		}
+		delete $SPAM{$host};
+		foreach my $dir (keys %spams) {
+			if (!-d "$CONFIG{OUT_DIR}/$host/$dir") {
+				&create_directory("$host/$dir");
+			}
+			if (not open(OUT, ">>$CONFIG{OUT_DIR}/$host/$dir/spam.dat") ) {
+				&logerror("Can't write to file $CONFIG{OUT_DIR}/$host/$dir/spam.dat: $!");
+				&logerror("Data will be lost.");
+				next;
+			} else {
+				print OUT $spams{$dir};
+				close(OUT);
+			}
+		}
+	}
+	&dprint("\tWrote $nobj spam object.");
+	# clear all spams memory storage
+	%SPAM = ();
+
+	# Save Spam detail objects
+	&dprint("Writing Spam detail data to disk...");
+	$nobj = 0;
+	foreach my $host (keys %SPAMDETAIL) {
+		my %spamdetails = ();
+		foreach my $id (keys %{$SPAMDETAIL{$host}}) {
+			next if ($SPAMDETAIL{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+			# Key: year/month/day, Format: Hour:Id:type:score:cache:autolearn:spam
+			$spamdetails{"$1/$2/$3"}{$SPAMDETAIL{$host}{$id}{type}} .= "$4$5$6" . ':' . $id . ':' . $SPAMDETAIL{$host}{$id}{type} . ':' . $SPAMDETAIL{$host}{$id}{score} . ':' . $SPAMDETAIL{$host}{$id}{cache} . ':' . $SPAMDETAIL{$host}{$id}{autolearn} . ':' . $SPAMDETAIL{$host}{$id}{spam} . "\n";
+			$nobj++;
+		}
+		delete $SPAMDETAIL{$host};
+		foreach my $dir (keys %spamdetails) {
+			if (!-d "$CONFIG{OUT_DIR}/$host/$dir") {
+				&create_directory("$host/$dir");
+			}
+			foreach my $type (keys %{$spamdetails{$dir}}) {
+				if (not open(OUT, ">>$CONFIG{OUT_DIR}/$host/$dir/$type.dat") ) {
+					&logerror("Can't write to file $CONFIG{OUT_DIR}/$host/$dir/$type.dat: $!");
+					&logerror("Data will be lost.");
+					next;
+				} else {
+					print OUT $spamdetails{$dir}{$type};
+					close(OUT);
+				}
+			}
+		}
+	}
+	&dprint("\tWrote $nobj spam detail object.");
+	# clear all spams memory storage
+	%SPAMDETAIL = ();
+
+	# Save Postgrey objects
+	&dprint("Writing Postgrey detail data to disk...");
+	$nobj = 0;
+	foreach my $host (keys %POSTGREY) {
+		my %postgreys = ();
+		foreach my $id (keys %{$POSTGREY{$host}}) {
+			next if ($POSTGREY{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+			# Key: year/month/day, Format: Hour:Id:relay:from:to:action:status
+			$postgreys{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $POSTGREY{$host}{$id}{relay} . ':' . $POSTGREY{$host}{$id}{from} . ':' . $POSTGREY{$host}{$id}{to} . ':' . $POSTGREY{$host}{$id}{action} . ':' . $POSTGREY{$host}{$id}{status} . "\n";
+			$nobj++;
+		}
+		delete $POSTGREY{$host};
+		foreach my $dir (keys %postgreys) {
+			if (!-d "$CONFIG{OUT_DIR}/$host/$dir") {
+				&create_directory("$host/$dir");
+			}
+			if (not open(OUT, ">>$CONFIG{OUT_DIR}/$host/$dir/postgrey.dat") ) {
+				&logerror("Can't write to file $CONFIG{OUT_DIR}/$host/$dir/postgrey.dat: $!");
+				&logerror("Data will be lost.");
+				next;
+			} else {
+				print OUT $postgreys{$dir};
+				close(OUT);
+			}
+		}
+	}
+	&dprint("\tWrote $nobj postgrey object.");
+	# clear all postgrey memory storage
+	%POSTGREY = ();
+
+	# Save Virus objects
+	&dprint("Writing Virus data to disk...");
+	$nobj = 0;
+	foreach my $host (keys %VIRUS) {
+		my %viruses = ();
+		foreach my $id (keys %{$VIRUS{$host}}) {
+			next if ($VIRUS{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+			# Key: year/month/day, Format: Hour:Id:file:virus
+			$viruses{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $VIRUS{$host}{$id}{file} . ':' . $VIRUS{$host}{$id}{virus} . "\n";
+			$nobj++;
+		}
+		delete $VIRUS{$host};
+		foreach my $dir (keys %viruses) {
+			if (!-d "$CONFIG{OUT_DIR}/$host/$dir") {
+				&create_directory("$host/$dir");
+			}
+			if (not open(OUT, ">>$CONFIG{OUT_DIR}/$host/$dir/virus.dat") ) {
+				&logerror("Can't write to file $CONFIG{OUT_DIR}/$host/$dir/virus.dat: $!");
+				&logerror("Data will be lost.");
+				next;
+			} else {
+				print OUT $viruses{$dir};
+				close(OUT);
+			}
+		}
+	}
+	&dprint("\tWrote $nobj virus object.");
+	# clear all viruses memory storage
+	%VIRUS = ();
+
+	# Save syserr objects
+	&dprint("Writing syserr data to disk...");
+	$nobj = 0;
+	foreach my $host (keys %SYSERR) {
+		my %errors = ();
+		foreach my $id (keys %{$SYSERR{$host}}) {
+			next if ($SYSERR{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+			# Key: year/month/day, Format: Hour:Id:Error
+			$errors{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $SYSERR{$host}{$id}{message} . "\n";
+			$nobj++;
+		}
+		delete $SYSERR{$host};
+		foreach my $dir (keys %errors) {
+			if (!-d "$CONFIG{OUT_DIR}/$host/$dir") {
+				&create_directory("$host/$dir");
+			}
+			if (not open(OUT, ">>$CONFIG{OUT_DIR}/$host/$dir/syserr.dat") ) {
+				&logerror("Can't write to file $CONFIG{OUT_DIR}/$host/$dir/syserr.dat: $!");
+				&logerror("Data will be lost.");
+				next;
+			} else {
+				print OUT $errors{$dir};
+				close(OUT);
+			}
+		}
+	}
+	&dprint("\tWrote $nobj syserr object.");
+	# clear all syserr memory storage
+	%SYSERR = ();
+
+
+	# Save other message objects
+	&dprint("Writing warning message data to disk...");
+	$nobj = 0;
+	foreach my $host (keys %OTHER) {
+		my %errors = ();
+		foreach my $dt (keys %{$OTHER{$host}}) {
+			next if ($dt !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+			# Key: year/month/day, Format: Hour:Id:Error
+			$errors{"$1/$2/$3"} .= "$4$5$6" . ':' . $OTHER{$host}{$dt} . "\n";
+			$nobj++;
+		}
+		delete $OTHER{$host};
+		foreach my $dir (keys %errors) {
+			if (!-d "$CONFIG{OUT_DIR}/$host/$dir") {
+				&create_directory("$host/$dir");
+			}
+			if (not open(OUT, ">>$CONFIG{OUT_DIR}/$host/$dir/other.dat") ) {
+				&logerror("Can't write to file $CONFIG{OUT_DIR}/$host/$dir/other.dat: $!");
+				&logerror("Data will be lost.");
+				next;
+			} else {
+				print OUT $errors{$dir};
+				close(OUT);
+			}
+		}
+	}
+	&dprint("\tWrote $nobj warning message object.");
+	# clear all warning message memory storage
+	%OTHER = ();
+
+	# Save auth message objects
+	&dprint("Writing warning auth data to disk...");
+	$nobj = 0;
+	foreach my $host (keys %AUTH) {
+		my %authent = ();
+		foreach my $id (keys %{$AUTH{$host}}) {
+			for (my $i = 0; $i <= $#{$AUTH{$host}{$id}{date}}; $i++) { 
+				next if ($AUTH{$host}{$id}{date}[$i] !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+				# Key: year/month/day, Format: date:id:relay:mech:type
+				$authent{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $AUTH{$host}{$id}{relay}[$i] . ':' . $AUTH{$host}{$id}{mech}[$i] . ':' . $AUTH{$host}{$id}{type}[$i] . "\n";
+				$nobj++;
+			}
+		}
+		delete $AUTH{$host};
+		foreach my $dir (keys %authent) {
+			if (!-d "$CONFIG{OUT_DIR}/$host/$dir") {
+				&create_directory("$host/$dir");
+			}
+			if (not open(OUT, ">>$CONFIG{OUT_DIR}/$host/$dir/auth.dat") ) {
+				&logerror("Can't write to file $CONFIG{OUT_DIR}/$host/$dir/auth.dat: $!");
+				&logerror("Data will be lost.");
+				next;
+			} else {
+				print OUT $authent{$dir};
+				close(OUT);
+			}
+		}
+	}
+	&dprint("\tWrote $nobj auth object.");
+	# clear all auth storage
+	%AUTH = ();
+
+	# Write last parsed data
+	if (not open(OUT, ">$CONFIG{OUT_DIR}/$LAST_PARSE_FILE") ) {
+		&logerror("Can't write to file $CONFIG{OUT_DIR}/$LAST_PARSE_FILE: $!");
+	} else {
+		&dprint("Writing last parsed line...");
+		print OUT $LAST_PARSED;
+		close(OUT);
+	}
+}
+
+####
+# Create output directory tree
+####
+sub create_directory
+{
+	my $dest = shift;
+
+	my $curdir = '';
+	foreach my $d (split(/\//, $dest)) {
+		$curdir .= $d . '/';
+		if (!-d "$CONFIG{OUT_DIR}/$curdir") {
+			if (not mkdir("$CONFIG{OUT_DIR}/$curdir")) {
+				&logerror("Can't create directory $CONFIG{OUT_DIR}/$curdir: $!");
+				&logerror("Data will be lost.");
+				return 0;
+			}
+		}
+	}
+
+	return 1;
+}
+
+####
+# Routine used to log sendmailanalyzer errors or send emails alert if requested
+####
+sub logerror
+{
+	my $str = shift;
+	
+	print STDERR "ERROR: $str\n";
+	
+}
+
+####
+# Read configuration file
+####
+sub read_config
+{
+	my $file = shift;
+
+	if (!-e $file) {
+		$file = '/etc/sendmailanalyzer.conf';
+	}
+	if (!-e $file) {
+		&logerror("Configuration file $file doesn't exists");
+		return;
+	} else {
+		if (not open(IN, $file)) {
+			&logerror("Can't read configuration file $file: $!");
+		} else {
+			while (<IN>) {
+				chomp;
+				s/#.*//;
+				s/^[\s\t]+//;
+				s/[\s\t]$//;
+				if ($_ ne '') {
+					my ($var, $val) = split(/[\s\t]+/, $_, 2); 
+					$CONFIG{$var} = $val if (!defined $CONFIG{$var} && ($val ne ''));
+				}
+			}
+			close(IN);
+		}
+	}
+	# Set default values
+	$CONFIG{LOG_FILE} ||= '/var/log/maillog';
+	$CONFIG{ZCAT_PROG} ||= '/usr/bin/zcat';
+	$CONFIG{TAIL_PROG} ||= '/usr/bin/tail';
+	$CONFIG{TAIL_ARGS} ||= '-n 0 -f';
+	$CONFIG{OUT_DIR} ||= '/var/www/sendmailanalyzer';
+	$CONFIG{DEBUG} ||= 0;
+	$CONFIG{FULL} ||= 0;
+	$CONFIG{BREAK} ||= 0;
+	$CONFIG{DELAY} ||= 5;
+	$CONFIG{MTA_NAME} ||= 'sendmail';
+	$CONFIG{MAILSCAN_NAME} ||= 'MailScanner';
+	$CONFIG{CLAMD_NAME} ||= 'clamd';
+	$CONFIG{MD_NAME} ||= 'mimedefang.pl';
+	$CONFIG{AMAVIS_NAME} ||= 'amavis';
+	if (!exists $CONFIG{SPAM_DETAIL}) {
+		$CONFIG{SPAM_DETAIL} = 1;
+	}
+	$CONFIG{MTA_NAME} =~ s/[\s\t,;]+/\|/g;
+	$CONFIG{PID_DIR} ||= '/var/run';
+	$CONFIG{POSTGREY_NAME} ||= 'postgrey';
+}
+
+####
+# Routine to remove any spercific part of status line to report
+# generic status
+####
+sub clear_status
+{
+	my $status = shift;
+
+	if ($status =~ /^Sent.*/) {
+		return 'Sent';
+	} elsif ($status =~ /Deferred.*/) {
+		return 'Deferred';
+	} elsif ($status =~ s/collect: //) {
+		$status =~ s/ from.*//;
+		return $status;
+	} elsif ($status =~ /did not issue/) {
+		$status =~ s/.*did not issue/No/;
+		return $status;
+	} elsif ($status =~ /(Greylisting in action)/) {
+		return $1;
+	} elsif ($status =~ /(lost input channel ).*(after.*)/) {
+		$status = $1 . $2;
+		return $status;
+	} elsif ($status =~ /(timeout waiting for input ).*(during.*)/) {
+		$status = $1 . $2;
+		return $status;
+	} elsif ($status =~ /(timeout writing message).*(: [^:]+?)( by |$)/) {
+		$status = $1 . $2;
+		return $status;
+	} elsif ($status =~ /(timeout writing message)/) {
+		return $1;
+        } elsif ($status =~ /(rejecting commands ).* (due to pre-greeting traffic)/) {
+		return $1 . $2;
+        } elsif ($status =~ /(rejecting commands ).*(due to.*)/) {
+		$status = $1 . $2;
+		return $status;
+        } elsif ($status =~ /(readqf: ).*:( .*)/) {
+		$status = $1 . $2;
+		return $status;
+        } elsif ($status =~ /(Syntax error in mailbox address)/) {
+		return $1;
+        } elsif ($status =~ /(Possible SMTP RCPT flood, throttling)/) {
+		return $1;
+        } elsif ($status =~ /(Domain name required for sender address)/) {
+		return $1;
+        } elsif ($status =~ /(STARTTLS=[^,]+),.*(, verify=[^,]+)/) {
+		return $1 . $2;
+        } elsif ($status =~ /, stat=(.*)/) {
+		return $1;
+        } elsif ($status =~ /(rejecting connections on daemon[^:]*: [^:]*)/) {
+		return $1;
+        } elsif ($status =~ /(VRFY ([^\s]+) rejected)/) {
+		return "VRFY rejected";
+        } elsif ($status =~ /: (sender notify:.*)/) {
+		return $1;
+        } elsif ($status =~ /(config error: mail loops back to me)/) {
+		return $1;
+        } elsif ($status =~ /(Authentication-Warning:).*\d+\.\d+\.\d+\.\d+(.*)/) {
+		return "$1 $2";
+        } elsif ($status =~ /(Authentication-Warning: [^:]+: [^\s]+ set sender) to .*(using -f)/) {
+		return "$1 $2";
+	} elsif ($status =~ /Losing .* savemail panic/) {
+		return "Losing message, savemail panic";
+        } elsif ($status =~ /(probable open proxy)/) {
+		return $1;
+        } elsif ($status =~ /(Too many hops)/) {
+		return $1;
+        } elsif ($status =~ /^(.*come back) in/) {
+		return "$1 later";
+        } elsif ($status =~ /^(setsender: [^:]+):/) {
+		my $ret = $1;
+		$ret =~ s/ SIZE=.*//;
+		return $ret . " attack attempt";
+        } elsif ($status =~ /(User unknown)/) {
+		return $1;
+        } elsif ($status =~ /(Greylisted), see http.*/) {
+		return $1;
+        } elsif ($status =~ /(improper command pipelining after RCPT).*/) {
+		return $1;
+	# POSTFIX Status
+        } elsif ($status =~ /(can't identify domain) in.*/) {
+		return $1;
+        } elsif ($status =~ /.*(Illegal address syntax).*( in .* command)/) {
+		return "$1$2";
+	} elsif ($status =~ /\d{3} \d\.\d\.\d <[^>]+>[:\s]*(.*)/) {
+		return $1;
+	} elsif ($status =~ /^\d\.\d\.\d (.*)/) {
+		return $1;
+	}
+	$status =~ s/\.\.\..*//;
+	$status =~ s/ with .*//;
+	$status =~ s/ by .*//;
+	$status =~ s/ \(.*//;
+	$status =~ s/ '.'//g;
+	$status =~ s/\.$//;
+
+	if ($status =~ /(\d{3} \d\.\d\.\d).*[^a-z\s:\.]+.*/i) {
+		return $1;
+	}
+
+	return $status;
+}
+
+####
+# Routine to remove any spercific part of rejected status line to report
+# generic status
+####
+sub clear_rejection_status
+{
+	my $status = shift;
+
+	if ($status =~ /(\d{3} \d\.\d\.\d)/) {
+		return $1;
+	}
+	$status =~ s/^.*reject=//;
+	$status =~ s/^.*\.\.\.\s*//;
+	$status =~ s/[^\d]\..*$//;
+
+	return $status;
+}
+
+
+####
+# Check wether the current parsed line has alread been parsed
+# return 0 in this case, and 1 if not. If timestamp are the same
+# return -1
+####
+sub incremental_check
+{
+	my ($last_parsed, $old_last_parsed) = @_;
+
+	
+	my ($month,$day,$time) = split(/\s+/, $last_parsed);
+	my @f = split(/:/, $time);
+	my $date = 1900+(localtime(time))[5] . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day) . sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
+	
+	my ($old_month,$old_day,$old_time) = split(/\s+/, $old_last_parsed);
+	my @old_f = split(/:/, $old_time);
+	my $old_date = 1900+(localtime(time))[5] . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . sprintf("%02d",$old_f[0]) . sprintf("%02d",$old_f[1]) . sprintf("%02d",$old_f[2]);
+
+	return 1 if ($date > $old_date);
+	if ($date == $old_date) {
+		return -1 if ($last_parsed eq $old_last_parsed)
+	}
+	
+	return 0;
+}
+
+# Generate a unique identifier
+sub get_uniqueid
+{
+
+	my $u_id = '';
+	while (length($u_id) < 16) {
+		my $c = chr(int(rand(127)));
+		if ($c =~ /[a-zA-Z0-9]/) {
+			$u_id .= $c;
+		}
+	}
+
+	return 'FaKe' . $u_id;
+}

@@ -1,0 +1,470 @@
+2012-03-11 Version 8.2
+
+	- Fix a case where Amavis spam detail are not collected du to syslog
+	  message truncating.  Thanks to Przemyslaw Sikora for the report.
+	- Add report of Sendmail milter smf-spf, they will be reported with
+	  rejected/error message. Thanks to Przemyslaw Sikora for feature
+	  request.
+	- Remove a man page wrong named with double extension mark. Thanks to
+	  John Lockard for the report.
+
+2012-01-08 Version 8.1
+
+	- Add german translation file. Thanks to Sven Wehner for the contribution.
+	- Fix count for the authid login id which always shows 1 for all users.
+	  Thanks to Mark Price for the report.
+	- Fix unterminated column html tag in reject statistics.
+	- Fix top Spam statistics on spamassassin autolearn information.
+	- Add support to postgrey statistics. Thanks to John Lockard for the
+	  feature request.
+	- Add POSTGREY_NAME configuration directive to change the default
+	  syslog ident name of Postgrey. See configuration file for more
+	  information.
+	- Add POSTGREY_VIEW configuration directive to enable/disable the
+	  postgrey link into the menu. Disable by default for backward
+	  compatibility.
+
+2011-08-07 Version 8.0
+
+	This is a major release even if it is fully compatible with old data
+	files, the caching scheme has been reviewed to better handle millions
+	of emails a day with very low memory footprint. The issue was reported
+	by Martin Culak with around 1,5 million of messages per days, great
+	thanks to him, it help a lot for this release.
+
+	- Remove day_cache program, the daily caching is now integrated into the
+	  sa_cache script with the option -a or --actual-day-only. With huge
+	  data you still need to run sa_cache each five minutes within crontab.
+	- The caching files are now build per hour to avoid "Out of memory" on
+	  very busy servers. So now you have cache files generated per hour, per
+	  day, per month and year.
+	- CGI script sa_report have been reviewed to handle those new cache file
+	  and to always display the reports in the second.
+	- A lot of work have been made to add more support to PostFix logs and
+	  postscreen milter.
+	- Fix missing link to detailed informations when there was just one
+	  data file in the directory.
+	- Limit numbers of top sender/recipient in pie graph to maximum 10. 
+	- Add pid file support to sa_cache to prevent parallel execution. After
+	  a system crash you may need to remove those pid files if you want
+	  sendmailanalyzer and sa_cache to be run again.
+	- Documentation reviewed.
+
+UPGRADE: if you don't want to reinstall all and restart with empty data, you can
+overwrite all Perl and CGI scripts. Backward compatibility of data files are
+fully preserved but you may experience an error message on hours views on old
+cached data. The error message is:
+
+	"No cache file yet for this hour, please wait for next run of 'sa_cache --actual-day-only'."
+
+Remember to remove the day_cache perl script ans replace your call to day_cache
+in to your cron job by the new command forms:
+
+	sa_cache --actual-day-only
+
+If you want to be able to see the hours view without error messages or no record
+found you can keep the previous version of the sa_report.cgi script to still
+view those report.
+
+2011-07-31 Version 7.2
+
+	- Add support of ruleset check_relay logged without sendmail id. Thanks
+	  to Jeff Kaminski for the report.
+	- Add 'FaKe' prefix to automatic generated id, so that you don't waste
+	  your time to search for a sendmail id into the log corresponding to
+	  the sendmailanalyzer unique id.
+	- Add a note in INSTALL file about sendmail LogLevel configuration
+	  directive. The default value 9 don't need to be change to have
+	  SendmailAnalyzer report, by increasing this value all debug messages
+	  will be detected as error or rejection, so don't change this value.
+	  Thanks to Jeff Kaminski for the comment.
+	- Add message status percentage pie graph on Global Statistics Status
+	  screen. Only status upper or equal than 1% are shown.
+	- Add sender relay percentage pie graph on Top Statistics Senders
+	  screen. Only sender relays upper or equal than 1% are shown.
+	- Add recipient relay percentage pie graph on Top Statistics Recipients
+	  screen. Only recipient relays upper or equal than 1% are shown.
+
+UPGRADE: overwriting all Perl scripts will do the work if you don't want to
+reinstall all. Backward compatibility of data files are fully preserved.
+
+2011-07-08 Version 7.1
+
+	- Fix delivery direction bug when destination relay was localhost.
+	- Fix an error on domain report when the email address doen't have
+	  one but just the username. Thanks to John Duthie for the report.
+	- Add a new configuation directive DEFAULT_DOMAIN to add to an email
+	  address if there's just the username (see fix above). By default
+	  SendmailAnalyzer will add the '@localhost' domain but you may want
+	  to change this domain, so use this directive.
+
+UPGRADE: You can reinstall all or just override all Perl scripts, the backward
+compatibility with old data files is fully preserved.
+
+2011-06-09 Version 7.0
+
+	- Add first support to Postfix mail log statistical reports. Thanks to
+	  Mario Hobel the sample log file and for people who asked the feature.
+	- Fix pattern error during catching relevant logs on full read mode.
+	- Fix mail id to Amavis virus message id mapping.
+	- Fix duplicate count of spam recipient on search view.
+	- Fix stderr message of tar command call in sa_cache.
+	- Add DSN_VIEW configuration directive to enable/disable Notification
+	  views. Default show it: 1
+
+UPGRADE: You can reinstall all or just override all Perl scripts, the backward
+compatibility with old data files is fully preserved.
+
+2010-05-19 Version 6.4
+
+	- Add support to dnsbl-milter. Thanks to bversteeg for feature request.
+	- Fix a bug in link to spam details search view.
+	- Change link to SquidAnalyzer web site.
+
+UPGRADE: just override the perl script sendmailanalyzer and sa_report.cgi CGI
+perl script taking care of the configuration file path into those scripts
+(search: sendmailanalyzer.conf). Also add dnsblmilter to the list of SPAM_TOOL
+configuration directive if you want this report.
+
+2010-05-06 Version 6.3
+
+	- Rewrite some parts of the sendmailanalyzer command usage, with more
+	  details.
+	- Fix cross scripting hole in lang CGI parameter. Thanks to peoples at
+	  ha.ckers.org and root-me.org :-)
+	- Fix top caching statistics failure with value with a single quote.
+
+UPGRADE: just override all perl script and CGI taking care of the configuration
+file path into those scripts (search: sendmailanalyzer.conf). 
+	
+
+2010-01-21 Version 6.2
+
+	- Add MERGING_HOST configuration directive to allow aggregation of
+	  multiple mailhost that syslogs to a remote server throught rsyslog
+	  to have only one SendmailAnalyzer report. Thanks to Slamp for the
+	  feature request.
+	- Add new configuration directive CLAMD_NAME to set syslog name of
+	  Clamd. Default is 'clamd'. When using Mailscanner with clamd if you
+	  want virus report you must configure clamd to log with syslog and
+	  use LOG_MAIL. This fix virus report for Mailscanner+clamd.
+	- Add SHOW_DIRECTION configuration directive to enable/disable
+	  direction statistics. On some mailhost this could show wrong
+	  information if the direction of messages could't be determined.
+	  So you can remove this view by setting it to 0.
+	- Fix "No record for this period" on Top SMTP Auth statistics if no
+	  data where found.
+	- Update documentation.
+
+UPGRADE: Only sendmailanalyzer and sa_report.cgi has changed, just edit these
+files to set the path to the configuration file (search: sendmailanalyzer.conf)
+and override old ones. Edit sendmailanalyzer.conf and new directives like in
+Makefile.PL. Or of course the traditional install will do the job. This release
+is fully backward compatible.
+
+
+
+2010-01-20 Version 6.1
+
+	- Fix RPM spec file that was overriding http sendmailanalyzer.conf
+	  by the main sendmailanalyzer.conf.
+	- Fix email addresses enclosed between <> not displayed on Top System
+	  messages interface.
+	- Fix Messaging Status report of 'User unknown'. Removed ESMTP code.
+	- Add fallback to /etc/sendmailanalyzer.conf if default config file
+	  doesn't exist to simplifying upgrade with packaging or custom install.
+
+UPGRADE: simply override all perl scripts (sendmailanalyer,sa_cache,day_cache,
+cgi-bin/sa_report.cgi). In these scripts you may have to modify the global
+variable $CONFIG_FILE as it point to default path to sendmailanalyzer.conf
+and fall back to /etc/sendmailanalyzer.conf if the first is not found. So if
+your config file is not in these paths, you must change it.
+
+
+2010-01-05 Version 6.0
+
+	- New SendmailAnalyzer site => http://sareport.darold.net/
+	- Add install script and packaging support.
+	- Remove all .pl extensions and rename sa_report.pl into sa_report.cgi
+	for new install script and better packaging support.
+	Rename SendmailAnalyzer pPerl script to sendmailanalyzer.
+	- Fix day_cache usage message.
+	- Now sa_cache and day_cache can be run without any argument to proceed
+	all rsyslog host and mainly for easy install and packaging support.
+	- Fix misshandling of User unknow DSN.
+	- Fix memory leak on AUTH stat initial code.
+	- Fix misshandling in spam detail view
+	- Fix storage of Authentication-Warning using -f warning message.
+	- Fix langage selection on host view that's always reseted to default.
+	- Add SMTP Auth flow view by auth type (server or client) and by mech
+	(plain, login, etc.). This stat is not available in per domain view and
+	can be disable in config file (see SMTP_AUTH).
+	- Add SMTP Auth top view to display top auth mechanism, top connection
+	relay and top authid. This stat is not available in per domain view
+	- Add storage to pid file to keep track of the running daemon and
+	allow easier start/stop script. This also fix a bug where SA do not
+	stop on kill signal because is waiting for read on tail pipe. The pid
+	now keep track of the 2 pids and then both are killed.
+	- Remove top DNS sender and relay from stats, not really usefull and
+	most of the time it returns false records.
+	- Add Original recipient in DSN detail view.
+	- Fix Top Sender Domain and Top Sender Address detail views when domain
+	or address is empty (<>).
+	- Add SPAM_VIEW and VIRUS_VIEW configuration directives to enable or
+	disable the respective menus. By default they are enable.
+	- Add SPAM_TOOLS configuration directive to choose antispam detail menu
+	link to display. Default is all.
+	- Autostart on main window when there's only one host and no per domain
+	report.
+
+UPGRADE: just replace old scripts by new ones as well as lang files. Edit your
+cron to remove .pl extensions and replace -h syslogname with -s syslogname to
+sa_cache and day_cache call or remove this option. Replace all lang/ files.
+You may also rewrite your configuration file even if backward compatibility
+is preserved to have all new configuration directives in it.
+
+2009-11-23 Version 5.5
+
+	- Fix many bugs and improve performances in detail views especially
+	on per domain user access and top rejection statististics.
+	- Change multiple recipient/relay/status in detail view comma separated
+	list to select boxes. This preserve screen size and allow direct link
+	between recipient/relay/status with a selectbox synchro on onChange
+	events.
+	- Fix "forged localhost". When forged sender relay is found it now
+	takes the real ip address of the relay.
+	- Fix access denied when click the bat logo on DOMAIN_USER views.
+	Thanks to Colin Stearman for the report.
+	- Change order of distribution flow to be the same in table and in
+	graphs and fix lang file en_US. Thanks to Colin Stearman for the report.
+	- Fix miss handling of greylisting milter reject messages. Thanks to
+	Colin Stearman for the report.
+	- Remove recipient relay from reject detailed view as it is always
+	empty.
+	- Remove link to details on top domain rejection when domain is <>
+	as it always produce empty result.
+	- Replace RH/Fedora start script with the one provided by Colin Stearman
+	- Detail links are now shown every time provided that the .dat files
+	already exists (instead of only in the current month). 
+	- Fix "Different senders/recipients" break when there's no sender nor
+	recipient. Note: Different senders/recipients are build uppon email
+	really Sent. If no messages are Sent, they are null, even if you have
+	many rejected message with sender.
+	- day_cache.pl fix a case where DSN graph was empty.
+	- Remove sender address as last try to find email direction. Too must
+	error with spam. Now direction is only search based on domain or Ip
+	address of the relay.
+	- Remove last total line on Messaging Status. This was confusing as some
+	messages appears on different status like deferred message that appears
+	in Deferred and finally Sent.
+
+    UPGRADE: Just overwrite all perl scripts and cgi, backward compatibility
+	is preserved. Overwrite language file en_US. Configuration file is
+	unchanged.
+
+	Special thanks to Colin Stearman for his great help.
+
+
+2009-09-14 Version 5.4
+
+	- Fix clamav-milter report when clamav-milter.conf RejectMsg is set
+	to MTA specific and AddHeader is Replace or Add. Previous versions
+	show these MTA specific log as system errors. Thank to Bretislav Kubesa
+	for the report.
+	- Fix outbound and local outbound of virus, that was always set to 0.
+	- Fix graph of outbound bytes that was identical to inbound bytes.
+	- Add support for multiple MTA name. Some configuration can have
+	different syslog name (ex: sm-mta|sendmail|sm-msp-queue).
+	- Remove DSN messages from inbound count.
+	- Fix wrong handling of ctladdr, that cause wrong outgoing count.
+	- Change Internet label to External for better readness.
+	- Store 'return to sender', 'sender notify' or 'postmaster notify' as
+	DSN.
+	- Limit ESMTP rewriting of reject status to "complex" messages
+	to preserve MTA messages.
+
+2009-08-28 Version 5.3
+
+	- Add acknowlegdement to Sendmail.org for the kind permission to use
+	the Bat logo.
+	- Remove 'Queued' from Rejection Statistics top status.
+	- Fix bad parsing on relay that shown some valid lines as error.
+	Lines like: from=, size=nnn, class=0,..., relay= xxx.xxx.xxx.xxx	
+	may not appears anymore in top System messages report.
+	- Add missing javascript link on Years label to display year view.
+	- Fix month report of different sender/recipient.
+	- Add/fix report of different sender/recipient in year view.
+	- Summarise report of "rejecting commands due to pre-greeting traffic"
+	- Summarise report of "probable open proxy"
+	- Summarise report of "Too many hops"
+
+2009-08-10 Version 5.2
+
+	- Add standard command line argument to sa_cache.pl and day_cache.pl
+	to allow modification of the configuration file. See usage (--help) of
+	these two scripts. Backward compatibility with old format is preserved.
+	- Remove SPAMD_MILTER from configuration file, no more used. Spamd log
+	are now detected from sendmail log line. This was too much confusing
+	SendmailAnalyzer. Spam detection is now a lot more efficient. Thanks to
+	Steven W. Orr for the report.
+	- Fix HTML output for better rendering in IE.
+	- Fix bug on top spammer recipient address statistics.
+	- Top spam statistics are now order by rules (Spamassassin,Mimedefang,
+	jcheckmail, RBL check, ...) instead of spam details.
+	- There's now a top view for all supported Antispam showing scores, hit
+	cache, autolearn and detailled spam matching rule. A new configuration
+	directive called SPAM_DETAIL was added. To disable, set it to 0. This
+	will also save some disk space.
+	- Fix anonymization of spam recipient.
+	- Fix some SYSERR not reported.
+	- Add RH/Fedora start/stop script and move them to start_scripts/
+	directory. Thanks to Steven W. Orr for this script.
+	- Fix detail view, it was displayed all instead of just the selected
+	domain related records.
+	- Fix recipient to virus detail report.
+
+	UPGRADE:
+	This release is fully backward compatible. You must overwrite all
+	scripts and language files by those in new release.
+	Also rc.sendmailanalyzer has been improved. As Spam view has changed
+	if you don't want to mix report from old and new release, please start
+	a fresh install. See also end of SendmailAnalyzer.conf for change.
+
+
+2009-08-01 Version 5.1
+
+	- Fix launch of Javascript error console on javascript onclick call
+	on old browser.
+	- Fix parsing of empty sender (from=,). Empty sender is now set to
+	user: empty.
+	- Fix two bugs in global virus and DSN statistics where graphis display
+	wrong data in month view only. Please run the following command for
+	recovery:
+
+	    find /var/www/htdocs/sareport/mailhost/2009/ -name "cache.pm*" \
+	    -maxdepth 2 -mindepth 2 | xargs -i rm -f {}
+
+	Change path to year report following you installation. This will remove
+	all month cache file for the given year. Then rerun sa_cache.pl
+	Thanks to Steven W. Orr for the report.
+
+	UPGRADE:
+	overwrite SendmailAnalyzer.pl, sa_cache.pl and cgi-bin/sa_report.pl
+	and run the above command for recovery.
+ 
+2009-07-23 Version 5.0
+
+	This release is a complete rewrite of the CGI interface and a major
+	rewrite of all Perl script (SendmailAnalyzer.pl, sa_cache.pl and
+	day_cache.pl). It also save more memory when reports are displayed.
+	This version is fully backward compatible with v4.x, so you can simply
+	overwrite old perl scripts and cgi.
+
+	Here are all addons/changes in this release.
+	
+	WARNING: The user view of personal mailbox stats has been removed for
+	now. It used too much resources. If you use it please let me know I
+	will try to work on it again.
+
+	- SendmailAnalyzer is now GPL v3
+	- You can dynamically change the language with a CGI parameter: lang.
+	  Default language is read in the configuration file, but setting for
+	  example &lang=sp_SP in the CGI URL the interface will instantly go to
+	  Spanish language.
+	- Better parsing of System messages (STARTTLS).
+	- Improve detection and classification of message logged.
+	- DSN : Delivery Status Notification are now traced and shown.
+	- Fix report of spam from spamd.
+	- Fix bug in set_direction() resulting in false delivery distribution.
+	- Replace barorng.gif by salogo.png and URL_BAR by URL_LOGO in config.
+	  option. Take care of this if you're upgrading.
+	- Removed sample configuration file for gw, hub. Too much confusing.
+	- Moved required perl modules into a dedicated directory.
+	- Add demo site (see link on Freshmeat).
+	- Update documentation.
+	- Improve Sytem message report.
+	- Remove debug messages from syserr report.
+	- Report missing top error messages on month/year view.
+	- DOMAIN_REPORT configuration directive can now be written on multiple
+	  lines for better reading.
+	- Fix domain reports per host under rsyslog. See DOMAIN_HOST_REPORT
+	  configuration directive.
+	- LOCAL_DOMAIN configuration directive can now be written on multiple
+	  lines for better reading.
+	- Fix local domain per host under rsyslog. See LOCAL_HOST_DOMAIN
+	  configuration directive. This is use to try to defined the delivery
+	  direction on some sendmail configuration.
+	- Add REPLACE_HOST configuration directive to allow anonymization
+	  of hostnames in sender/recipient relay information.
+
+	If you need parsing support for other milter let me know i will do it.
+
+
+2009-07-10 Version 4.1
+
+	- Fix virus detection with new versions of MailScanner.
+	- Add ANONYMIZE configuration directive to not show sender
+	  or recipient addresses.
+	- Add Perl modules in the distro for quick install.
+
+2008-09-03 Version 4.0
+
+    Jump to major version is done to erase some regression code introduced into
+    the CVS tree.
+
+	- Change CSS design.
+	- Add full documentation.
+	- Add QUIET configuration directive to make sa_cache.pl less verbose.
+	- Add number of different email addresses for sender and recipients.
+	- Rewrite some sa_cache.pl parts to reduce memory usage and improve
+	  speed.
+	- sa_cache.pl now build per domain cache following the domains sets
+	  in DOMAIN_REPORT configuration directive. So it MUST be run only
+	  one time by cron. See INSTALL file to see how to run it.
+	- Add year/month command line argument to sa_cache.pl to build
+	  cache for a single month. This can be usefull to free performance
+	  more quickly on a huge mail server if you run sa_cache on multiple
+	  month.
+	- Fix and rewrite the code part that compute origine/destination
+	  statistics in sa_report.pl and sa_cache.pl. It is now in a function
+	  called set_destination().
+	- Fix SendmailAnalyzer.pl to not register false syserr related to
+	  Milter log. If syserr message doesn't contain a space character
+	  (single word only) it's for sure a parser mistake, so it is skipped.
+
+2008-03-26 Version 3.1
+	- Add support for compressed log file (need zcat)
+	- Add support for MimeDefang Spam and Virus reports
+	- Change translation 'Internet incoming' to 'Incoming' to avoid
+	  confusion on a non mail gateway system.
+	- Add LOCAL_DOMAIN configuration directive to allow relevant
+	  statistics on mail direction for a system hosting mailboxes
+	  with all incoming messages coming from a single relay on LAN.
+	  Mail direction is then detected from the sender domain address
+	  and the relay host domain part.
+	- Fix bug in spam direction reporting (bytes was displayed
+	  instead of number of messages).
+	- Add report of system messages to top statistics view
+	- Fix call to barorng.gif separator, add configuration
+	  directive URL_BAR to modify the path.
+	- Add per domain report allowing person logging in to only
+	  see the domains he/she should be seeing. See DOMAIN_USER
+	  configuration directive.
+	- Add Spanish translation - Thanks to Marco Escobar Piñones.
+	- Add parsing / collect of Sendmail DNSLB report (check_relay)
+	- Add parsing of Amavis Spam / Virus detection
+	- Add parsing of milter jchkmail report
+	- Add SMTP/ESMTP error code in mail delivery/MTA status to reduce
+	  storage space and improve status report reliability.
+	- Improve MTA system message detection.
+	- Add parsing of milter spamassassin report (spamd output)
+	- Modify sa_report.pl to better support custom authentication
+	  for user/mailbox view. There's now a check_mailbox_auth()
+	  method that you can modifyi to match your needs. 
+
+2007 06 27 - Version 3.0
+
+	This release is a complete rewrite of the old 2.x version
+	of SendmailAnalyzer. It improve speed, space and report, as
+	well as realtime reporting.
+

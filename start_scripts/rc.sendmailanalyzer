@@ -1,0 +1,47 @@
+#!/bin/bash
+# Slackware and generic starter script.
+#
+# Start/stop/restart SendmailAnalyzer.
+#
+
+SALYZER=/usr/local/sendmailanalyzer/sendmailanalyzer
+PIDFILE=/var/run/sendmailanalyzer.pid
+
+# Start SendmailAnalyzer:
+sa_start() {
+	if [ ! -x  $SALYZER ]; then
+		echo "ERROR: can not execute $SALYZER" 1>&2
+		exit 1
+	fi
+	echo 'Starting SendmailAnalyzer Daemon...'
+	$SALYZER -f
+}
+
+# Stop SendmailAnalyzer:
+sa_stop() {
+	echo 'Stopping SendmailAnalyzer Daemon...'
+	pid=$(cat $PIDFILE)
+	kill $pid 1> /dev/null 2> /dev/null
+}
+
+# Restart SendmailAnalyzer:
+sa_restart() {
+	sa_stop
+	sleep 2
+	sa_start
+}
+
+case "$1" in
+'start')
+	sa_start
+	;;
+'stop')
+	sa_stop
+	;;
+'restart')
+	sa_restart
+	;;
+*)
+	echo "usage $0 start|stop|restart"
+esac
+

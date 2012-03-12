@@ -1,0 +1,12 @@
+        |-----handy-ruler------------------------------------------------------|
+SendmailAnalyzer: SendmailAnalyzer (Perl Sendmail log analyser)
+SendmailAnalyzer:
+SendmailAnalyzer: SendmailAnalyzer continuously read your maillog file to generate
+SendmailAnalyzer: periodical HTML and graph reports. All reports are shown throught
+SendmailAnalyzer: a CGI web interface.
+SendmailAnalyzer: It reports all you ever wanted to know about email trafic on your network.
+SendmailAnalyzer: You can also use it in ISP environment with per domain report.
+SendmailAnalyzer:
+SendmailAnalyzer:
+SendmailAnalyzer:
+SendmailAnalyzer:

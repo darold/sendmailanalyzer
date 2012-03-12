@@ -1,0 +1,205 @@
+#!/bin/sh
+# Written by Gilles Darold < gilles at darold dot net >
+# Licence: GPL v3
+#
+# Build script for Slackware - SendmailAnalyzer SlackBuild
+#
+# Latest Software sourcecode is available at:
+# http://sareport.darold.net/
+#
+# Depends: l/libpng n/httpd d/perl l/gd
+# Suggests:
+
+## Fill these variables to your needs ##
+NAMESRC=${NAMESRC:-sendmailanalyzer}
+VERSION=${VERSION:-8.2}
+EXT=${EXT:-tar.gz}
+NAMEPKG=${NAMEPKG:-sendmailanalyzer}
+PKGEXT=${PKGEXT:-tgz/txz}
+BUILD=${BUILD:-1}
+TAG=${TAG:-_gda}
+PNAME=${PNAME:-sendmailanalyzer}
+
+TMP=${TMP:-/tmp}
+OUT=${OUT:-$TMP/build}
+ARCH=${ARCH:-i486}
+TARGET=${TARGET:-i486}
+WGET=${WGET:-http://downloads.sourceforge.net/sa-report/$NAMESRC-$VERSION.$EXT}
+DOC="Change* INSTALL README TODO"
+SUM=""
+########################################
+
+set -e
+umask 022
+
+if [ ! -r $NAMESRC-$VERSION.$EXT ]; then
+  wget -vc $WGET -O $NAMESRC-$VERSION.$EXT.part
+  mv $NAMESRC-$VERSION.$EXT.part $NAMESRC-$VERSION.$EXT
+fi
+
+# if checksum is include in the script : generate and check
+if [ -n "$SUM" ]; then
+echo "$SUM  $NAMESRC-$VERSION.$EXT" > $NAMESRC-$VERSION.$EXT.sha1
+sha1sum -c $NAMESRC-$VERSION.$EXT.sha1
+elif [ -f $NAMESRC-$VERSION.$EXT.sha1 ]; then
+sha1sum -c $NAMESRC-$VERSION.$EXT.sha1
+fi
+
+# or just check if the .sha1 is another file
+
+CWD=$(pwd)
+PKG=$TMP/build/$NAMEPKG
+NAME=$(tar ft $NAMESRC-$VERSION.$EXT | head -n 1 | awk -F/ '{ print $1 }')
+
+case $ARCH in
+	        i386)SLKCFLAGS="-O2 -march=i386 -mtune=i686";LIBDIRSUFFIX="";;
+	        i486)SLKCFLAGS="-O2 -march=i486 -mtune=i686";LIBDIRSUFFIX="";;
+	        i586)SLKCFLAGS="-O2 -march=i586 -mtune=i686";LIBDIRSUFFIX="";;
+	        i686)SLKCFLAGS="-O2 -march=i686 -mtune=i686";LIBDIRSUFFIX="";;
+	        s390)SLKCFLAGS="-O2";LIBDIRSUFFIX="";;
+	        x86_64)SLKCFLAGS="-O2 -fPIC";LIBDIRSUFFIX="64"
+	esac
+
+if [ ! -d $TMP ]; then
+  echo "$TMP doesn't exist or is not a directory !"
+  exit 1
+fi
+
+# Build the software
+cd $TMP
+
+echo "Building $NAMESRC-$VERSION.$EXT..."
+tar xf $CWD/$NAMESRC-$VERSION.$EXT
+cd $NAME
+perl Makefile.PL \
+  INSTALLDIRS=vendor \
+  QUIET=1 \
+  LOGFILE=/var/log/maillog \
+  BINDIR=/usr/bin \
+  CONFDIR=/etc \
+  PIDDIR=/var/run \
+  BASEDIR=/var/lib/$PNAME \
+  HTMLDIR=/var/www/$PNAME \
+  MANDIR=/usr/man/man3 \
+  DOCDIR=/usr/share/doc/$PNAME \
+  DESTDIR=$PKG || exit 1
+
+make
+make install DESTDIR=$PKG 
+# Please note that some software use INSTALL_ROOT=$PKG or prefix=$PKG/usr or install_root=$PKG ...
+
+# Fix the configuration files so they won't overwrite existing ones
+# on package install:
+mv $PKG/etc/sendmailanalyzer.conf{,.new}
+
+# Install a slack-desc
+mkdir -p $PKG/install
+cat $CWD/slack-desc > $PKG/install/slack-desc
+
+# Install a doinst.sh, if it exists
+if [ -r $CWD/doinst.sh ]; then
+  cat $CWD/doinst.sh > $PKG/install/doinst.sh
+fi
+
+# Add this to the doinst.sh
+cat <<_EOF_ >> $PKG/install/doinst.sh
+# Handle the incoming configuration files:
+config() {
+  for infile in \$1; do
+    NEW="\$infile"
+    OLD="\`dirname \$NEW\`/\`basename \$NEW .new\`"
+    # If there's no config file by that name, mv it over:
+    if [ ! -r \$OLD ]; then
+      mv \$NEW \$OLD
+    elif [ "\`cat \$OLD | md5sum\`" = "\`cat \$NEW | md5sum\`" ]; then
+      # toss the redundant copy
+      rm \$NEW
+    fi
+    # Otherwise, we leave the .new copy for the admin to consider...
+  done
+}
+
+config etc/sendmailanalyzer.conf.new
+
+cat install/README.Slackware
+
+_EOF_
+
+
+# Write post install information
+cat > $PKG/install/README.Slackware << _EOF_
+
+
+1. Start $PNAME daemon with: /etc/rc.d/rc.$PNAME start
+
+2. Uncomment the entries in /etc/httpd/httpd.conf:
+   Include /etc/httpd/extra/httpd-$PNAME.conf
+
+3. Restart and ensure that httpd is running.
+
+4. Browse to http://localhost/sareport/ to ensure that things are working
+   properly.
+
+5. If necessary, give additional hosts access to $PNAME by adding them to
+   /etc/httpd/extra/httpd-$PNAME.conf
+
+6. Setup a cronjob to run sa_cache and restart $PNAME daemon after maillog
+   logrotate. Uncomment the entries in /var/spool/cron/crontabs/root or
+   create a custom cronjob.
+
+_EOF_
+
+# Install starter script
+mkdir -p $PKG/etc/rc.d
+install -m 755 start_scripts/rc.$PNAME $PKG/etc/rc.d/rc.$PNAME
+
+# Install a documentation
+mkdir -p $PKG/usr/doc/$PNAME-$VERSION
+cp -a $DOC $PKG/usr/doc/$PNAME-$VERSION
+
+# Compress the man pages
+if [ -d $PKG/usr/man ]; then
+	find $PKG/usr/man -type f -name "*.?" -exec gzip -9 {} \;
+	for manpage in $(find $PKG/usr/man -type l) ; do
+		ln -s $(readlink $manpage).gz $manpage.gz
+		rm -f $manpage
+	done
+fi
+
+# Compress the info pages
+if [ -d $PKG/usr/info ]; then
+	rm -f $PKG/usr/info/dir
+	gzip -9 $PKG/usr/info/*.info*
+fi
+
+# Remove 'special' files
+find $PKG -name perllocal.pod \
+-o -name ".packlist" \
+-o -name "*.bs" \
+| xargs rm -f
+# Remove lib perl directory as nothing is installed here.
+rm -rf $PKG/usr/lib
+
+# Strip binaries, libraries and archives
+find $PKG -type f | xargs file | grep "LSB executable" | cut -f 1 -d : | xargs \
+  strip --strip-unneeded 2> /dev/null || echo "No binaries to strip"
+find $PKG -type f | xargs file | grep "shared object" | cut -f 1 -d : | xargs \
+  strip --strip-unneeded 2> /dev/null || echo "No shared objects to strip"
+find $PKG -type f | xargs file | grep "current ar archive" | cut -f 1 -d : | \
+  xargs strip -g 2> /dev/null || echo "No archives to strip"
+
+# Build the package
+cd $PKG
+mkdir -p $OUT
+PACKAGING="
+chown root:root . -R
+/sbin/makepkg -l y -c n $OUT/$NAMEPKG-$VERSION-$ARCH-$BUILD$TAG.tgz
+rm -rf $PKG
+rm -rf $TMP/$NAME
+"
+if [ "$(which fakeroot 2> /dev/null)" ]; then
+  echo "$PACKAGING" | fakeroot
+else
+  su -c "$PACKAGING"
+fi
+

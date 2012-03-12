@@ -1,0 +1,947 @@
+=head1 NAME
+
+SendmailAnalyzer - Sendmail/Postfix log analyzer
+
+=head1 DESCRIPTION
+
+SendmailAnalyzer as is name suggest is a Sendmail log analyzer. It process
+maillog files and generate dynamic statistics in HTML and graphical output.
+The reports are generated in real time so that it let you know at any moment
+what is going on your mail servers. It use time (hour, day, month and year
+views) and cross-linked navigation for easy use.
+
+SendmailAnalyzer is easy to install and highly configurable to match the dozen
+of Sendmail possible configurations. It also support report for all the major
+milter or sendmail filters like SpamAssassin, MailScanner, Clamav, etc.
+
+Collected data are stored in flat files that are automatically archived or
+delete to keep disk space. All reports before the current day are cached to
+save system resources and are displayed in the 1 second into your browser.
+
+SendmailAnalyzer can be run on a home dedicated mail server, on multiple
+enterprise mail servers and on ISP mail servers for free. His low resources
+usage allow SendmailAnalyzer appliance embedding. Since version 8.0 the caching
+mechanism has a very low memory footprint as well as the reports views.
+
+This is the most advanced and complete statistics tool dedicated to
+the great Sendmail MTA. It's goal is not to support any kind of MTA or
+other log format but only being a full featured tool for Sendmail users and
+administrators. If you're searching something more general take a look at
+SawMill, it's not so bad :-)
+
+=head1 POSTFIX SUPPORT
+
+SendmailAnalyzer is a statistical dedicated tool for Sendmail and it is very
+good in this task. As many people ask me to have such free tool for the Postfix
+MTA, Since release v7.0 SendmailAnalyzer now also support the Postfix mail.log
+statistics report.
+
+This is a work in progress and for now you may want to disable spam, virus and
+notification menu link to limit the "No record for this period" screen.
+
+Note that I don't run Postfix so I need your help to handle more statistical
+report.
+
+=head1 FEATURES
+
+It reports all you ever wanted to know about email trafic on your network.
+
+=head2 Global Statistics 
+
+All the following reports also show statistics per bytes and average
+of bytes per message.
+
+=over 4
+
+=item *
+
+Number of inbound messages.
+
+=item *
+
+Number of outbound messages.
+
+=item *
+
+Number of inbound spams.
+
+=item *
+
+Number of outbound spams.
+
+=item *
+
+Number of inbound virus.
+
+=item *
+
+Number of outbound virus.
+
+=item *
+
+Sendmail rejection rules flow.
+
+=item *
+
+Syserr flow (Sendmail error messages).
+
+=item * 
+
+Sendmail DSN Flow (Delivery Status Notification)
+
+=item *
+
+The global MTA status allocation per messages, bytes and percentage.
+
+=item *
+
+Distributed messages coming from Internet.
+
+=item *
+
+Distributed messages sent internaly.
+
+=item *
+
+Distributed messages sent to Internet.
+
+=item *
+
+Distributed messages coming from and going to Internet.
+
+=item *
+
+Sendmail SMTP Auth statistics by type (server or client), mechanismi and user.
+
+=item *
+
+Postgrey usage statistics.
+
+=back
+
+If you deliver marqued spam / virus to recipients, SendmailAnalyzer
+will report the delivery flow for:
+
+=over 4
+
+=item *
+
+Spam / virus coming from Internet.
+
+=item *
+
+Spam / virus sent internaly.
+
+=item *
+
+Spam / virus sent to Internet.
+
+=item *
+
+Spam / virus coming from and going to Internet.
+
+=back
+
+Note: In the report you will see 'local' inbound or outbound message, that
+mean a mail coming from (sender relay) or going to (recipient relay) the mail
+server.  This is not the same that internal, which mean coming from or sent to
+your internal network / private domain.
+
+
+=head2 Top Statistics
+
+Once you have define in the configuration file the Top Max statistics to show
+(25 by default), the Max Recipient for a message (25 by default), the message
+Size Max (5Mb by default) you will see the top statistics of:
+
+=over 4
+
+=item *
+
+Top sender domain, top sender relay, top sender address.
+
+=item *
+
+Top recipient domain, top recipient relay, top recipients address.
+
+=item *
+
+Top spams rules, top spammers domain, top spammers relays, top spammers address,
+top spam recipients address.
+
+=item *
+
+Top virus name, top virus sender, top virus sender relay, top virus recipient
+address, top infected filename.
+
+=item *
+
+Top DSN status, top DSN sender, top DSN Relay, top DSN recipient address.
+
+=item *
+
+Top rejection rules, top rejected domain, top rejected relay, top rejected
+sender, top rejection status.
+
+=item *
+
+Top Sendmail Error messages.
+
+=item *
+
+Top max number of recipient for one message.
+
+=item *
+
+Top max size message with number of recipients and sender address.
+
+=item *
+
+Top Sendmail SMTP Auth mechanisms, relays and users (server or client).
+
+=item *
+
+Top Postgrey status, relay, senders and recipients.
+
+=back
+
+Note: on daily view you can click on each of the reported element to see the
+detailled informations. For example if you follow link on a sender relay you
+will see all messages detailled information coming from that relay.
+This kind of navigation is only available for the days of the current month
+to keep disk space, memory usage and privacy.
+
+
+=head2 ISP like feature
+
+Begining at version 4.0 of SendmailAnalyzer some features could be related
+to an ISP like environment and allow statistics on very huge SMTP flow:
+
+=over 4
+
+=item *
+
+Support centralized maillog for multiple Sendmail serveurs througth rsyslog.
+
+=item *
+
+Support per domain reports with user access control.
+
+=item *
+
+Support per user reports. Each user can see is own statistics. (Removed in v5.0 until now)
+
+=item *
+
+Low memory usage, small disk space utilization and really speed with daily caching.
+
+=item *
+
+Support parsing of compressed maillog file.
+
+=back
+
+=head2 Milter / Filter supported
+
+SendmailAnalyzer support some of the most used milter and filter for
+spam and virus filtering. If you don't find yours drop me a line and
+it will be included.
+
+=over 4
+
+=item *
+
+MimeDefang Spam and Virus reports
+
+=item *
+
+Amavis Spam / Virus detection
+
+=item *
+
+Clamav virus detection
+
+=item *
+
+Jchkmail Spam / Virus report
+
+=item *
+
+MailScanner Spam / virus detection
+
+=item *
+
+SpamAssassin Spam detection (spamd output)
+
+=item *
+
+Sendmail DNSLB report (check_relay)
+
+=item *
+
+Sendmail DSN (Delivery Status Notification)
+
+=item *
+
+DNSLB-Milter Spam detection
+
+=back
+
+If your one is not listed here and you can send me some relevant
+maillog lines I can add his support in a day.
+
+
+=head2 New features
+
+If you need new features and support for new/other milters or filters,
+let me know. This help a lot to develop a better/useful tool. This
+piece of software is widely use at my work (espacially for IT report)
+but this reflect only a part of the Sendmail usage.
+
+=head2 Internationalization
+
+SendmailAnalyzer can be translated to any language with your contribution.
+At this time only 3 language are supported: French, English and Spanish.
+If you want to add your own language, it's really simple, take a look in
+the cgi-bin/lang/ directory and send me the translation file.
+
+
+=head1 REQUIREMENT
+
+SendmailAnalyzer can work in any platform where Sendmail and Perl could run.
+What you need is a modern Perl distribution 5.8.x or more is good but older
+version should also work. 
+
+You need the following Perl modules. If they are not yet include in your
+OS distribution you can always find them at http://search.cpan.org/
+
+	MIME::Base64;
+	MIME::QuotedPrint;
+	GD
+	GD::Graph
+	GD::TextUtil
+	GD::Graph::bars3d;
+
+The graph output are generated using the libgd and libpng. You can get them
+at the following places:
+
+	http://www.libgd.org/
+	http://www.libpng.org/
+
+=head1 INSTALLATION
+
+=head2 Generic install
+
+Here is the generic installation steps, but if you want you can create and
+install your own distribution package, see "Package install" bellow.
+
+1) Unpack the distribution tarball in the desired location as follow:
+
+	tar xzf sendmailanalyzer-x.x.tar.gz
+	cd sendmailanalyzer-x.x/
+	perl Makefile.PL
+	make && make install
+
+2) Follow the instruction given at the end of install. With this default
+install everything will be installed under /usr/local/sendmailanalyzer.
+
+3) Edit sendmailanalyzer.conf file to customize your SendmailAnalyzer reports.
+See the configuration file and CONFIGURATION section bellow for usage.
+
+=head2 Package install
+
+In the packaging/ directory you will find all scripts and file to generate
+binary RPM, Slackware and Debian package. See README in this directory.
+
+=head2 Custom install
+
+You can create your fully customized SendmailAnalyzer installation by using
+the Makefile.PL Perl script. Here is a sample:
+
+        perl Makefile.PL \
+                LOGFILE=/var/log/maillog \
+                BINDIR=/usr/bin \
+                CONFDIR=/etc \
+                PIDDIR=/var/run \
+                BASEDIR=/var/lib/sendmailanalyzer \
+                HTMLDIR=/var/www/sendmailanalyzer \
+                MANDIR=/usr/man/man3 \
+                DOCDIR=/usr/share/doc/sendmailanalyzer
+
+If you want to build a distro package, there are two other options that you may
+use. The QUIET option is to tell to Makefile.PL to not show the default post
+install README. The DESTDIR is to create and install all files in a package
+build base directory. For example for Fedora RPM, thing may look like that:
+
+        # Make Perl and SendmailAnalyzer distrib files
+        %{__perl} Makefile.PL \
+            INSTALLDIRS=vendor \
+            QUIET=1 \
+            LOGFILE=/var/log/maillog \
+            BINDIR=%{_bindir} \
+            CONFDIR=%{_sysconfdir} \
+            PIDDIR=%{rundir} \
+            BASEDIR=%{_localstatedir}/lib/%{uname} \
+            HTMLDIR=%{webdir} \
+            MANDIR=%{_mandir}/man3 \
+            DOCDIR=%{_docdir}/%{uname}-%{version} \
+            DESTDIR=%{buildroot} < /dev/null
+
+See spec file in packaging/RPM for full RPM build script.
+
+=head1 USAGE
+
+There's two way to use SendmailAnalyzer. If you don't need real time 
+you can run it each night so that maillog will be parsed and reports
+generated once a day. Note that if you have a huge MTA load this not
+a good solution.
+
+The other way is to run it in daemon mode, in this way it can parse huge
+maillog (million line per day) preserving system resources.
+
+To know all possible command line arguments, run 'sendmailanalyzer --help'
+
+Important: if you experience high memory usage with SendmailAnalyzer
+use the -w (--write-delay) command line option to reduce the time where in
+memory data are flushed to disk. Default is 60 secondes, this is good in most
+configuration but in huge servers you may set it as low as 5 secondes.
+You must test it to find a compromise between speed and memory usage.
+
+=head2 Standalone
+
+To run SendmailAnalyzer in standalone mode you have to setup a cron
+entry each night as follow assuming log and configuration files in
+default place (/var/log/maillog and /usr/local/sendmailanalyzer/sendmailanalyzer.conf):
+
+	/usr/local/sendmailanalyzer/sendmailanalyzer -i -b -f
+
+This will run the program in interactive mode (-i), parse full maillog seeking
+after the last run ending position (-f) and exiting at end of maillog parsing
+(-b). 
+
+=head2 Daemon mode
+
+To run SendmailAnalyzer as a daemon, use the start/stop/restart script given
+with the distribution (in start_script/ directory). The following script is
+for Slackware but can be used with any other distribution:
+
+        /etc/rc.d/rc.sendmailanalyzer start
+
+or if you use RedHat or Fedora:
+
+        chkconfig sendmailanalyzer on
+        service sendmailanalyzer start
+
+It will start as 'sendmailanalyzer -f' that tell him to start in daemon mode
+(default), parse full maillog seeking after the last run ending position (-f)
+and to open a pipe to a tail command on /var/log/maillog. It will never end
+until you kill it.
+
+Important: If you have syslog rotate enable (I hope so :-) you will have to
+restart SendmailAnalyzer after each log rotation to always tail the good file
+descriptor.
+
+Edit /etc/logrotate.d/syslog and add the following after syslog restart:
+
+	/etc/rc.d/rc.sendmailanalyzer restart /dev/null 2>&1 || true
+
+or on Redhat or Fedora
+
+	/etc/init.d/sendmailanalyzer restart /dev/null 2>&1 || true
+
+this must be in the postrotate section.
+
+=head2 Stopping SendmailAnalyzer
+
+Just kill it with SIGTERM signal it will flush current collected object
+to disk and free open files. Use 'kill -15 `cat /var/run/sendmailanalyzer.pid`'
+for that or use the starter script. This will kill the current sendmailanalyzer
+process and the pipe to the tail command.
+
+=head2 Caching
+
+SendmailAnalyzer collect maillog entries to write datas to flat files,
+when you run the CGI script sa_report.cgi it had to read each data files
+for the given period to compute statistics and output HTML reports.
+This can be enought for day views but when you jump to month view it
+cost a lot in CPU and memory usage unless you have a home MTA.
+
+To speed up things and free system resources you have to run the script
+sa_cache each night by cron to create cache files. After that viewing
+a month or year view take less than a second.
+
+The script sa_cache must be run by cron as follow:
+
+	/usr/local/sendmailanalyzer/sa_cache >/dev/null 2>&1
+
+If you have set per domain report sa_cache will create cache files for each
+domains. These cache files are name cache.pm for the MTA global statistics
+and cache.pmYOURDOMAIM.DOM for each domain report. To lowered the memory
+footprint of the sa_cache program, since version 8.0 it start computing cache
+file per hours.
+
+Since version 4.0 sa_report.cgi will warm you to avoid out of memory when
+your entering a month view without caching.
+
+=head2 Huge MTA activity
+
+On MTA server with very huge activity you can experience out of memory or
+wait a very long time before seeing anything in day view. In this case you
+must run by cron job the perl script sa_cache with the -a option to build
+cache files for the current day. Statistics will not be shown in realtime but
+only at the time of the last sa_cache run. You can run it each five minute for
+example as follow:
+
+    */5 * * * * /usr/local/sendmailanalyzer/sa_cache -a
+
+or
+
+    */5 * * * * /usr/local/sendmailanalyzer/sa_cache --actual-day-only
+
+It will only parse data stored in the current day so five minutes interval
+may be enough for most case.
+
+=head2 Database
+
+SendmailAnalyzer store data into flat file database. Data are store in
+a time hierarchical directory structure ending at daily level. This structure
+is composed as follow : 'mailhost'/year/month/day/
+In each day repository you can find the following data files.
+
+	senders.dat: senders informations.
+	recipient.dat: recipients informations.
+	spam.dat: spams informations.
+	virus.dat: viruses informations.
+	rejected.dat: rejected mail informations.
+	dsn.dat: Delivery Status Notification report
+	syserr.dat: SYSERR MTA informations.
+	other.dat: other message grabbed into the log file.
+	auth.dat: SMTP auth message grabbed into the log file.
+	miltername.dat: message related to a milter, antivir or antispam. 
+
+The format of each file is explain in the SendmailAnalyzer code source.
+
+=head2 Archiving
+
+When sa_cache is run and following the value of the FREE_SPACE configuration
+option it will try to archive data older than the current month. If FREE_SPACE
+is set to 'delete' sa_cache will simply remove the data file from disk. If you
+set it to 'archive', sa_cache will build a gzipped tarball for all daily data
+file into the corresponding month directory and the remove date file from disk.
+
+If you set it to 'none', data file are kept.
+
+If you're primary concerned in disk space saving set it to 'delete'. If you
+want to preserve data for a year or more you can safely set it to 'archive'.
+For your information one of my server has 100,000 inbound message a day and
+a year of 'archive' storage take around 1Gb and a 'delete' storage around
+250Mb.
+
+One advantage of the 'archive' method is that you can replay the cached stats
+(for example after an upgrade to fix a sa_cache bug :-). In this case, you
+just have to delete any cache file and extract all tarbal as follow :
+
+	find /path/to/SendmailReport/ -name "cache.pm*" | xargs -i rm -f {}
+	find /path/to/SendmailReport/ -name "history.tar.gz" | xargs -i \
+		tar xzf {} --directory /
+
+and then rerun sa_cache again.
+
+Important: running sa_cache in one pass on en entire year could cost a lot
+of resources and takes very long time. In this case add a second argument to
+the command line giving the year/month to proceed, for example:
+
+	sa_cache -s 'mailhost' -d "2008/06"
+
+repeat this command for each month.
+
+=head1 CONFIGURATION
+
+The default path to configuration file is /etc/sendmailanalyzer.conf If you want
+to change this path, please edit cgi-bin/sa_report.cgi, sa_cache to match you're
+need. For sendmailanalyzer use the --config|-c command line argument.
+
+The configuration file consist in a text file with a configuration option
+in upper case and a value or list of value separated by a tab character.
+
+Here are the definition of all this configuration directives.
+
+=head2 System commands options
+
+=over 4
+
+=item TAIL_PROG
+
+Path to the system tail command. Can be overwritten with --tail or -t in
+sendmailanalyzer args. Default is /usr/bin/tail.
+
+=item TAIL_ARGS
+
+Command line argument passed to the tail system command. Can be overwritten
+with --args or -a in sendmailanalyzer args. Default is -n 0 -f.
+
+=item ZCAT_PROG
+
+Path to zcat system command used to parse compressed log file. Can be
+overwritten with --zcat or -z in sendmailanalyzer args. Default is
+/usr/bin/zcat.
+
+=item FREE_SPACE
+
+Select the freeing space method for data files older than the current month.
+The value can be:
+
+	- delete: definitively remove all data files.
+	- archive: make a gzipped tarball of data files before deleting them.
+	- none: don't do anything. Need lot of space disk.
+
+Default is archive.
+
+=back
+
+=head2 Input/output options
+
+=over 4
+
+=item LOG_FILE
+
+Path to the maillog file to analyse. Can be overwritten with --log or -l
+in sendmailanalyzer args. Default is /var/log/maillog. If the extension
+is .gz SendmailAnalyzer will automatically use zcat to parse the compressed
+log. For Postix you may use /var/log/mail.log instead.
+
+=item OUT_DIR
+
+Output directory for data storage. Can be overwritten with --output or -o
+in sendmailanalyzer args. The directory must exist, being writable by
+the user running sendmailanalyzer and sa_cache. It must be readable
+by the http user for CGI script sa_report.cgi.
+Default is /var/www/sendmailanalyzer
+
+=item DEBUG
+
+Turn on/off debug/verbose output mode. Can be overwritten with --debug or -d
+in sendmailanalyzer args. Default is 0, disable.
+
+=item DELAY
+
+Delay in second to flush collected data to disk. Can be overwritten with
+--write-delay or -w in sendmailanalyzer args. Default is 60 seconds.
+During this time data are kept in memory to limit disk I/O and gain speed.
+If you experience an out of memory on huge mail server adjust this value
+to something smaller depending of your hardware configuration.
+
+=back
+
+
+=head2 Reporting/display options
+
+=over 4
+
+=item ERROR_CODE
+
+Path to SMTP error code file (relative to CGI directory) where sa_report.cgi
+is running. Default: lang/ERROR_CODE.
+
+=item LANG
+
+Path to the translation file (relative to CGI directory) where sa_report.cgi
+is running. Default: lang/en_US.
+
+=item URL_LOGO
+
+Url to the barorng image. Default: /salogo.gif
+
+=item TOP
+
+Number of object displayed in the top statistics. Default is 25.
+
+=item TOP_MBOX
+
+Number of object displayed in the top email addresses statistics.
+Default is 25.
+
+=item MAX_RCPT
+
+Max number of recipients per message where senders will be reported.
+Default 25 recipients max.
+
+=item MAX_SIZE	10000000
+
+Max size in bytes per message where senders will be reported.
+Default is 10000000.
+
+=item MAX_LINE
+
+Max lines to show in detail view. Default is 100.
+
+=item SIZE_UNIT
+
+Size Unit to use, default is Bytes. Other values are KBytes and MBytes.
+
+=item DOMAIN_REPORT
+
+Compute statistics and cache for a list of domain and display a link in the
+front page for a per domain access. See DOMAIN_USER if you want to grant
+special access on these pages. You can have multiple DOMAIN_REPORT lines.
+If you are running rsyslog with multiple host use DOMAIN_HOST_REPORT instead.
+Example:
+
+	DOMAIN_REPORT	domain1.com,domain2.com
+
+
+=item DOMAIN_HOST_REPORT
+
+Compute statistics and cache for the given host followed by a list of domain
+and display a link in the front page for a per domain access under each host.
+You can have multiple DOMAIN_HOST_REPORT lines. See DOMAIN_USER if you want
+to grant special access on these pages. For example:
+
+	DOMAIN_HOST_REPORT	host1	domain1.com,domain2.com
+	DOMAIN_HOST_REPORT	host2	domain2.com,domain3.com
+
+=item ANONYMIZE
+
+This option allow the anonymization of the output, i-e it remove any
+sender/recipient personal information from the report.
+
+=item REPLACE_HOST
+
+This option replace some hostname in all relay information for anonymization
+You must used one REPLACE_HOST line per replacement.
+
+	REPLACE_HOST	internal.relay.dom	external.relay.dom
+
+=item SPAM_VIEW
+
+Enable/Disable menu links to Spam views. Default show it: 1
+
+=item VIRUS_VIEW
+
+Enable/Disable menu links to Virus views. Default show it: 1
+
+=item DSN_VIEW
+
+Enable/Disable menu links to Notification views. Default show it: 1
+
+=item POSTGREY_VIEW
+
+Enable/Disable menu links to Postgrey usage views. Default show it: 1
+
+=item SHOW_DIRECTION
+
+Enable/Disable messaging/spam/virus/dsn direction statistics. Default is show.
+On some mailhost this could show wrong information if the direction could
+not be easily determined. So you can remove these views by setting it to 0.
+
+=item SPAM_TOOLS
+
+List of antispam name separated by a comma used for Spam details view. You may
+want to custom this list to just show menu link on available reports. Default
+list is:
+
+	spamdmilter,jchkmail,dnsbl,spamassassin,amavis,mimedefang,dnsblmilter
+
+Feel free to remove those you're not using to not see link to empty report in
+the menu.
+
+=back
+
+=head2 Maillog parsing options
+
+=over 4
+
+=item FULL
+
+Parse maillog from begining before running tail program. Can be overwritten
+with --full or -f in sendmailanalyzer args. Default is 0, jump at the end
+of log. Most of the time you may want to enable this to jump at the last parsed
+line during the previous run.
+
+=item BREAK
+
+Do not run tail program and exit after a full parsing of the log file.
+Can be overwritten with --break or -b in sendmailanalyzer args. Default
+is 0, go ahead with tail.
+
+=item MTA_NAME
+
+Syslog name of the MTA. Syslog write it to maillog with the pid as
+... sendmail[1234] ... This is required to only parse relevant lines.
+Can be overwritten with --sendmail or -s in sendmailanalyzer args.
+Default is sendmail, some distro come with sm-mta instead. Some other
+have multiple names (ex: sm-mta, sendmail and sm-msp-queue) in this
+case you can set the value of this directive to a pipe separated list
+of values, for example: sm-mta|sendmail|sm-msp-queue.
+
+Default: sm-mta|sendmail|postfix
+
+=item MAILSCAN_NAME
+
+Syslog name of MailScanner. Syslog write it to maillog with the pid as
+... MailScanner[1234] ... This is required to only parse relevant lines
+Can be overwritten with --mailscanner or -m in sendmailanalyzer args.
+Default is MailScanner.
+
+=item AMAVIS_NAME
+
+Syslog name of Amavis. Syslog write it to maillog with the pid as
+... amavis[1234] ... This is required to only parse relevant lines.
+Default is amavis.
+
+=item MD_NAME
+
+Syslog name of MimeDefang. Syslog write it to maillog with the pid as
+... mimedefang.pl[1234] ... This is required to only parse relevant lines
+based on parsing mimedefang log generated by method md_graphdefang_log()
+Default is mimedefang.pl.
+
+=item CLAMD_NAME
+
+Syslog name of Clamd. When using Mailscanner with clamd if you want virus
+report you must configure clamd to log with syslog and use LOG_MAIL. Default
+value is 'clamd' (... clamd[1234] ...)
+Can be overwritten with --clamd or -n
+
+=item POSTGREY_NAME
+
+Syslog name of Postgrey. Syslog write it to maillog with the pid as follow:
+... postgrey[1234] ... This is required to only parse relevant logged lines
+Can be overwritten with --postgrey or -g. Default is postgrey
+
+=item LOCAL_DOMAIN
+
+Coma separated list of internal domain to be used when SendmailAnalyzer
+is running on a mail host which received message from any side. SA can't
+know what message are internal or external in this case, so the only way
+to know if a mail come from Internet or Lan/Wan is to check the domain
+part of the relay sender address. You can have multiple LOCAL_DOMAIN lines
+for better reading.
+
+For example:
+
+	LOCAL_DOMAIN	domain1.com,domain2.com,...
+	LOCAL_DOMAIN	domain3.com
+	LOCAL_DOMAIN	domain4.com
+
+=item LOCAL_HOST_DOMAIN
+
+Same as above but with host distinction for use with rsyslog.
+You can have multiple LOCAL_HOST_DOMAIN lines, ie: one per host.
+
+For example:
+
+	LOCAL_HOST_DOMAIN   sysloghost1        domain1.com,domain2.com
+	LOCAL_HOST_DOMAIN   sysloghost2        domain3.com,domain4.com
+
+=item MAIL_HUB
+
+FQDN coma separated list of internal mail hubs, aka: where email are
+redirected if the host is a gateway. For example: mailhost.mydom.dom
+This directive is very important to help SendmailAnalyzer to find the
+direction of incoming and outgoing message.
+
+=item MAIL_GW	
+
+FQDN coma separated list of MTA gateways where external mail comes from.
+This directive is very important to help SendmailAnalyzer to find the
+direction of incoming and outgoing message.
+
+=item DEFAULT_DOMAIN
+
+Default domain or hostname to add to an email address if there's just the
+username. When the host is a delivery system it is possible that the user
+email address do not have the domain part (ex: @domain.com). By default
+SendmailAnalyzer will add the '@localhost' domain but you may want to change
+this domain, so use this directive
+
+=item SPAM_DETAIL
+
+This directive allow report for Spam details. Enable by default. This allow
+you to see complete detail of your favorite antispam as well as score, cache
+hit and autolearn if your antispam report it. To disable set it to 0, you
+will save disk space.
+
+=item SMTP_AUTH
+
+This directive allow report for SMTP authentication. Enable by default. This
+allow you to see per authent type (server or client) user and relay statistics.
+If you not use SMTP Auth set it to 0 to disable this feature. These stats are
+not available in per domain views.
+
+=item MERGING_HOST
+
+Use this directive to combined multiple mailhost report on a single report.
+This allow you to aggregate multiple mailhost that syslogs to a remote server
+throught rsyslog to have only one SendmailAnalyzer report. The value must only
+use alphanumeric character as it is used to create subdirectory.
+
+=back
+
+=head2 Domain / user views options
+
+=over 4
+
+=item LOW_LIMIT, MEDIUM_LIMIT, HIGH_LIMIT (NO MORE USED)
+
+User messaging data limit in megabytes to show/warn the level of mail activity.
+LOW_LIMIT (3 by default), mail activity under this limit is shown as green.
+MEDIUM_LIMIT (5 by default), mail activity under this limit is shown as orange.
+HIGH_LIMIT (10 by default), mail activity under this limit is shown as red.
+above the hight limit the user is warn for abuse. Set all to 0 if you want to
+disable this feature.
+
+=item ADMIN
+
+List of admins username separated by coma that must have full access to all
+report. The username is checked again the http REMOTE_USER environment variable.
+Default is every one can access, in this case you may want to add a .htaccess.
+
+=item DOMAIN_USER
+
+List of per user domain access control. The first field is the username and
+the second field (separated by tabulation) is a coma separated list of domain
+name to be allowed to this user. You could add as many lines of DOMAIN_USER
+as you want in the configuration file.
+
+=back
+
+
+=head1 ACCESS CONTROL
+
+Access control is based on the REMOTE_USER environment variable stored by the
+httpd server during an htaccess Authentication. If this variable is not set,
+there is full access for every one.
+
+
+=head1 AUTHOR
+
+Gilles Darold <gilles @nospam@ darold.net>
+
+=head1 COPYRIGHT
+
+Copyright (c) 2002-2012 Gilles Darold - All rights reserved.
+
+	This program is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see < http://www.gnu.org/licenses/ >.
+
+=head1 BUGS
+
+Your volontee to help construct a better software by submitting bug report or
+feature request as well as code contribution are welcome.
+
+
+=head1 ACKNOWLEDGEMENT
+
+Thank to Sendmail.org for the kind permission to use the "Bat" logo.
+
