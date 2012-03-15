@@ -3628,7 +3628,7 @@ sub show_detail
 				$lstat{$id}{spam} ||= '&nbsp;';
 				$lstat{$id}{score} ||= '&nbsp;';
 				$lstat{$id}{cache} ||= '&nbsp;';
-				$lstat{$id}{autilearn} ||= '&nbsp;';
+				$lstat{$id}{autolearn} ||= '&nbsp;';
 				$lstat{$id}{spam} = $CGI->unescape(&decode_str($lstat{$id}{spam}));
 				print qq{<td class="tdtopn">$lstat{$id}{score}</td><td class="tdtopn">$lstat{$id}{cache}</td><td class="tdtopn">$lstat{$id}{autolearn}</td><td class="tdtopn" nowrap="1">$lstat{$id}{spam}</td>};
 			} elsif ($type eq 'virus') {
