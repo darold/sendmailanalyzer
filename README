@@ -237,6 +237,45 @@ INSTALLATION
     reports. See the configuration file and CONFIGURATION section bellow for
     usage.
 
+  Post install
+    1. Start SendmailAnalyzer daemon with:
+
+            /usr/local/sendmailanalyzer/sendmailanalyzer -f
+
+    or use one of the starters script provided in the start_scripts/
+    directory.
+
+    2. Modify your httpd.conf to allow access to CGI scripts like follow:
+
+            Alias /sareport /usr/local/sendmailanalyzer/www
+            <Directory /usr/local/sendmailanalyzer/www>
+                    Options ExecCGI
+                    AddHandler cgi-script .cgi
+                    DirectoryIndex sa_report.cgi
+                    Order deny,allow
+                    Deny from all
+                    Allow from 127.0.0.1
+                    Allow from ::1
+                    # Allow from .example.com
+            </Directory>
+
+    3. If necessary, give additional host access to SendmailAnalyzer in
+    httpd.conf. Restart and ensure that httpd is running.
+
+    4. Browse to http://mta.host.dom/sareport/ to ensure that things are
+    working properly.
+
+    5. Setup a cronjob to run sa_cache and restart SendmailAnalyzer daemon
+    after maillog logrotate as follow:
+
+            # SendmailAnalyzer log reporting daily cache
+            0 1 * * * /usr/local/sendmailanalyzer/sa_cache > /dev/null 2>&1
+            # On huge MTA you may want to have five minutes caching
+            #*/5 * * * * /usr/local/sendmailanalyzer/sa_cache -a > /dev/null 2>&1
+
+    6. Add an entry in /etc/logrotate.d/syslog to restart SendmailAnalyzer
+    when maillog is rotated or create a cron job.
+
   Package install
     In the packaging/ directory you will find all scripts and file to
     generate binary RPM, Slackware and Debian package. See README in this

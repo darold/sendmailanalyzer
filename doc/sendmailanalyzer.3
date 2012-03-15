@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SENDMAILANALYZER 1"
-.TH SENDMAILANALYZER 1 "2012-01-07" "perl v5.10.1" "User Contributed Perl Documentation"
+.TH SENDMAILANALYZER 1 "2012-03-15" "perl v5.10.1" "User Contributed Perl Documentation"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -206,6 +206,8 @@ Distributed messages sent to Internet.
 Distributed messages coming from and going to Internet.
 .IP "\(bu" 4
 Sendmail \s-1SMTP\s0 Auth statistics by type (server or client), mechanismi and user.
+.IP "\(bu" 4
+Postgrey usage statistics.
 .PP
 If you deliver marqued spam / virus to recipients, SendmailAnalyzer
 will report the delivery flow for:
@@ -250,6 +252,8 @@ Top max number of recipient for one message.
 Top max size message with number of recipients and sender address.
 .IP "\(bu" 4
 Top Sendmail \s-1SMTP\s0 Auth mechanisms, relays and users (server or client).
+.IP "\(bu" 4
+Top Postgrey status, relay, senders and recipients.
 .PP
 Note: on daily view you can click on each of the reported element to see the
 detailled informations. For example if you follow link on a sender relay you
@@ -354,6 +358,46 @@ install everything will be installed under /usr/local/sendmailanalyzer.
 .PP
 3) Edit sendmailanalyzer.conf file to customize your SendmailAnalyzer reports.
 See the configuration file and \s-1CONFIGURATION\s0 section bellow for usage.
+.SS "Post install"
+.IX Subsection "Post install"
+1. Start SendmailAnalyzer daemon with:
+.PP
+.Vb 1
+\&        /usr/local/sendmailanalyzer/sendmailanalyzer \-f
+.Ve
+.PP
+or use one of the starters script provided in the start_scripts/ directory.
+.PP
+2. Modify your httpd.conf to allow access to \s-1CGI\s0 scripts like follow:
+.PP
+.Vb 11
+\&        Alias /sareport /usr/local/sendmailanalyzer/www
+\&        <Directory /usr/local/sendmailanalyzer/www>
+\&                Options ExecCGI
+\&                AddHandler cgi\-script .cgi
+\&                DirectoryIndex sa_report.cgi
+\&                Order deny,allow
+\&                Deny from all
+\&                Allow from 127.0.0.1
+\&                Allow from ::1
+\&                # Allow from .example.com
+\&        </Directory>
+.Ve
+.PP
+3. If necessary, give additional host access to SendmailAnalyzer in httpd.conf. Restart and ensure that httpd is running.
+.PP
+4. Browse to http://mta.host.dom/sareport/ to ensure that things are working properly.
+.PP
+5. Setup a cronjob to run sa_cache and restart SendmailAnalyzer daemon after maillog logrotate as follow:
+.PP
+.Vb 4
+\&        # SendmailAnalyzer log reporting daily cache
+\&        0 1 * * * /usr/local/sendmailanalyzer/sa_cache > /dev/null 2>&1
+\&        # On huge MTA you may want to have five minutes caching
+\&        #*/5 * * * * /usr/local/sendmailanalyzer/sa_cache \-a > /dev/null 2>&1
+.Ve
+.PP
+6. Add an entry in /etc/logrotate.d/syslog to restart SendmailAnalyzer when maillog is rotated or create a cron job.
 .SS "Package install"
 .IX Subsection "Package install"
 In the packaging/ directory you will find all scripts and file to generate
@@ -717,6 +761,9 @@ Enable/Disable menu links to Virus views. Default show it: 1
 .IP "\s-1DSN_VIEW\s0" 4
 .IX Item "DSN_VIEW"
 Enable/Disable menu links to Notification views. Default show it: 1
+.IP "\s-1POSTGREY_VIEW\s0" 4
+.IX Item "POSTGREY_VIEW"
+Enable/Disable menu links to Postgrey usage views. Default show it: 1
 .IP "\s-1SHOW_DIRECTION\s0" 4
 .IX Item "SHOW_DIRECTION"
 Enable/Disable messaging/spam/virus/dsn direction statistics. Default is show.
@@ -781,6 +828,11 @@ Syslog name of Clamd. When using Mailscanner with clamd if you want virus
 report you must configure clamd to log with syslog and use \s-1LOG_MAIL\s0. Default
 value is 'clamd' (... clamd[1234] ...)
 Can be overwritten with \-\-clamd or \-n
+.IP "\s-1POSTGREY_NAME\s0" 4
+.IX Item "POSTGREY_NAME"
+Syslog name of Postgrey. Syslog write it to maillog with the pid as follow:
+\&... postgrey[1234] ... This is required to only parse relevant logged lines
+Can be overwritten with \-\-postgrey or \-g. Default is postgrey
 .IP "\s-1LOCAL_DOMAIN\s0" 4
 .IX Item "LOCAL_DOMAIN"
 Coma separated list of internal domain to be used when SendmailAnalyzer
