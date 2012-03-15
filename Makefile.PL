@@ -59,7 +59,7 @@ TAIL_PROG	$tail
 
 # tail system command argument to pass.
 # Can be overwritten with --args or -a
-TAIL_ARGS	-n 0 -f
+TAIL_ARGS	-n 0 -F
 
 # zcat system command used to parse compressed log file
 ZCAT_PROG	$zcat
