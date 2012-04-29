@@ -2389,6 +2389,13 @@ sub compute_statusflow
 			next if ($mailbox && ($STATS{$id}{rcpt}[$i] !~ /$mailbox\@/) );
 			$GLOBAL_STATUS{"$STATS{$id}{status}[$i]"}++;
 			$GLOBAL_STATUS{"$STATS{$id}{status}[$i]" . '_bytes'} += $STATS{$id}{size};
+			if ($STATS{$id}{status}[$i] eq 'Sent') {
+				if (exists $STATS{$id}{spam}) {
+					$GLOBAL_STATUS{Spam_Sent}++;
+				} elsif (exists $STATS{$id}{virus}) {
+					$GLOBAL_STATUS{Virus_Sent}++;
+				}
+			}
 		}
 		if (exists $STATS{$id}{spam}) {
 			$GLOBAL_STATUS{Spam}++;
@@ -2431,6 +2438,10 @@ sub display_statusflow
         foreach (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
 		next if ( ($_ eq '') || /Command rejected/);
                 next if (/_bytes/ || /virus /);
+		if (/_Sent$/) {
+			$delivery_global_total -= $GLOBAL_STATUS{$_};
+			next
+		}
                 $delivery_global_total += $GLOBAL_STATUS{$_};
         }
         my $delivery_total = $GLOBAL_STATUS{Sent} || 1;
