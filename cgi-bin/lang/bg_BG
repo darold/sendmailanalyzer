@@ -143,7 +143,7 @@
         'Message' => 'Съобщение',
         'Count' => 'Количество',
 	'Delivery Status Notification' => 'Уведомление на получаване\(DSN\)',
-	'DSN flows' => 'DSN потоци'
+	'DSN flows' => 'DSN потоци',
 	'DSN%20Flow' => 'DSN%20потоци',
 	'Number%20of%20dsn' => 'Количество%20на%20DSN',
 	'DSN delivery flows'=> 'DSN потоци на получаване',
