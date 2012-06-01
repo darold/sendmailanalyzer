@@ -1,3 +1,19 @@
+2012-06-01 Version 8.3
+
+	- Fix a major bug in sa_cache that could lead in totally false
+	  statistics. Please upgrade ASAP. Thanks to Dan Szkola for the
+	  report.
+	- SendmailAnalyzer now fully support Cyrillics character with the
+	  help of two new configuration directives HTML_CHARSET and TTFONT.
+	  The first must be set to 'utf-8' and the second to a true type font
+	  file. Thanks to Nikolay G. Petrov for the report.
+
+UPGRADE: you'd better reinstall all files as all perl script have changed after
+saving your configuration file. If you have the sa_cache bug and your stats are
+wrong, chance if you have FREE_SPACE to archive as by following the "Archiving"
+chapter in the admin guide (http://sendmailanalyzer.darold.net/admin.html) you
+will be able to rerun sa_cache.
+
 2012-03-11 Version 8.2
 
 	- Fix a case where Amavis spam detail are not collected du to syslog
