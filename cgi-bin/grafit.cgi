@@ -23,7 +23,7 @@ use CGI;
 my $VERSION = '8.2';
 my $COPYRIGHT = 'Copyright (c) 2002-2012 Gilles Darold - All rights reserved.';
 my $AUTHOR = "Gilles Darold - gilles AT darold DOT net";
-
+my $DEFAULT_TTFONT = '';
 
 my $cgi = new CGI;
 
@@ -39,6 +39,7 @@ foreach my $p (sort $cgi->param()) {
 }
 my $vertical = $cgi->param('vertical') || 0;
 my $show_values = $cgi->param('show_values') || 0;
+my $ttfont = $cgi->param('ttfont') || $DEFAULT_TTFONT;
 
 print $cgi->header('image/png');
 
@@ -59,6 +60,13 @@ if (!$cgi->param('type') || ($cgi->param('type') eq 'area')) {
 		box_axis => 0,
 		show_values	=> $show_values,
 	) or die $graph->error;
+	if ($ttfont) {
+		$graph->set_x_label_font($ttfont, 8);
+		$graph->set_y_label_font($ttfont, 8);
+		$graph->set_x_axis_font($ttfont, 8);
+		$graph->set_y_axis_font($ttfont, 8);
+		$graph->set_values_font($ttfont, 8);
+	}
 } elsif ($cgi->param('type') eq 'pie') {
 	use GD::Graph::pie3d;
 	$graph = new GD::Graph::pie3d($cgi->param('width') || 400, $cgi->param('height') || 300);
@@ -68,9 +76,16 @@ if (!$cgi->param('type') || ($cgi->param('type') eq 'area')) {
 		dclrs	=> [ qw(lbrown lorange lgray lyellow lgreen lblue lpurple lred) ],
 
 	) or die $graph->error;
-	
+	if ($ttfont) {
+		$graph->set_label_font($ttfont, 8);
+		$graph->set_value_font($ttfont, 8);
+	}
 }
 
+if ($ttfont) {
+	$graph->set_title_font($ttfont, 12);
+	$graph->set_legend_font($ttfont, 10);
+}
 $graph->set_text_clr('#993300');
 $graph->set_legend(@legends) if ($#legends >= 0);
 
@@ -78,3 +93,5 @@ my $gd = $graph->plot(\@values) or die $graph->error;
 print $gd->png;
 
 exit 0;
+
+

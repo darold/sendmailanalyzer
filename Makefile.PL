@@ -246,6 +246,15 @@ CLAMD_NAME	clamd
 # Can be overwritten with --postgrey or -g
 POSTGREY_NAME	postgrey
 
+# HTML charset to use. Default is iso-8859-1, but with cyrillics you may want
+# to use utf-8 instead.
+#HTML_CHARSET	utf-8
+
+# True type font to use in graphs. When using Bulgarian langage for example,
+# GD::Graph is unable to draw Cyrillics font without true type font. You can
+# also use it with other langage, this must be the full path to a ttf file.
+#TTFONT          /usr/share/fonts/truetype/msttcorefonts/arial.ttf
+
 };
 close(OUTCFG);
 

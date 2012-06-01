@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SENDMAILANALYZER 1"
-.TH SENDMAILANALYZER 1 "2012-03-15" "perl v5.10.1" "User Contributed Perl Documentation"
+.TH SENDMAILANALYZER 1 "2012-06-01" "perl v5.10.1" "User Contributed Perl Documentation"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -309,7 +309,7 @@ but this reflect only a part of the Sendmail usage.
 .SS "Internationalization"
 .IX Subsection "Internationalization"
 SendmailAnalyzer can be translated to any language with your contribution.
-At this time only 3 language are supported: French, English and Spanish.
+At this time supported language are: French, English, Spanish, Bulgarian, German.
 If you want to add your own language, it's really simple, take a look in
 the cgi\-bin/lang/ directory and send me the translation file.
 .SH "REQUIREMENT"
@@ -694,6 +694,22 @@ is running. Default: lang/ERROR_CODE.
 .IX Item "LANG"
 Path to the translation file (relative to \s-1CGI\s0 directory) where sa_report.cgi
 is running. Default: lang/en_US.
+.IP "\s-1HTML_CHARSET\s0" 4
+.IX Item "HTML_CHARSET"
+Used to define the \s-1HTML\s0 charset to use. Default is iso\-8859\-1, but with cyrillics
+character you have to use utf\-8 instead.
+.IP "\s-1TTFONT\s0" 4
+.IX Item "TTFONT"
+True type font to use in graphs. When using Bulgarian langage for example,
+GD::Graph is unable to draw Cyrillics font without a true type font. You can
+also use it with other langage, this must be the full path to the ttf file.
+For example:
+.Sp
+.Vb 1
+\&        TTFONT  /usr/share/fonts/truetype/msttcorefonts/arial.ttf
+.Ve
+.Sp
+to use Arial.
 .IP "\s-1URL_LOGO\s0" 4
 .IX Item "URL_LOGO"
 Url to the barorng image. Default: /salogo.gif

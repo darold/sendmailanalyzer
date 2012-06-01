@@ -301,7 +301,7 @@ but this reflect only a part of the Sendmail usage.
 =head2 Internationalization
 
 SendmailAnalyzer can be translated to any language with your contribution.
-At this time only 3 language are supported: French, English and Spanish.
+At this time supported language are: French, English, Spanish, Bulgarian, German.
 If you want to add your own language, it's really simple, take a look in
 the cgi-bin/lang/ directory and send me the translation file.
 
@@ -682,6 +682,22 @@ is running. Default: lang/ERROR_CODE.
 
 Path to the translation file (relative to CGI directory) where sa_report.cgi
 is running. Default: lang/en_US.
+
+=item HTML_CHARSET
+
+Used to define the HTML charset to use. Default is iso-8859-1, but with cyrillics
+character you have to use utf-8 instead.
+
+=item TTFONT
+
+True type font to use in graphs. When using Bulgarian langage for example,
+GD::Graph is unable to draw Cyrillics font without a true type font. You can
+also use it with other langage, this must be the full path to the ttf file.
+For example:
+
+	TTFONT	/usr/share/fonts/truetype/msttcorefonts/arial.ttf
+
+to use Arial.
 
 =item URL_LOGO
 
