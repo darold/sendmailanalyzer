@@ -326,7 +326,6 @@ sub do_hour_cache
 		`rm -f $CONFIG{OUT_DIR}/$hostname/$year/$month/$day/cache.pm*`;
 	}
 	print "Reading hourly statistics from $CONFIG{OUT_DIR}/$hostname/$year/$month/$day/\n" if ($CONFIG{DEBUG});
-	my %seekpos = ();
 	my $begin = "00";
 	my $end = "23";
 	if ($DAYCACHE) {
@@ -343,15 +342,12 @@ sub do_hour_cache
 		my $file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/dsn.dat";
 		if (open(IN, $file)) {
 			my @done = ();
-			seek(IN, $seekpos{$file} || 0, 0);
 			while (my $l = <IN>) { 
 				chomp($l);
 				# Format: Hour:Id:SourceId:Status
 				@data = split(/:/, $l, 4);
 				$data[0] =~ /^(\d{2})/;
-				next if ($1 < $hour);
-				last if ($1 > $hour);
-				$seekpos{$file} = tell(IN);
+				next if ($1 ne $hour);
 				$localstat{$data[1]}{idx_dsn} = "$1";
 				$localstat{$data[1]}{hour} = $data[0] if (!exists $localstat{$data[1]}{hour});
 				$localstat{$data[1]}{srcid} = $data[2];
@@ -363,15 +359,12 @@ sub do_hour_cache
 
 		$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/senders.dat";
 		if (open(IN, $file)) {
-			seek(IN, $seekpos{$file} || 0, 0);
 			while (my $l = <IN>) { 
 				chomp($l);
 				# Format: Hour:Id:Sender:Size:Nrcpts:Relay
 				@data = split(/:/, $l);
 				$data[0] =~ /^(\d{2})/;
-				next if ($1 < $hour);
-				last if ($1 > $hour);
-				$seekpos{$file} = tell(IN);
+				next if ($1 ne $hour);
 				$localstat{$data[1]}{idx_sender} = "$1";
 				$localstat{$data[1]}{hour} = $data[0];
 				$data[2] ||= '<>';
@@ -390,15 +383,12 @@ sub do_hour_cache
 
 		$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/recipient.dat";
 		if (open(IN, $file)) {
-			seek(IN, $seekpos{$file} || 0, 0);
 			while (my $l = <IN>) { 
 				chomp($l);
 				# Format: Hour:Id:recipient:Relay:Status
 				@data = split(/:/, $l);
 				$data[0] =~ /^(\d{2})/;
-				next if ($1 < $hour);
-				last if ($1 > $hour);
-				$seekpos{$file} = tell(IN);
+				next if ($1 ne $hour);
 				$localstat{$data[1]}{idx_rcpt} = "$1";
 				push(@{$localstat{$data[1]}{rcpt}}, $data[2]);
 				push(@{$localstat{$data[1]}{hour}}, $data[0]);
@@ -415,15 +405,12 @@ sub do_hour_cache
 
 		$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/rejected.dat";
 		if (open(IN, $file)) {
-			seek(IN, $seekpos{$file} || 0, 0);
 			while (my $l = <IN>) { 
 				chomp($l);
 				# Format: Hour:Id:Rule:Relay:Arg1:Status
 				@data = split(/:/, $l);
 				$data[0] =~ /^(\d{2})/;
-				next if ($1 < $hour);
-				last if ($1 > $hour);
-				$seekpos{$file} = tell(IN);
+				next if ($1 ne $hour);
 				$localstat{$data[1]}{idx_reject} = "$1";
 				$localstat{$data[1]}{rule} = $data[2];
 				$localstat{$data[1]}{hour} = $data[0] if (!exists $localstat{$data[1]}{hour});
@@ -447,15 +434,12 @@ sub do_hour_cache
 
 		$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/spam.dat";
 		if (open(IN, $file)) {
-			seek(IN, $seekpos{$file} || 0, 0);
 			while (my $l = <IN>) { 
 				chomp($l);
 				# Format: Hour:Id:From:To:Spam
 				@data = split(/:/, $l, 5);
 				$data[0] =~ /^(\d{2})/;
-				next if ($1 < $hour);
-				last if ($1 > $hour);
-				$seekpos{$file} = tell(IN);
+				next if ($1 ne $hour);
 				$localstat{$data[1]}{idx_spam} = "$1";
 				$localstat{$data[1]}{hour} = $data[0] if (!exists $localstat{$data[1]}{hour});
 				$localstat{$data[1]}{sender} = $data[2] if (!exists $localstat{$data[1]}{sender});
@@ -468,15 +452,12 @@ sub do_hour_cache
 		$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/virus.dat";
 		if (open(IN, $file)) {
 			my @done = ();
-			seek(IN, $seekpos{$file} || 0, 0);
 			while (my $l = <IN>) { 
 				chomp($l);
 				# Format: Hour:Id:file:virus
 				@data = split(/:/, $l, 4);
 				$data[0] =~ /^(\d{2})/;
-				next if ($1 < $hour);
-				last if ($1 > $hour);
-				$seekpos{$file} = tell(IN);
+				next if ($1 ne $hour);
 				$localstat{$data[1]}{idx_virus} = "$1";
 				$localstat{$data[1]}{hour} = $data[0] if (!exists $localstat{$data[1]}{hour});
 				$localstat{$data[1]}{file} = $data[2];
@@ -487,15 +468,12 @@ sub do_hour_cache
 
 		$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/syserr.dat";
 		if (open(IN, $file)) {
-			seek(IN, $seekpos{$file} || 0, 0);
 			while (my $l = <IN>) { 
 				chomp($l);
 				# Format: Hour:Id:Message
 				@data = split(/:/, $l);
 				$data[0] =~ /^(\d{2})/;
-				next if ($1 < $hour);
-				last if ($1 > $hour);
-				$seekpos{$file} = tell(IN);
+				next if ($1 ne $hour);
 				$localstat{$data[1]}{idx_syserr} = "$1";
 				$localstat{$data[1]}{hour} = $data[0] if (!exists $localstat{$data[1]}{hour});
 				shift(@data);
@@ -507,16 +485,13 @@ sub do_hour_cache
 		
 		$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/other.dat";
 		if (open(IN, $file)) {
-			seek(IN, $seekpos{$file} || 0, 0);
 			while (my $l = <IN>) { 
 				chomp($l);
 				# Format: Hour:Message
 				@data = split(/:/, $l);
 				my $hms = shift(@data);
 				$hms =~ /^(\d{2})/;
-				next if ($1 < $hour);
-				last if ($1 > $hour);
-				$seekpos{$file} = tell(IN);
+				next if ($1 ne $hour);
 				next if (&clear_postfix(join(':', @data)));
 				$localstat{$UNIQID}{idx_other} = "$1";
 				$localstat{$UNIQID}{hour} = $hms;
@@ -529,15 +504,12 @@ sub do_hour_cache
 		for my $typ (sort keys %ANTISPAM_NAME) {
 			$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/$typ.dat";
 			if (open(IN, $file)) {
-				seek(IN, $seekpos{$file} || 0, 0);
 				while (my $l = <IN>) { 
 					chomp($l);
 					# Format: Hour:Id:type:score:cache:autolearn:spam
 					@data = split(/:/, $l, 7);
 					$data[0] =~ /^(\d{2})/;
-					next if ($1 < $hour);
-					last if ($1 > $hour);
-					$seekpos{$file} = tell(IN);
+					next if ($1 ne $hour);
 					$localstat{$data[1]}{idx_spamd} = "$1";
 					$localstat{$data[1]}{hour} = $data[0] if (!exists $localstat{$data[1]}{hour});
 					$localstat{$data[1]}{spamtype} = $data[2];
@@ -552,15 +524,12 @@ sub do_hour_cache
 
 		$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/auth.dat";
 		if (open(IN, $file)) {
-			seek(IN, $seekpos{$file} || 0, 0);
 			while (my $l = <IN>) { 
 				chomp($l);
 				# Format: Hour:Id:Relay:Mech:Type
 				@data = split(/:/, $l);
 				$data[0] =~ /^(\d{2})(\d{2})/;
-				next if ($1 < $hour);
-				last if ($1 > $hour);
-				$seekpos{$file} = tell(IN);
+				next if ($1 ne $hour);
 				push(@{$localstat{$data[1]}{idx_auth}}, "$1");
 				push(@{$localstat{$data[1]}{auth_hour}}, $data[0]);
 				push(@{$localstat{$data[1]}{auth_relay}}, $data[2]);
