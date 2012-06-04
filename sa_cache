@@ -672,7 +672,7 @@ sub compute_top_stats
 				$topspamdetail{$STATS->{$id}{spamtype}}{autolearn}{$STATS->{$id}{autolearn}}++ if ($STATS->{$id}{autolearn});
 			}
 			if (exists $STATS->{$id}{auth_relay}) {
-				$topauth{authid}{$id}++;
+				$topauth{authid}{$id} += ($#{$STATS->{$id}{auth_relay}} + 1);
 				for (my $i = 0; $i <= $#{$STATS->{$id}{auth_relay}}; $i++) {
 					$topauth{relay}{$STATS->{$id}{auth_relay}[$i]}++;
 					$topauth{mech}{$STATS->{$id}{auth_mech}[$i]}++;

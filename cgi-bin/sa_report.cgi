@@ -3410,7 +3410,7 @@ sub compute_top_auth
 	return if ($DOMAIN);
 
 	foreach my $id (keys %AUTH) {
-		$topauth{authid}{$id}++;
+		$topauth{authid}{$id} += ($#{$AUTH{$id}{relay}} + 1);
 		for (my $i = 0; $i <= $#{$AUTH{$id}{relay}}; $i++) {
 			$topauth{relay}{$AUTH{$id}{relay}[$i]}++;
 			$topauth{mech}{$AUTH{$id}{mech}[$i]}++;
