@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SENDMAILANALYZER 1"
-.TH SENDMAILANALYZER 1 "2012-06-01" "perl v5.10.1" "User Contributed Perl Documentation"
+.TH SENDMAILANALYZER 1 "2012-06-27" "perl v5.10.1" "User Contributed Perl Documentation"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -398,6 +398,25 @@ or use one of the starters script provided in the start_scripts/ directory.
 .Ve
 .PP
 6. Add an entry in /etc/logrotate.d/syslog to restart SendmailAnalyzer when maillog is rotated or create a cron job.
+.SS "Log rotate case"
+.IX Subsection "Log rotate case"
+If you use real time mode and you have logrotate installed on you maillog
+file you must restart SendmailAnalyzer each time logrotate is used.
+To install it edit the /etc/logrotate.d/syslog file and add a line
+in the postrotate part, for example:
+.PP
+.Vb 8
+\&        /var/log/cron /var/log/debug /var/log/maillog /var/log/messages /var/log/secure /var/log/spooler /var/log/syslog {
+\&            sharedscripts
+\&            postrotate
+\&                /bin/kill \-HUP \`cat /var/run/syslogd.pid 2>/dev/null\` 2>/dev/null || true
+\&                /PATH_TO/rc.sendmailanalyzer restart >/dev/null 2>&1 || true
+\&                # or /etc/rc.d/init.d/sendmailanalyzer restart >/dev/null 2>&1 || true
+\&            endscript
+\&        }
+.Ve
+.PP
+If you are using rsyslog the file is named /etc/logrotate.d/rsyslog, things must be written differently, but not so much.
 .SS "Package install"
 .IX Subsection "Package install"
 In the packaging/ directory you will find all scripts and file to generate
