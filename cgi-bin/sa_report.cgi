@@ -141,10 +141,10 @@ a:hover { color: #ffffff; background-color: #CC6600; }
 # CSS style used in temporal menu for the current hour/day/month
 my $SELCURRENT = ' style="color: #4179a1; font-weight: bold;"';
 
-if (&secure_params()) {
-	&logerror("Bad CGI param, hacking attempt.");
+if (my $ret = &secure_params()) {
+	&logerror("Bad CGI param, hacking attempt: $ret");
 	print $CGI->end_html();
-	die "FATAL: Bad CGI param, hacking attempt.\n";
+	die "FATAL: Bad CGI param, hacking attempt: $ret\n";
 }
 
 # Check if output dir exist
@@ -4356,24 +4356,24 @@ sub get_list_host
 sub secure_params
 {
 	if ($HOST && ($HOST =~ s/[^a-z0-9\-\_\.]//ig)) {
-		return 1;
+		return "host: $HOST";
 	} elsif ($CURDATE && ($CURDATE =~ s/[^0-9\/]//g)) {
-		return 1;
+		return "date: $CURDATE";
 	} elsif ($DOMAIN && ($DOMAIN =~ s/[^a-z0-9\-\_\.]//ig)) {
-		return 1;
+		return "domain: $DOMAIN";
 	} elsif ($TYPE && ($TYPE =~ s/[^a-z\_]//ig)) {
-		return 1;
+		return "type: $TYPE";
 	} elsif ($HOUR && ($HOUR =~ s/[^0-9]//g)) {
-		return 1;
+		return "hour: $HOUR";
 	} elsif ($LANG && ($LANG =~ s/[^a-z\_]//ig)) {
-		return 1;
+		return "lang: $LANG";
 	} elsif ($VIEW && ($VIEW =~ s/[^a-z]//g)) {
-		return 1;
+		return "view: $VIEW";
 	} elsif ($PERI && ($PERI =~ s/[^a-z]//g)) {
-		return 1;
+		return "peri: $PERI";
 	}
 
-	return 0;
+	return "";
 }
 
 ####
