@@ -4355,11 +4355,11 @@ sub get_list_host
 ####
 sub secure_params
 {
-	if ($HOST && ($HOST =~ s/[^a-z0-9\-\_\.]//ig)) {
+	if ($HOST && ($HOST =~ s/[^a-z0-9\-\_\.\@]//ig)) {
 		return "host: $HOST";
 	} elsif ($CURDATE && ($CURDATE =~ s/[^0-9\/]//g)) {
 		return "date: $CURDATE";
-	} elsif ($DOMAIN && ($DOMAIN =~ s/[^a-z0-9\-\_\.]//ig)) {
+	} elsif ($DOMAIN && ($DOMAIN =~ s/[^a-z0-9\-\_\.\@]//ig)) {
 		return "domain: $DOMAIN";
 	} elsif ($TYPE && ($TYPE =~ s/[^a-z\_]//ig)) {
 		return "type: $TYPE";
