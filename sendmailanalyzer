@@ -16,12 +16,12 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-use vars qw($VERSION $AUTHOR $COPYRIGHT);
+use vars qw($VERSION $AUTHOR $COPYRIGHT $PROGRAM @ARGS);
  
 use strict;
 
 use Getopt::Long;
-use POSIX ":sys_wait_h";
+use POSIX qw(:sys_wait_h :errno_h :fcntl_h :signal_h);
 use MIME::Base64;
 use MIME::QuotedPrint;
 
@@ -31,6 +31,10 @@ $AUTHOR = "Gilles Darold <gilles\@darold.net>";
 $COPYRIGHT = "(c) 2002-2012 - Gilles Darold <gilles\@darold.net>";
 
 $SIG{'CHLD'} = 'DEFAULT';
+
+# Keep command line arguments in case we received SIGHUP
+$PROGRAM = $0;
+push(@ARGS, @ARGV);
 
 # Month translation
 my %MONTH_TO_NUM = (
@@ -122,8 +126,34 @@ if ($SHOW_VER || $CONFIG{DEBUG}) {
 	exit 0 if ($SHOW_VER);
 }
 
+####
+# Install signal handlers
+####
+# Die cleanly on signal
+sub terminate
+{
+	close(SA_PIPE);
+	&dprint("Received terminating signal.");
+	&flush_data();
+	unlink("$CONFIG{PID_DIR}/$PID_FILE");
+	exit 0;
+}
+# Restart on signal
+sub restart_sa
+{
+	close(SA_PIPE);
+	&dprint("Received SIGHUP signal: reloading configuration file and reopening log file.");
+	&flush_data();
+	exec($^X, $PROGRAM, @ARGS) or die "FATAL: Couldn't restart: $!\n";
+}
+
 # Die on kill -2, -3 or -15 
 $SIG{'INT'} = $SIG{'QUIT'} = $SIG{'TERM'} = 'terminate';
+
+# Relod configuration and reopen log file on kill -1
+my $sigset = POSIX::SigSet->new();
+my $action = POSIX::SigAction->new('restart_sa', $sigset, &POSIX::SA_NODEFER);
+POSIX::sigaction(&POSIX::SIGHUP, $action);
 
 my $CURRENT_TIME = &format_time(localtime(time));
 
@@ -140,7 +170,8 @@ if ($INTERACTIVE) {
 	&dprint("Detach from terminal with pid: $$");
 }
 
-# Set name of the program without path
+# Set name of the program without path*
+my $orig_name = $0;
 $0 = 'sendmailanalyzer';
 
 # Continuously read the maillog file using a pipe to tail program
@@ -194,18 +225,6 @@ sub dprint
     my $msg = shift;
 
     print STDERR "DEBUG: $msg\n" if ($CONFIG{DEBUG});
-}
-
-####
-# Die cleanly on signal
-####
-sub terminate
-{
-	close(SA_PIPE);
-	&dprint("Received terminating signal.");
-	&flush_data();
-	unlink("$CONFIG{PID_DIR}/$PID_FILE");
-	exit 0;
 }
 
 ####
