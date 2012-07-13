@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SENDMAILANALYZER 1"
-.TH SENDMAILANALYZER 1 "2012-06-27" "perl v5.10.1" "User Contributed Perl Documentation"
+.TH SENDMAILANALYZER 1 "2012-07-13" "perl v5.10.1" "User Contributed Perl Documentation"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -410,8 +410,8 @@ in the postrotate part, for example:
 \&            sharedscripts
 \&            postrotate
 \&                /bin/kill \-HUP \`cat /var/run/syslogd.pid 2>/dev/null\` 2>/dev/null || true
-\&                /PATH_TO/rc.sendmailanalyzer restart >/dev/null 2>&1 || true
-\&                # or /etc/rc.d/init.d/sendmailanalyzer restart >/dev/null 2>&1 || true
+\&                /bin/kill \-HUP \`cat /var/run/sendmailanalyzer.pid\`  2>/dev/null || true
+\&                # or /etc/init.d/sendmailanalyzer restart >/dev/null 2>&1 || true
 \&            endscript
 \&        }
 .Ve
@@ -510,7 +510,17 @@ or if you use RedHat or Fedora:
 It will start as 'sendmailanalyzer \-f' that tell him to start in daemon mode
 (default), parse full maillog seeking after the last run ending position (\-f)
 and to open a pipe to a tail command on /var/log/maillog. It will never end
-until you kill it.
+until you kill it or restart it.
+.PP
+To restart sendmailanalyzer use the \s-1SIGHUP\s0 signal as follow :
+.PP
+.Vb 1
+\&        /bin/kill \-HUP \`cat /var/run/sendmailanalyzer.pid\`
+.Ve
+.PP
+This will force sendmailanalyzer to reread his configuration file and reopen
+a pipe to the tail command on you mail log file. The originals command line
+arguments that you've given ar startup^will be preserved.
 .PP
 Important: If you have syslog rotate enable (I hope so :\-) you will have to
 restart SendmailAnalyzer after each log rotation to always tail the good file
@@ -519,10 +529,13 @@ descriptor.
 Edit /etc/logrotate.d/syslog and add the following after syslog restart:
 .PP
 .Vb 1
-\&        /etc/rc.d/rc.sendmailanalyzer restart /dev/null 2>&1 || true
+\&        /bin/kill \-HUP \`cat /var/run/sendmailanalyzer.pid\`  2>/dev/null || true
 .Ve
 .PP
-or on Redhat or Fedora
+or
+	/etc/rc.d/rc.sendmailanalyzer restart /dev/null 2>&1 || true
+.PP
+or on Debian/Redhat like system
 .PP
 .Vb 1
 \&        /etc/init.d/sendmailanalyzer restart /dev/null 2>&1 || true

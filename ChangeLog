@@ -1,3 +1,20 @@
+2012-07-13 Version 8.r43
+
+	- Add signal handler to SIGHUP to allow a full restart of sendmailanalyzer
+	  to force reread configuration file and reopen the pipe to the log file.
+	  Suggested by Vicky Brown.
+	- Allow character @ in secure_param() to allow syslog-ng remote host
+	  syntax - Reported by Leon van Ofwegen.
+	- Add more information on CGI param error returned by secure_param().
+	- Add logrotate example to restart sendmailanalyzer in main documentation.
+	  Reported by Vicki Brown.
+	- Fix a bug in Top Authid where number was always 1. Reported by Dan Szkola
+
+UPGRADE: you'd better reinstall all files after saving your configuration. Unless
+you just want to copy sendmailanalyzer and sa_report.cgi that are the only files
+that have changed as well as the documentation.
+
+
 2012-06-01 Version 8.3
 
 	- Fix a major bug in sa_cache that could lead in totally false

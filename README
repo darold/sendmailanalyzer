@@ -286,8 +286,8 @@ INSTALLATION
                 sharedscripts
                 postrotate
                     /bin/kill -HUP `cat /var/run/syslogd.pid 2>/dev/null` 2>/dev/null || true
-                    /PATH_TO/rc.sendmailanalyzer restart >/dev/null 2>&1 || true
-                    # or /etc/rc.d/init.d/sendmailanalyzer restart >/dev/null 2>&1 || true
+                    /bin/kill -HUP `cat /var/run/sendmailanalyzer.pid`  2>/dev/null || true
+                    # or /etc/init.d/sendmailanalyzer restart >/dev/null 2>&1 || true
                 endscript
             }
 
@@ -381,7 +381,15 @@ USAGE
     It will start as 'sendmailanalyzer -f' that tell him to start in daemon
     mode (default), parse full maillog seeking after the last run ending
     position (-f) and to open a pipe to a tail command on /var/log/maillog.
-    It will never end until you kill it.
+    It will never end until you kill it or restart it.
+
+    To restart sendmailanalyzer use the SIGHUP signal as follow :
+
+            /bin/kill -HUP `cat /var/run/sendmailanalyzer.pid`
+
+    This will force sendmailanalyzer to reread his configuration file and
+    reopen a pipe to the tail command on you mail log file. The originals
+    command line arguments that you've given ar startup^will be preserved.
 
     Important: If you have syslog rotate enable (I hope so :-) you will have
     to restart SendmailAnalyzer after each log rotation to always tail the
@@ -389,9 +397,11 @@ USAGE
 
     Edit /etc/logrotate.d/syslog and add the following after syslog restart:
 
-            /etc/rc.d/rc.sendmailanalyzer restart /dev/null 2>&1 || true
+            /bin/kill -HUP `cat /var/run/sendmailanalyzer.pid`  2>/dev/null || true
 
-    or on Redhat or Fedora
+    or /etc/rc.d/rc.sendmailanalyzer restart /dev/null 2>&1 || true
+
+    or on Debian/Redhat like system
 
             /etc/init.d/sendmailanalyzer restart /dev/null 2>&1 || true
 
