@@ -1769,9 +1769,9 @@ sub clear_status
 {
 	my $status = shift;
 
-	if ($status =~ /^Sent.*/) {
+	if ($status =~ /^Sent.*/i) {
 		return 'Sent';
-	} elsif ($status =~ /Deferred.*/) {
+	} elsif ($status =~ /Deferred.*/i) {
 		return 'Deferred';
 	} elsif ($status =~ s/collect: //) {
 		$status =~ s/ from.*//;
@@ -1779,7 +1779,7 @@ sub clear_status
 	} elsif ($status =~ /did not issue/) {
 		$status =~ s/.*did not issue/No/;
 		return $status;
-	} elsif ($status =~ /(Greylisting in action)/) {
+	} elsif ($status =~ /(Greylisting in action)/i) {
 		return $1;
 	} elsif ($status =~ /(lost input channel ).*(after.*)/) {
 		$status = $1 . $2;
