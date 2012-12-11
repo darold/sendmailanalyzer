@@ -285,11 +285,7 @@ if [ ! -d "$DESTDIR$PIDDIR" ]; then
 	mkdir -p $DESTDIR$PIDDIR
 fi
 
-if [ -e $DESTDIR$CONFDIR/sendmailanalyzer.conf ]; then
-	echo "File sendmailanalyzer.conf already exists. Rename it into sendmailanalyzer.conf.old"
-	mv $DESTDIR$CONFDIR/sendmailanalyzer.conf $DESTDIR$CONFDIR/sendmailanalyzer.conf.old
-fi
-install -m 644 sendmailanalyzer.conf $DESTDIR$CONFDIR/
+install -m 644 sendmailanalyzer.conf $DESTDIR$CONFDIR/sendmailanalyzer.conf.orig
 install -m 755 sendmailanalyzer $DESTDIR$BINDIR/
 install -m 755 sa_cache $DESTDIR$BINDIR/
 install -m 755 cgi-bin/sa_report.cgi $DESTDIR$HTMLDIR/
@@ -355,8 +351,8 @@ For more information, see $DOCDIR/README file.
 close(INST);
 `chmod 755 install_all.sh`;
 
-`perl -p -i -e 's#my \\\$CONFIG_FILE .*#my \\\$CONFIG_FILE = "$CONFDIR/sendmailanalyzer.conf";#' sendmailanalyzer sa_cache`;
-`perl -p -i -e 's#my \\\$CONFIG_FILE .*#my \\\$CONFIG_FILE = "$CONFDIR/sendmailanalyzer.conf";#' cgi-bin/*.cgi`;
+`perl -p -i -e 's#my \\\$CONFIG_FILE .*#my \\\$CONFIG_FILE = "$CONFDIR/sendmailanalyzer.conf.orig";#' sendmailanalyzer sa_cache`;
+`perl -p -i -e 's#my \\\$CONFIG_FILE .*#my \\\$CONFIG_FILE = "$CONFDIR/sendmailanalyzer.conf.orig";#' cgi-bin/*.cgi`;
 
 `perl -p -i -e 's#SALYZER=.*#SALYZER=$BINDIR/sendmailanalyzer#' start_scripts/*`;
 `perl -p -i -e 's#PIDFILE=.*#PIDFILE=$PIDDIR/sendmailanalyzer.pid#' start_scripts/*`;
