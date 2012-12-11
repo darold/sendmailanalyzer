@@ -138,6 +138,7 @@ sub terminate
 	unlink("$CONFIG{PID_DIR}/$PID_FILE");
 	exit 0;
 }
+
 # Restart on signal
 sub restart_sa
 {
@@ -147,13 +148,20 @@ sub restart_sa
 	exec($^X, $PROGRAM, @ARGS) or die "FATAL: Couldn't restart: $!\n";
 }
 
-# Die on kill -2, -3 or -15 
-$SIG{'INT'} = $SIG{'QUIT'} = $SIG{'TERM'} = 'terminate';
+# Reload configuration and reopen log file on kill -1
+my $sigset_hup = POSIX::SigSet->new();
+my $action_hup = POSIX::SigAction->new('restart_sa', $sigset_hup, &POSIX::SA_NODEFER);
+POSIX::sigaction(&POSIX::SIGHUP, $action_hup);
 
-# Relod configuration and reopen log file on kill -1
-my $sigset = POSIX::SigSet->new();
-my $action = POSIX::SigAction->new('restart_sa', $sigset, &POSIX::SA_NODEFER);
-POSIX::sigaction(&POSIX::SIGHUP, $action);
+# Terminate on kill -15
+my $sigset_term = POSIX::SigSet->new();
+$action_term = POSIX::SigAction->new('terminate', $sigset_term, &POSIX::SA_NODEFER);
+POSIX::sigaction(&POSIX::SIGTERM, $action_term);
+
+# Terminate on kill -2
+my $sigset_int = POSIX::SigSet->new();
+$action_int = POSIX::SigAction->new('terminate', $sigset_int, &POSIX::SA_NODEFER);
+POSIX::sigaction(&POSIX::SIGTERM, $action_int);
 
 my $CURRENT_TIME = &format_time(localtime(time));
 
