@@ -155,12 +155,12 @@ POSIX::sigaction(&POSIX::SIGHUP, $action_hup);
 
 # Terminate on kill -15
 my $sigset_term = POSIX::SigSet->new();
-$action_term = POSIX::SigAction->new('terminate', $sigset_term, &POSIX::SA_NODEFER);
+my $action_term = POSIX::SigAction->new('terminate', $sigset_term, &POSIX::SA_NODEFER);
 POSIX::sigaction(&POSIX::SIGTERM, $action_term);
 
 # Terminate on kill -2
 my $sigset_int = POSIX::SigSet->new();
-$action_int = POSIX::SigAction->new('terminate', $sigset_int, &POSIX::SA_NODEFER);
+my $action_int = POSIX::SigAction->new('terminate', $sigset_int, &POSIX::SA_NODEFER);
 POSIX::sigaction(&POSIX::SIGTERM, $action_int);
 
 my $CURRENT_TIME = &format_time(localtime(time));
@@ -185,7 +185,6 @@ $0 = 'sendmailanalyzer';
 # Continuously read the maillog file using a pipe to tail program
 &dprint("Entering main loop...");
 &start_loop;
-unlink("$CONFIG{PID_DIR}/$PID_FILE");
 
 exit 0;
 
@@ -296,11 +295,16 @@ sub start_loop
 		}
 		&dprint("Flushing data to disk...");
 		&flush_data();
-		exit 0 if ($CONFIG{BREAK});
+		if ($CONFIG{BREAK}) {
+			unlink("$CONFIG{PID_DIR}/$PID_FILE");
+			exit 0;
+		}
 	}
+
 	# Daemon mode is not possible with compressed log file
 	if ($CONFIG{LOG_FILE} =~ /\.gz/) {
 		&dprint("Daemon mode is not possible with compressed log file");
+		unlink("$CONFIG{PID_DIR}/$PID_FILE");
 		exit 0;
 	}
 
