@@ -475,15 +475,8 @@ after the last run ending position (-f) and exiting at end of maillog parsing
 =head2 Daemon mode
 
 To run SendmailAnalyzer as a daemon, use the start/stop/restart script given
-with the distribution (in start_script/ directory). The following script is
-for Slackware but can be used with any other distribution:
-
-        /etc/rc.d/rc.sendmailanalyzer start
-
-or if you use RedHat or Fedora:
-
-        chkconfig sendmailanalyzer on
-        service sendmailanalyzer start
+with the distribution (in start_script/ directory). See the README file in
+that directory for more explanation about how to install.
 
 It will start as 'sendmailanalyzer -f' that tell him to start in daemon mode
 (default), parse full maillog seeking after the last run ending position (-f)
@@ -493,6 +486,8 @@ until you kill it or restart it.
 To restart sendmailanalyzer use the SIGHUP signal as follow :
 
 	/bin/kill -HUP `cat /var/run/sendmailanalyzer.pid`
+or
+	/bin/kill -HUP sendmailanalyzer
 
 This will force sendmailanalyzer to reread his configuration file and reopen
 a pipe to the tail command on you mail log file. The originals command line
@@ -519,8 +514,13 @@ this must be in the postrotate section.
 =head2 Stopping SendmailAnalyzer
 
 Just kill it with SIGTERM signal it will flush current collected object
-to disk and free open files. Use 'kill -15 `cat /var/run/sendmailanalyzer.pid`'
-for that or use the starter script. This will kill the current sendmailanalyzer
+to disk and free open files.
+
+	kill -TERM `cat /var/run/sendmailanalyzer.pid`'
+or
+	kill -TERM sendmailanalyzer
+	
+use the starter script. This will kill the current sendmailanalyzer
 process and the pipe to the tail command.
 
 =head2 Caching
