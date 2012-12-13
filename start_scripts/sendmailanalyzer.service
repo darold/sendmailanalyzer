@@ -1,0 +1,13 @@
+[Unit]
+Description=SendmailAnalyzer a sendmail/postfix log analyzer 
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sendmailanalyzer/sendmailanalyzer -d -f
+ExecStop=/bin/kill -TERM sendmailanalyzer
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+Alias=sendmailanalyzer.service
+

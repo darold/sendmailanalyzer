@@ -1,0 +1,48 @@
+Here a some scripts to start sendmailanalyzer at boot time or manually.
+
+Standard System V startup script, should works on all distibution using
+the init SysV:
+
+	rc.sendmailanalyzer
+
+just copy as root this script into /etc/init.d/sendmailanalyzer and
+make it executable (chmod 755). If you want sendmailanalyzer to be
+run at boot time and stopped at poweroff, you have to create the
+corresponding symlinks into /etc/rc3.d/, /etc/rc6.d/ and /etc/rc0.d/.
+
+For convenience, there's also a starter script for RedHat like system:
+
+	sendmailanalyzer
+
+Just copy as root this script into /etc/init.d/sendmailanalyzer and
+make it executable (chmod 755). If you want sendmailanalyzer to be
+run at boot time and stopped at poweroff, you have to run the following
+command:
+
+	chkconfig --add sendmailanalyzer
+
+Some new distributions like last version of Fedora have replaced the
+standard init SysV by the new systemd linux centrics startup system.
+If you are using this system here is the service definition to use:
+
+	sendmailanalyzer.service
+
+just copy it under /usr/lib/systemd/system/sendmailanalyzer.service
+as root. Edit it to change the path to the sendmailanalyzer program
+and reload systemd with the following command as root:
+
+	systemctl --system daemon-reload
+
+To start/stop sendmailanalyer use the following commands:
+
+	systemctl start sendmailanalyzer.service
+	systemctl stop sendmailanalyzer.service
+
+If you want sendmailanalyzer to be run at boot time and stopped at
+poweroff, you have to run the following command:
+
+	systemctl enable sendmailanalyzer.service
+	
+This will create the symlinks for you into the /etc/systemd/system/
+directory.
+
