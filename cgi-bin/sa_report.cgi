@@ -50,6 +50,7 @@ our %ANTISPAM_NAME = (
 	'amavis' => 'Amavis',
 	'mimedefang' => 'MIMEDefang',
 	'dnsblmilter' => 'DNSBL-Milter',
+	'spamd' => 'Spamd',
 );
 
 my $CGI = new CGI;

@@ -1216,9 +1216,29 @@ sub parse_spamd
 			$SPAMDETAIL{$host}{$id}{mid} = $3;
 			$SPAMDETAIL{$host}{$id}{autolearn} = $4;
 		}
+
 		$SPAM{$host}{$id}{spam} = 'spamd';
 		$SPAM{$host}{$id}{date} = $date . $time;
 		$SPAM{$host}{$id}{mid} = $3;
+		foreach my $mid (keys %{$FROM{$host}}) {
+			if ($FROM{$host}{$mid}{msgid} eq $SPAM{$host}{$id}{mid}) {
+				$SPAM{$host}{$mid}{from} = $FROM{$host}{$mid}{sender};
+				$SPAM{$host}{$mid}{spam} = $SPAM{$host}{$id}{spam};
+				$SPAM{$host}{$mid}{date} = $SPAM{$host}{$id}{date};
+				$SPAM{$host}{$mid}{mid}  = $mid;
+				delete $SPAM{$host}{$id};
+				if ($CONFIG{SPAM_DETAIL}) {
+					$SPAMDETAIL{$host}{$mid}{type} = 'spamd';
+					$SPAMDETAIL{$host}{$mid}{score} = $SPAMDETAIL{$host}{$id}{score};
+					$SPAMDETAIL{$host}{$mid}{spam} = $SPAMDETAIL{$host}{$id}{spam};
+					$SPAMDETAIL{$host}{$mid}{date} = $SPAMDETAIL{$host}{$id}{date};
+					$SPAMDETAIL{$host}{$mid}{mid} = $mid;
+					$SPAMDETAIL{$host}{$mid}{autolearn} = $SPAMDETAIL{$host}{$id}{autolearn};
+					delete $SPAMDETAIL{$host}{$id};
+				}
+				last;
+			}
+		}
 	}
 }
 
