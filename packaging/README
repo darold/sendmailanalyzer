@@ -12,11 +12,11 @@ RPM/
 
 	The binary package may be found here:
 
-		~/rpmbuild/RPMS/noarch/sendmailanalyzer-8.4-1.noarch.rpm
+		~/rpmbuild/RPMS/noarch/sendmailanalyzer-8.5-1.noarch.rpm
 
 	To install run:
 
-		rpm -i ~/rpmbuild/RPMS/noarch/sendmailanalyzer-8.4-1.noarch.rpm
+		rpm -i ~/rpmbuild/RPMS/noarch/sendmailanalyzer-8.5-1.noarch.rpm
 
 
 slackbuild/
@@ -28,7 +28,7 @@ slackbuild/
 	then take a look at /tmp/build/ to find the Slackware package.
 	To install run the following command:
 
-		installpkg /tmp/build/sendmailanalyzer-8.4-i486-1gda.tgz
+		installpkg /tmp/build/sendmailanalyzer-8.5-i486-1gda.tgz
 
 
 debian/

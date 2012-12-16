@@ -26,7 +26,7 @@ use Benchmark;
 use Getopt::Long;
 use POSIX ":sys_wait_h";
 
-$VERSION     = '8.4';
+$VERSION     = '8.5';
 $AUTHOR = "Gilles Darold <gilles\@darold.net>";
 $COPYRIGHT = "(c) 2002-2012 - Gilles Darold <gilles\@darold.net>";
 
