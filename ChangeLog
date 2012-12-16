@@ -1,4 +1,24 @@
-2012-07-13 Version 8.r43
+2012-12-16 Version 8.5
+
+	- Fix spam report with spamd and add spamd to the SPAM_TOOLS configuration
+	  directive. Thanks to Bill V for the report.
+	- Update documentation about start script and signal handling.
+	- Add new starter file for distribution using systemd at init and a README
+	  file to explain how to install those scripts. Thanks to Durwin for the
+	  report.
+	- Fix typo in regex pattern of spamd lines detection. Thanks to Bill V for
+	  the report.
+	- Fix removing of pid file which in some case was not removed.
+	- Fix signal handler on SIGTERM.
+	- sendmailanalyzer.conf will now be installed as sendmailanalyzer.conf.orig.
+	- Fix issue in spam message detection. Thanks to Stefan Berger for the report.
+	- Fix case where recipient was not collected on postfix servers because the
+	- Sent status in in lower case. Thanks to Kalpesh Patel for the report.
+
+UPGRADE: you may reinstall all files and edit your configuration file to add the
+spamd keyword to the SPAM_TOOLS directive if you have the spamd installed.
+
+2012-07-13 Version 8.4
 
 	- Add signal handler to SIGHUP to allow a full restart of sendmailanalyzer
 	  to force reread configuration file and reopen the pipe to the log file.
