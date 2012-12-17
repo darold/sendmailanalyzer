@@ -52,6 +52,7 @@ our %ANTISPAM_NAME = (
         'spamassassin' => 'SpamAssassin',
         'amavis' => 'Amavis',
         'mimedefang' => 'MIMEDefang',
+	'spamd' => 'Spamd',
 );
 
 # Collect command line arguments
