@@ -162,7 +162,7 @@ fi
 %attr(0644,root,root) %{webdir}/lang/fr_FR
 %attr(0644,root,root) %{webdir}/lang/sp_SP
 %attr(0755,root,root) %{_sysconfdir}/rc.d/init.d/sendmailanalyzer
-%config(noreplace) %{_sysconfdir}/%{uname}.conf
+%config(noreplace) %{_sysconfdir}/%{uname}.conf.orig
 %config(noreplace) %{_sysconfdir}/cron.d/%{uname}
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/%{uname}.conf
 %dir %{_localstatedir}/lib/%{uname}
