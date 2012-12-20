@@ -31,7 +31,7 @@ $| = 1;
 # Configuration storage hash
 my %CONFIG = ();
 # Other configuration directives
-my $CONFIG_FILE = "/usr/local/sendmailanalyzer/sendmailanalyzer.conf";
+my $CONFIG_FILE = "/usr/local/sendmailanalyzer/sendmailanalyzer.conf.sample";
 my $LAST_PARSE_FILE = 'LAST_PARSED';
 
 $SOFTWARE  = "SendmailAnalyzer";
@@ -3938,6 +3938,8 @@ sub get_reject_detail
 			next if (($hour ne '') && ($1 != $hour));
 			if ($peri eq 'rule') {
 				next if ($data[2] !~ /$search/);
+			} elsif ($peri eq 'domain') {
+				next if ($data[3] !~ /$search/);
 			} elsif ($peri eq 'relay') {
 				next if ($data[3] ne $search);
 			} elsif ($peri eq 'status') {
