@@ -57,7 +57,7 @@ my %MONTH_TO_NUM = (
 my %CONFIG = ();
 
 # Other configuration directives
-my $CONFIG_FILE = "/usr/local/sendmailanalyzer/sendmailanalyzer.conf";
+my $CONFIG_FILE = "/usr/local/sendmailanalyzer/sendmailanalyzer.conf.sample";
 my $SHOW_VER    = 0;
 my $INTERACTIVE = 0;
 my $HELP        = 0;
@@ -977,6 +977,13 @@ sub parse_sendmail
 		push(@{$AUTH{$host}{$authid}{mech}}, $4);
 		push(@{$AUTH{$host}{$authid}{date}}, $date . $time);
 		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay($2));
+	# Catch Anonymous TLS connections²
+	} elsif ($str =~ m#Anonymous TLS connection established from ([^:])+: (.*) with cipher (.*)#) {
+		my $authid = &get_uniqueid();
+		push(@{$AUTH{$host}{$authid}{type}}, $2);
+		push(@{$AUTH{$host}{$authid}{mech}}, $3);
+		push(@{$AUTH{$host}{$authid}{date}}, $date . $time);
+		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay($1));
 	} else {
 		my $dt = $date . $time;
 		if ($str =~ /(\d{3} \d\.\d\.\d .*)/) {
