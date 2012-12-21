@@ -57,7 +57,7 @@ my %MONTH_TO_NUM = (
 my %CONFIG = ();
 
 # Other configuration directives
-my $CONFIG_FILE = "/usr/local/sendmailanalyzer/sendmailanalyzer.conf.sample";
+my $CONFIG_FILE = "/usr/local/sendmailanalyzer/sendmailanalyzer.conf";
 my $SHOW_VER    = 0;
 my $INTERACTIVE = 0;
 my $HELP        = 0;

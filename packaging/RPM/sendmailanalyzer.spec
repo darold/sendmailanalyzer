@@ -162,7 +162,7 @@ fi
 %attr(0644,root,root) %{webdir}/lang/fr_FR
 %attr(0644,root,root) %{webdir}/lang/sp_SP
 %attr(0755,root,root) %{_sysconfdir}/rc.d/init.d/sendmailanalyzer
-%config(noreplace) %{_sysconfdir}/%{uname}.conf.orig
+%attr(0644,root,root) %{_sysconfdir}/%{uname}.conf.sample
 %config(noreplace) %{_sysconfdir}/cron.d/%{uname}
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/%{uname}.conf
 %dir %{_localstatedir}/lib/%{uname}
@@ -170,6 +170,9 @@ fi
 %dir %{webdir}
 
 %changelog
+* Wed Dec 19 2012 Igor Vuk
+- Update change of sendmailanalyzer.conf in httpd sendmailanalyzer.conf.sample
+
 * Wed Jan 20 2010 Gilles Darold <gilles@darold.net>
 - Fix overide of httpd sendmailanalyzer.conf
 

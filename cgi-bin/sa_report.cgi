@@ -31,7 +31,7 @@ $| = 1;
 # Configuration storage hash
 my %CONFIG = ();
 # Other configuration directives
-my $CONFIG_FILE = "/usr/local/sendmailanalyzer/sendmailanalyzer.conf.sample";
+my $CONFIG_FILE = "/usr/local/sendmailanalyzer/sendmailanalyzer.conf";
 my $LAST_PARSE_FILE = 'LAST_PARSED';
 
 $SOFTWARE  = "SendmailAnalyzer";

@@ -90,7 +90,7 @@ make install DESTDIR=$PKG
 
 # Fix the configuration files so they won't overwrite existing ones
 # on package install:
-mv $PKG/etc/sendmailanalyzer.conf{,.new}
+mv $PKG/etc/sendmailanalyzer.conf{,.sample}
 
 # Install a slack-desc
 mkdir -p $PKG/install
@@ -119,7 +119,7 @@ config() {
   done
 }
 
-config etc/sendmailanalyzer.conf.new
+config etc/sendmailanalyzer.conf.sample
 
 cat install/README.Slackware
 
