@@ -353,9 +353,20 @@ sub parse_common_fields
 {
 	my ($month,$day,$time,$host,$type,@other) = @_;
 	
-	my $date = 1900+(localtime(time))[5] . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day);
-	my @f = split(/:/, $time);
-	$time = sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
+	my $date = '';
+
+	if ($month =~ /(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)/) {
+		$date = "$1$2$3";
+		unshift(@other, $type);
+		unshift(@other, $host);
+		$host = $day;
+		$type = $time;
+		$time = "$4$5$6";
+	} else {
+		$date = 1900+(localtime(time))[5] . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day);
+		my @f = split(/:/, $time);
+		$time = sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
+	}
 	$type =~ s/\://;
 
 	$host = $CONFIG{MERGING_HOST} if ($CONFIG{MERGING_HOST});
