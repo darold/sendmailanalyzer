@@ -26,7 +26,7 @@ use MIME::Base64;
 use MIME::QuotedPrint;
 
 
-$VERSION     = '8.5';
+$VERSION     = '8.6';
 $AUTHOR = "Gilles Darold <gilles\@darold.net>";
 $COPYRIGHT = "(c) 2002-2012 - Gilles Darold <gilles\@darold.net>";
 
@@ -83,24 +83,24 @@ my %POSTGREY = ();
 
 # Collect command line arguments
 GetOptions (
-	'args|a=s' => \$CONFIG{TAIL_ARGS},
-	'break|b!' => \$CONFIG{BREAK},
-	'config|c=s' => \$CONFIG_FILE,
-	'debug|d!' => \$CONFIG{DEBUG},
-	'full|f!' => \$CONFIG{FULL},
-	'help|h!' => \$HELP,
-	'interactive|i!' => \$INTERACTIVE,
-	'log|l=s' => \$CONFIG{LOG_FILE},
-	'mailscanner|m=s' => \$CONFIG{MAILSCAN_NAME},
-	'clamd|n=s' => \$CONFIG{CLAMD_NAME},
-	'output|o=s' => \$CONFIG{OUT_DIR},
-	'tail|t=s' => \$CONFIG{TAIL_PROG},
-	'sendmail|s=s' => \$CONFIG{MTA_NAME},
-	'version|v!' => \$SHOW_VER,
-	'write-delay|w=i' => \$CONFIG{DELAY},
-	'zcat|z=s' => \$CONFIG{ZCAT_PROG},
-	'piddir|p=s' => \$CONFIG{PID_DIR},
-	'postgrey|g=s' => \$CONFIG{POSTGREY_NAME},
+	'a|args=s' => \$CONFIG{TAIL_ARGS},
+	'b|break!' => \$CONFIG{BREAK},
+	'c|config=s' => \$CONFIG_FILE,
+	'd|debug!' => \$CONFIG{DEBUG},
+	'f|full!' => \$CONFIG{FULL},
+	'g|postgrey=s' => \$CONFIG{POSTGREY_NAME},
+	'h|help!' => \$HELP,
+	'i|interactive!' => \$INTERACTIVE,
+	'l|log=s' => \$CONFIG{LOG_FILE},
+	'm|mailscanner=s' => \$CONFIG{MAILSCAN_NAME},
+	'n|clamd=s' => \$CONFIG{CLAMD_NAME},
+	'o|output=s' => \$CONFIG{OUT_DIR},
+	'p|piddir=s' => \$CONFIG{PID_DIR},
+	's|sendmail=s' => \$CONFIG{MTA_NAME},
+	't|tail=s' => \$CONFIG{TAIL_PROG},
+	'v|version!' => \$SHOW_VER,
+	'w|write-delay=i' => \$CONFIG{DELAY},
+	'z|zcat=s' => \$CONFIG{ZCAT_PROG},
 	'spamd=s' => \$CONFIG{SPAMD_NAME},
 );
 
