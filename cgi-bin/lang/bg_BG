@@ -103,7 +103,7 @@
 	'Number%20of%20virus' => 'Количество%20вируси',
 	'Viruses delivery flows' => 'Вирус потоци на получаване',
 	'Syserr flows' => 'Потоки на системни грешки',
-	'Rejection SysErr' => 'Отказване системни грешки',
+	'Rejection SysErr' => 'Отказване системни събития',
 	'Messaging Status' => 'Статус на съобщението',
 	'Percentage' => 'Процент',
 	'Total' => 'Общо',

@@ -104,7 +104,7 @@
 	'Number%20of%20virus' => 'Nombre%20de%20virus',
 	'Viruses delivery flows' => 'Distribution des Virus',
 	'Syserr flows' => 'Flux des erreurs Système',
-	'Rejection SysErr' => 'Rejets & Erreurs',
+	'Rejection SysErr' => 'Rejets & Événements',
 	'Messaging Status' => 'Statuts des messages',
 	'Percentage' => 'Pourcentage',
 	'Total' => 'Total',

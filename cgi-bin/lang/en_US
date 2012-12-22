@@ -103,7 +103,7 @@
 	'Number%20of%20virus' => 'Number%20of%20virus',
 	'Viruses delivery flows' => 'Viruses delivery flows',
 	'Syserr flows' => 'Syserr flows',
-	'Rejection SysErr' => 'Rejection & Error',
+	'Rejection SysErr' => 'Rejection & Events',
 	'Messaging Status' => 'Messaging Status',
 	'Percentage' => 'Percentage',
 	'Total' => 'Total',
