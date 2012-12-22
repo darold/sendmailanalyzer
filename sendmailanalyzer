@@ -859,6 +859,12 @@ sub parse_sendmail
 		$REJECT{$host}{$id}{status} = &clear_status($reject);
 		$REJECT{$host}{$id}{date} = $date . $time;
 
+	# Parse virus quarantined by clamav-milter
+	} elsif ($str =~ m#^([^:\s]+): milter=clamav-milter, quarantine=quarantined by clamav-milter#) {
+		$VIRUS{$host}{$1}{virus} = 'Quarantined by clamav-milter';
+		$VIRUS{$host}{$1}{file} = 'Inline';
+		$VIRUS{$host}{$1}{date} = $date . $time;
+
 	# Try to find milter rejection rule (other fields will be overriden by the condition above)
 	} elsif ($str =~ m#^([^:\s]+): milter=([^,]+), action=([^,]+), reject=(\d+ \d+\.\d+\.\d+\s+.*)#) {
 		my $id = $1;
@@ -988,20 +994,24 @@ sub parse_sendmail
 		push(@{$AUTH{$host}{$authid}{mech}}, $4);
 		push(@{$AUTH{$host}{$authid}{date}}, $date . $time);
 		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay($2));
-	# Catch Anonymous TLS connections²
+	# Catch Anonymous TLS connections
 	} elsif ($str =~ m#Anonymous TLS connection established from ([^:])+: (.*) with cipher (.*)#) {
 		my $authid = 'anonymous';
 		push(@{$AUTH{$host}{$authid}{type}}, $2);
 		push(@{$AUTH{$host}{$authid}{mech}}, $3);
 		push(@{$AUTH{$host}{$authid}{date}}, $date . $time);
 		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay($1));
+	# Catch server TLS connections
+	} elsif ($str =~ m#(STARTTLS=[^,]+), relay=([^,]+), version=([^,]+), (verify=[^,]+), cipher=([^,]+), bits=([^,\s]+)#) {
+		my $dt = $date . $time;
+		push(@{$OTHER{$host}{$dt}}, "$1, $4");
 	} else {
 		my $dt = $date . $time;
 		if ($str =~ /(\d{3} \d\.\d\.\d .*)/) {
 			$str = $1;
 		}
 		$str =~ s/.*reject=//;
-		$OTHER{$host}{$dt} = &clear_status($str);
+		push(@{$OTHER{$host}{$dt}}, &clear_status($str));
 	}
 }
 
@@ -1660,9 +1670,11 @@ sub flush_data
 		my %errors = ();
 		foreach my $dt (keys %{$OTHER{$host}}) {
 			next if ($dt !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
-			# Key: year/month/day, Format: Hour:Id:Error
-			$errors{"$1/$2/$3"} .= "$4$5$6" . ':' . $OTHER{$host}{$dt} . "\n";
-			$nobj++;
+			foreach my $v (@{$OTHER{$host}{$dt}}) {
+				# Key: year/month/day, Format: Hour:Id:Error
+				$errors{"$1/$2/$3"} .= "$4$5$6" . ':' . $v . "\n";
+				$nobj++;
+			}
 		}
 		delete $OTHER{$host};
 		foreach my $dir (keys %errors) {
