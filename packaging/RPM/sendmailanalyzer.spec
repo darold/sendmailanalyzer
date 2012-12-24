@@ -150,7 +150,7 @@ fi
 
 %files
 %defattr(0644,root,root,0755)
-%doc Change* INSTALL README TODO README.RPM
+%doc Change* INSTALL README TODO README.RPM %{uname}.conf.sample
 %attr(0755,root,root) %{_bindir}/%{uname}
 %attr(0755,root,root) %{_bindir}/sa_cache
 %attr(0644,root,root) %{_mandir}/man3/%{uname}.3.gz
@@ -162,7 +162,7 @@ fi
 %attr(0644,root,root) %{webdir}/lang/fr_FR
 %attr(0644,root,root) %{webdir}/lang/sp_SP
 %attr(0755,root,root) %{_sysconfdir}/rc.d/init.d/sendmailanalyzer
-%attr(0644,root,root) %{_sysconfdir}/%{uname}.conf.sample
+%config(noreplace) %{_sysconfdir}/%{uname}.conf
 %config(noreplace) %{_sysconfdir}/cron.d/%{uname}
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/%{uname}.conf
 %dir %{_localstatedir}/lib/%{uname}
@@ -170,11 +170,15 @@ fi
 %dir %{webdir}
 
 %changelog
+* Wed Dec 24 2012 Gilles Darold
+- Copy sendmailanalyzer.conf in _sysconfdir and sendmailanalyzer.conf.sample
+  in _docdir
+
 * Wed Dec 19 2012 Igor Vuk
-- Update change of sendmailanalyzer.conf in httpd sendmailanalyzer.conf.sample
+- Update change of sendmailanalyzer.conf in sendmailanalyzer.conf.sample
 
 * Wed Jan 20 2010 Gilles Darold <gilles@darold.net>
-- Fix overide of httpd sendmailanalyzer.conf
+- Fix overide of http-sendmailanalyzer.conf
 
 * Wed Dec 30 2009 Gilles Darold <gilles@darold.net>
 - first packaging attempt

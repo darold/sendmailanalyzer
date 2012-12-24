@@ -88,9 +88,7 @@ make
 make install DESTDIR=$PKG 
 # Please note that some software use INSTALL_ROOT=$PKG or prefix=$PKG/usr or install_root=$PKG ...
 
-# Fix the configuration files so they won't overwrite existing ones
-# on package install:
-mv $PKG/etc/sendmailanalyzer.conf{,.sample}
+DOC="Change* INSTALL README TODO README.RPM $PNAME.conf"
 
 # Install a slack-desc
 mkdir -p $PKG/install

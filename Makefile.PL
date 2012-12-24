@@ -285,7 +285,10 @@ if [ ! -d "$DESTDIR$PIDDIR" ]; then
 	mkdir -p $DESTDIR$PIDDIR
 fi
 
-install -m 644 sendmailanalyzer.conf $DESTDIR$CONFDIR/sendmailanalyzer.conf.sample
+install -m 644 sendmailanalyzer.conf $DESTDIR$DOCDIR/sendmailanalyzer.conf.sample
+if [ ! -e "$DESTDIR$CONFDIR/sendmailanalyzer.conf" ]; then
+	install -m 644 sendmailanalyzer.conf $DESTDIR$CONFDIR/sendmailanalyzer.conf
+fi
 install -m 755 sendmailanalyzer $DESTDIR$BINDIR/
 install -m 755 sa_cache $DESTDIR$BINDIR/
 install -m 755 cgi-bin/sa_report.cgi $DESTDIR$HTMLDIR/
@@ -303,7 +306,6 @@ if (!$ENV{QUIET}) {
 	print INST qq{
 echo "
 -----------------------------------------------------------------------------
-
 1. Start SendmailAnalyzer daemon with: 
 
 	$BINDIR/sendmailanalyzer -f
@@ -320,18 +322,16 @@ echo "
 	    DirectoryIndex sa_report.cgi
 	    Order deny,allow
 	    Deny from all
-	    Allow from 127.0.0.1
-	    Allow from ::1
-	    # Allow from .example.com
+	    Allow from 192.168.1.0/24
 	</Directory>
 
-3. If necessary, give additional hosT access to SendmailAnalyzer in httpd.conf.
+   If necessary, give additional host access to SendmailAnalyzer in httpd.conf.
    Restart and ensure that httpd is running.
 
-4. Browse to http://mta.host.dom/sareport/ to ensure that things are working
+3. Browse to http://mta.host.dom/sareport/ to ensure that things are working
    properly.
 
-5. Setup a cronjob to run sa_cache and restart SendmailAnalyzer daemon after
+4. Setup a cronjob to run sa_cache and restart SendmailAnalyzer daemon after
    maillog logrotate as follow:
 
      # SendmailAnalyzer log reporting daily cache
@@ -339,7 +339,7 @@ echo "
      # On huge MTA you may want to have five minutes caching
      #*/5 * * * * $BINDIR/sa_cache -a > /dev/null 2>&1
 
-6. Add an entry in /etc/logrotate.d/syslog to restart SendmailAnalyzer when
+5. Add an entry in /etc/logrotate.d/syslog to restart SendmailAnalyzer when
    maillog is rotated or create a cron job.
 
 For more information, see $DOCDIR/README file.
