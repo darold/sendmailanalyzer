@@ -133,7 +133,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SENDMAILANALYZER 1"
-.TH SENDMAILANALYZER 1 "2012-12-21" "perl v5.10.1" "User Contributed Perl Documentation"
+.TH SENDMAILANALYZER 1 "2012-12-24" "perl v5.10.1" "User Contributed Perl Documentation"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -951,6 +951,13 @@ Use this directive to combined multiple mailhost report on a single report.
 This allow you to aggregate multiple mailhost that syslogs to a remote server
 throught rsyslog to have only one SendmailAnalyzer report. The value must only
 use alphanumeric character as it is used to create subdirectory.
+.IP "\s-1SKIP_RCPT_RELAY\s0" 4
+.IX Item "SKIP_RCPT_RELAY"
+Use this to set the recipient relay used for local delivery if your message
+appears twice in details view and in messaging, sender and recipient counter.
+This is especially right when with postfix configuraed to have local delivery
+via dovecot service. Default: dovecot, that mean that recipient log lines with
+relay=dovecot will instruct sendmailanalyzer to skip those messages.
 .SS "Domain / user views options"
 .IX Subsection "Domain / user views options"
 .IP "\s-1LOW_LIMIT\s0, \s-1MEDIUM_LIMIT\s0, \s-1HIGH_LIMIT\s0 (\s-1NO\s0 \s-1MORE\s0 \s-1USED\s0)" 4

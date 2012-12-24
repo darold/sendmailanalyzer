@@ -416,28 +416,28 @@ sub parse_sendmail
 		$SYSERR{$host}{$1}{message} = &clear_status($2);
 	# Skip message related to MCI caching module
 	} elsif ($str =~ m#^([^:\s]+): MCI\@#) {
-		next;
+		return;
 	# Skip Debug message
 	} elsif ($str =~ m#^([^:\s]+):\s+\d+: fl=#) {
-		next;
+		return;
 	# POSTFIX: Skip connect/disconnect message
 	} elsif ($str =~ m#^(DIS)?CONNECT #i) {
-		next;
+		return;
 	# POSTFIX temporary blacklist/whitelist messsage
 	} elsif ($str =~ m#^(PASS OLD|PASS NEW|WHITELISTED|BLACKLISTED)#i) {
-		next;
+		return;
 	# POSTFIX pregreet test
 	} elsif ($str =~ m#^(PREGREET|HANGUP)#i) {
-		next;
+		return;
 	# POSTFIX dnsbl message
 	} elsif ($str =~ m#^DNSBL rank#i) {
-		next;
+		return;
 	# POSTFIX dnsbl message ???
 	} elsif ($str =~ m#addr \d+\.\d+\.\d+\.\d+ listed#i) {
-		next;
+		return;
 	# POSTFIX  postscreen messages: COMMAND (PIPELINING|COUNT LIMIT|TIME LIMIT)???
 	} elsif ($str =~ m#^COMMAND #i) {
-		next;
+		return;
 	# POSTFIX: error messages
 	} elsif ($str =~ m#^(lost connection|timeout|too many errors) after ([^\s]+)#) {
 		$SYSERR{$host}{"$date$time"}{date} = $date . $time;
@@ -447,7 +447,7 @@ sub parse_sendmail
 		$SYSERR{$host}{"$date$time"}{message} = $1;
 	# POSTFIX: Skip removed message
 	} elsif ($str =~ m#^([^:\s]+): removed#) {
-		next;
+		return;
 	# Parse protocole error
 	} elsif ($str =~ m#^([^:\s]+): ([^:\s]+): (.*protocol error:.*)#) {
 		$SYSERR{$host}{$1}{date} = $date . $time;
@@ -507,16 +507,16 @@ sub parse_sendmail
 		}
 	} elsif ($str =~ m#^([^:\s]+): Milter (delete|add|change): #) {
 		# Skip other milter header modication notice
-		next;
+		return;
 	} elsif ($str =~ m#^([^:\s]+): Milter insert \(\d+\): #) {
 		# Skip other milter header insertion notice
-		next;
+		return;
 	} elsif ($str =~ m#^([^:\s]+): Milter: connect: .*, ([^,]*)#) {
 		$SYSERR{$host}{$1}{date} = $date . $time;
 		$SYSERR{$host}{$1}{message} = &clear_status($2);
 	} elsif ($str =~ m#^([^:\s]+): Milter (delete|add|change) #) {
 		# Skip other milter modication notice
-		next;
+		return;
 	} elsif ($str =~ m#^([^:\s]+): Milter: data, reject=(.*)#) {
 		my $id = $1;
 		my $status = $2;
@@ -525,9 +525,9 @@ sub parse_sendmail
 		} elsif ($status =~ /554 5\.7\.1 (.*) detected by ClamAV.*/) {
 			$SPAM{$host}{$id}{spam} = "ClamAv $1"
 		} elsif ($status =~ /554 5\.7\.1 Command rejected/) {
-			next # Already handle at Clamav virus report
+			return # Already handle at Clamav virus report
 		} elsif ($status =~ /Please try again later/) {
-			next; # Skip greylist rejection
+			return; # Skip greylist rejection
 		} else {
 			$SPAM{$host}{$id}{spam} = $status;
 		}
@@ -600,11 +600,11 @@ sub parse_sendmail
 		my $relay = &clean_relay(lc($5));
 		if (exists $GREYLIST{$id}) {
 			delete $GREYLIST{$id};
-			next;
+			return;
 		} elsif (exists $REJECT{$host}{$id} && !$size) {
 			$REJECT{$host}{$id}{arg1} = &edecode($from);
 			$REJECT{$host}{$id}{relay} = $relay;
-			next;
+			return;
 		}
 		$FROM{$host}{$id}{date} = $date . $time;
 		$FROM{$host}{$id}{from} = &edecode($from);
@@ -616,30 +616,41 @@ sub parse_sendmail
 		my $id = $1;
 		my $to = &edecode($2);
 		my $relay = &clean_relay($3);
+		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
+			delete $TO{$host}{$id};
+			delete $FROM{$host}{$id};
+			return;
+		}
 		my $status = &clear_status($4);
 		$status = 'Sent' if ($status eq 'sent'); 
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
-			next if ($t eq 'more');
+			return if ($t eq 'more');
 			push(@{$TO{$host}{$id}{date}}, $date . $time);
 			push(@{$TO{$host}{$id}{relay}}, 'localhost');
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
 		}
+
 	# POSTFIX To clause with origine
 	} elsif ($str =~ m#^([^:\s]+): to=([^,]+), orig_to=([^,]+), relay=([^,]+),.*status=(.*)#) {
 		my $id = $1;
 		my $to = &edecode($2);
 		my $relay = &clean_relay($4);
+		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
+			delete $TO{$host}{$id};
+			delete $FROM{$host}{$id};
+			return;
+		}
 		my $status = &clear_status($5);
 		$status = 'Sent' if ($status eq 'sent'); 
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
-			next if ($t eq 'more');
+			return if ($t eq 'more');
 			push(@{$TO{$host}{$id}{date}}, $date . $time);
 			push(@{$TO{$host}{$id}{relay}}, 'localhost');
 			push(@{$TO{$host}{$id}{to}}, $t);
@@ -658,7 +669,7 @@ sub parse_sendmail
 		my $status = &clear_status($4);
 		$prog =~ s/\|//g;
 		# Skip vacation and procmail prog that double the recipient entry
-		next if ($prog =~ /(vacation|procmail)/);
+		return if ($prog =~ /(vacation|procmail)/);
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
 		push(@{$TO{$host}{$id}{date}}, $date . $time);
@@ -685,7 +696,7 @@ sub parse_sendmail
 		delete $TO{$host}{$id}{queue_to};
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
-			next if ($t eq 'more');
+			return if ($t eq 'more');
 			push(@{$TO{$host}{$id}{date}}, $date . $time);
 			push(@{$TO{$host}{$id}{relay}}, 'localhost');
 			push(@{$TO{$host}{$id}{to}}, $t);
@@ -698,12 +709,17 @@ sub parse_sendmail
 		my $to = &edecode($2);
 		my $ctladdr = &edecode($3);
 		my $relay = &clean_relay($4);
+		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
+			delete $TO{$host}{$id};
+			delete $FROM{$host}{$id};
+			return;
+		}
 		my $status = &clear_status($5);
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
-			next if ($t eq 'more');
+			return if ($t eq 'more');
 			push(@{$TO{$host}{$id}{date}}, $date . $time);
 			push(@{$TO{$host}{$id}{relay}}, 'localhost');
 			push(@{$TO{$host}{$id}{to}}, $t);
@@ -718,7 +734,7 @@ sub parse_sendmail
 		delete $TO{$host}{$id}{queue_to};
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
-			next if ($t eq 'more');
+			return if ($t eq 'more');
 			push(@{$TO{$host}{$id}{date}}, $date . $time);
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
@@ -732,7 +748,7 @@ sub parse_sendmail
 		delete $TO{$host}{$id}{queue_to};
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
-			next if ($t eq 'more');
+			return if ($t eq 'more');
 			push(@{$TO{$host}{$id}{date}}, $date . $time);
 			push(@{$TO{$host}{$id}{relay}}, 'localhost');
 			push(@{$TO{$host}{$id}{to}}, $t);
@@ -744,11 +760,16 @@ sub parse_sendmail
 		my $to = $2;
 		my $relay = &clean_relay(lc($3));
 		my $status = &clear_status($4);
+		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
+			delete $TO{$host}{$id};
+			delete $FROM{$host}{$id};
+			return;
+		}
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
-			next if ($t eq 'more');
+			return if ($t eq 'more');
 			push(@{$TO{$host}{$id}{date}}, $date . $time);
 			push(@{$TO{$host}{$id}{relay}}, $relay);
 			push(@{$TO{$host}{$id}{to}}, $t);
@@ -759,12 +780,12 @@ sub parse_sendmail
 		my $id = $1;
 		my $to = $2;
 		my $status = &clear_status($4);
-		next if (exists $REJECT{$host}{$id});
+		return if (exists $REJECT{$host}{$id});
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
-			next if ($t eq 'more');
+			return if ($t eq 'more');
 			push(@{$TO{$host}{$id}{date}}, $date . $time);
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
@@ -837,7 +858,7 @@ sub parse_sendmail
 		my $status = $3;
 		if ($status =~ /Greylisting in action/) {
 			$GREYLIST{$id} = &edecode($to);
-			next;
+			return;
 		}
 		push(@{$TO{$host}{$id}{date}}, $date . $time);
 		push(@{$TO{$host}{$id}{to}}, &edecode($to));
@@ -977,18 +998,18 @@ sub parse_sendmail
 		$SYSERR{$host}{$id}{message} = $status . ': ' . $to;
 	# Skip lost connection after STARTTLS duplicate error
 	} elsif ($str =~ m#^SSL_accept error from#) {
-		next;
+		return;
 	# Catch other messages with sendmail id
 	} elsif ($str =~ m#^([^:\s]+): (.*)#) {
 		my $id = $1;
 		my $err = $2 || '';
-		next if (length($id) != 14); # Skip debug lines
-		next if ($err =~ /clone|owner/); # Skip mailling list clone
-		next if ($err =~ /^(addr|Milter) /); # Skeep milter information
+		return if (length($id) != 14); # Skip debug lines
+		return if ($err =~ /clone|owner/); # Skip mailling list clone
+		return if ($err =~ /^(addr|Milter) /); # Skeep milter information
 		# Do not store if we already have it
-		next if (exists $SYSERR{$host}{$id} || exists $SPAM{$host}{$id} || exists $REJECT{$host}{$id} || exists $TO{$host}{$id}{status});
+		return if (exists $SYSERR{$host}{$id} || exists $SPAM{$host}{$id} || exists $REJECT{$host}{$id} || exists $TO{$host}{$id}{status});
 		my $status = &clear_status($err);
-		next if ($status !~ /\s/); # on single word error abort
+		return if ($status !~ /\s/); # on single word error abort
 		$SYSERR{$host}{$id}{date} = $date . $time;
 		$SYSERR{$host}{$id}{message} = &clear_status($status);
 	# Catch SMTP AUTH

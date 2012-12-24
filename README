@@ -792,6 +792,14 @@ CONFIGURATION
         SendmailAnalyzer report. The value must only use alphanumeric
         character as it is used to create subdirectory.
 
+    SKIP_RCPT_RELAY
+        Use this to set the recipient relay used for local delivery if your
+        message appears twice in details view and in messaging, sender and
+        recipient counter. This is especially right when with postfix
+        configuraed to have local delivery via dovecot service. Default:
+        dovecot, that mean that recipient log lines with relay=dovecot will
+        instruct sendmailanalyzer to skip those messages.
+
   Domain / user views options
     LOW_LIMIT, MEDIUM_LIMIT, HIGH_LIMIT (NO MORE USED)
         User messaging data limit in megabytes to show/warn the level of

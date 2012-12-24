@@ -255,6 +255,13 @@ POSTGREY_NAME	postgrey
 # also use it with other langage, this must be the full path to a ttf file.
 #TTFONT          /usr/share/fonts/truetype/msttcorefonts/arial.ttf
 
+# Use this to set the recipient relay used for local delivery if your message
+# appears twice in details view and in messaging, sender and recipient counter.
+# This is especially right when with postfix configuraed to have local delivery
+# via dovecot service. Default: dovecot, that mean that recipient log lines with
+# relay=dovecot will instruct sendmailanalyzer to skip those messages.
+SKIP_RCPT_RELAY	dovecot
+
 };
 close(OUTCFG);
 

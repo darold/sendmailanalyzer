@@ -957,6 +957,14 @@ This allow you to aggregate multiple mailhost that syslogs to a remote server
 throught rsyslog to have only one SendmailAnalyzer report. The value must only
 use alphanumeric character as it is used to create subdirectory.
 
+=item SKIP_RCPT_RELAY
+
+Use this to set the recipient relay used for local delivery if your message
+appears twice in details view and in messaging, sender and recipient counter.
+This is especially right when with postfix configuraed to have local delivery
+via dovecot service. Default: dovecot, that mean that recipient log lines with
+relay=dovecot will instruct sendmailanalyzer to skip those messages.
+
 =back
 
 =head2 Domain / user views options
