@@ -861,9 +861,13 @@ sub parse_sendmail
 
 	# Parse virus quarantined by clamav-milter
 	} elsif ($str =~ m#^([^:\s]+): milter=clamav-milter, quarantine=quarantined by clamav-milter#) {
-		$VIRUS{$host}{$1}{virus} = 'Quarantined by clamav-milter';
-		$VIRUS{$host}{$1}{file} = 'Inline';
-		$VIRUS{$host}{$1}{date} = $date . $time;
+		if (!exists $VIRUS{$host}{$1}{virus}) {
+			$VIRUS{$host}{$1}{virus} = 'Quarantined by clamav-milter';
+			$VIRUS{$host}{$1}{file} = 'Inline';
+			$VIRUS{$host}{$1}{date} = $date . $time;
+		} else {
+			$VIRUS{$host}{$1}{virus} .= ' - Quarantined by clamav-milter';
+		}
 
 	# Try to find milter rejection rule (other fields will be overriden by the condition above)
 	} elsif ($str =~ m#^([^:\s]+): milter=([^,]+), action=([^,]+), reject=(\d+ \d+\.\d+\.\d+\s+.*)#) {
