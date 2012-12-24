@@ -3939,12 +3939,13 @@ sub get_reject_detail
 			if ($peri eq 'rule') {
 				next if ($data[2] !~ /$search/);
 			} elsif ($peri eq 'domain') {
-				next if ($data[3] !~ /$search/);
+				next if ( ($data[4] !~ /$search/) && ($data[3] !~ /$search/) );
 			} elsif ($peri eq 'relay') {
 				next if ($data[3] ne $search);
 			} elsif ($peri eq 'status') {
 				next if ($data[-1] !~ /$search/);
 			}
+			$local_stat{$data[1]}{hour} = $data[0] if (!exists $local_stat{$data[1]}{hour});
 			$local_stat{$data[1]}{rule} = $data[2];
 			$local_stat{$data[1]}{sender_relay} = $data[3];
 			if ($#data > 4) {
