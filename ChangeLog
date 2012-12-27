@@ -1,3 +1,39 @@
+2012-12-27 Version 8.6
+
+	- Fix details search of top sender and status in top rejected stats.
+	  Thanks to Arthur Gouros for the report.
+	- Add SKIP_RCPT_RELAY configuration directive to bypass local delivery
+	  messages that double the count of messages. Default is dovecot.
+	  Thanks to Richard Victor Correia for the report.
+	- Change install to copy sendmailanalyzer.conf.sample into the doc/
+	  directory and copy sendmailanalyzer.conf into etc/ if none already
+	  exist. Thanks to Igor Vuk for the report.
+	- Fix search of rejected message on domain. Thanks to Arthur Gouros
+	  for the report.
+	- Fix virus name storage with spamd-milter quarantine detection.
+	  Thanks to Bill V for the report.
+	- Change menu "Rejection & Errors" into "Rejection and Events".
+	- Fix missing system message when it was registered at same time than
+	  a previous one.
+	- Reorder command line option, short before long.
+	- Fix top authid with anonymous TLS SMTP auth.
+	- Add support to syslog high resolution timestamp. Thanks to Richard
+	  Victor Correia for the report.
+	- Replace .orig extension into .sample.
+	- Add anonymous TLS connection established into auth report instead,
+	  of errors/events report. Thanks to Arthur Gouros for the suggestion.
+	- Fix top domain name search in top rejected view. Thanks to Arthur
+	  Gouros for the report.
+	- Change in .spec file to reflect the config file renaming. Thanks to
+	  ivuk fro the patch.
+	- Add missing spamd historical report in sa_cache. Thanks to Bill V
+	  for the report.
+
+UPGRADE: you may reinstall all files and edit your configuration file to add the
+the SKIP_RCPT_RELAY directive and set its value to dovecot if you are using it
+for local delivery.
+
+
 2012-12-16 Version 8.5
 
 	- Fix spam report with spamd and add spamd to the SPAM_TOOLS configuration
