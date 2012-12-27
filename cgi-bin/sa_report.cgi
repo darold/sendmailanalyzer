@@ -3940,6 +3940,8 @@ sub get_reject_detail
 				next if ($data[2] !~ /$search/);
 			} elsif ($peri eq 'domain') {
 				next if ( ($data[4] !~ /$search/) && ($data[3] !~ /$search/) );
+			} elsif ($peri eq 'address') {
+				next if ( ($data[4] !~ /$search/) && ($data[3] !~ /$search/) );
 			} elsif ($peri eq 'relay') {
 				next if ($data[3] ne $search);
 			} elsif ($peri eq 'status') {
