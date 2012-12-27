@@ -5,7 +5,7 @@
 
 Name: %{uname}
 Epoch: 0
-Version: 8.5
+Version: 8.6
 Release: 1%{?dist}
 Summary: Sendmail/Postfix log analyser with graphical reports
 
