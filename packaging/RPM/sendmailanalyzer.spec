@@ -150,7 +150,7 @@ fi
 
 %files
 %defattr(0644,root,root,0755)
-%doc Change* INSTALL README TODO README.RPM %{uname}.conf.sample
+%doc Change* INSTALL README TODO README.RPM
 %attr(0755,root,root) %{_bindir}/%{uname}
 %attr(0755,root,root) %{_bindir}/sa_cache
 %attr(0644,root,root) %{_mandir}/man3/%{uname}.3.gz
