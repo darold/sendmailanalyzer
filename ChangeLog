@@ -1,3 +1,22 @@
+2013-01-05 Version 8.7
+
+	- Fix major bug with new year change when LAST_PARSED has a last line
+	  parsed from December. Thanks to Richard Victor Correia for the report.
+	- Fix the .sample configuration file install in doc/ folder when
+	  building an RPM. Thanks to Igor  Vuk for the patch.
+
+UPGRADE: Only the sendmailanalyzer Perl script and the .spec file have changed.
+If you found the bug about new year change, you have to:
+
+	1) stop sendmailanalyzer if it runs as daemon
+	2) replace the content of the LAST_PARSED file generated into the output
+	   directory with the following:
+		Jan  1 00:00:00 -
+	   note the double space between Jan and the number 1.
+	3) replay all the log file generated from the new year with command:
+		/usr/local/sendmailanalyzer/sendmailanalyzer -f -b -i -l logfile
+	4) if you use the daemon mode, restart sendmailanalyzer.
+
 2012-12-27 Version 8.6
 
 	- Fix details search of top sender and status in top rejected stats.

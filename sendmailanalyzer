@@ -26,7 +26,7 @@ use MIME::Base64;
 use MIME::QuotedPrint;
 
 
-$VERSION     = '8.6';
+$VERSION     = '8.7';
 $AUTHOR = "Gilles Darold <gilles\@darold.net>";
 $COPYRIGHT = "(c) 2002-2013 - Gilles Darold <gilles\@darold.net>";
 

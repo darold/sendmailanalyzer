@@ -20,7 +20,7 @@ use strict qw(vars);
 
 use CGI;
 
-my $VERSION = '8.6';
+my $VERSION = '8.7';
 my $COPYRIGHT = 'Copyright (c) 2002-2013 Gilles Darold - All rights reserved.';
 my $AUTHOR = "Gilles Darold - gilles AT darold DOT net";
 my $DEFAULT_TTFONT = '';
