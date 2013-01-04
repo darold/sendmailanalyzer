@@ -1988,7 +1988,15 @@ sub incremental_check
 	my @old_f = split(/:/, $old_time);
 	my $old_date = 1900+(localtime(time))[5] . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . sprintf("%02d",$old_f[0]) . sprintf("%02d",$old_f[1]) . sprintf("%02d",$old_f[2]);
 
+	if ($old_date > $date) {
+		($old_month,$old_day,$old_time) = split(/\s+/, $old_last_parsed);
+		@old_f = split(/:/, $old_time);
+		$old_date = (1900 + (localtime(time))[5] - 1) . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . sprintf("%02d",$old_f[0]) . sprintf("%02d",$old_f[1]) . sprintf("%02d",$old_f[2]);
+
+	}
+
 	return 1 if ($date > $old_date);
+
 	if ($date == $old_date) {
 		return -1 if ($last_parsed eq $old_last_parsed)
 	}
