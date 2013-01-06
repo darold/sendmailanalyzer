@@ -129,6 +129,9 @@ _EOF3_
     %{buildroot}/%{_sysconfdir}/httpd/conf.d/%{uname}.conf
 %{__install} -D -m 0644 doc/%{uname}.3 \
     %{buildroot}/%{_mandir}/man3/%{uname}.3
+%{__install} -D -m 0644 doc/sa_cache.3 \
+    %{buildroot}/%{_mandir}/man3/sa_cache.3
+%{__install} -D -m 0644 salogo.png \
 %{__install} -D -m 0644 salogo.png \
     %{buildroot}/%{webdir}/salogo.png
 %{__install} -Dpm 0755 start_scripts/sendmailanalyzer %{buildroot}%{_sysconfdir}/rc.d/init.d/sendmailanalyzer
@@ -154,6 +157,7 @@ fi
 %attr(0755,root,root) %{_bindir}/%{uname}
 %attr(0755,root,root) %{_bindir}/sa_cache
 %attr(0644,root,root) %{_mandir}/man3/%{uname}.3.gz
+%attr(0644,root,root) %{_mandir}/man3/sa_cache.3.gz
 %attr(0644,root,root) %{webdir}/salogo.png
 %attr(0755,root,root) %{webdir}/grafit.cgi
 %attr(0755,root,root) %{webdir}/sa_report.cgi
@@ -170,6 +174,12 @@ fi
 %dir %{webdir}
 
 %changelog
+* Sun Jan 06n 2013 Gilles Darold
+- Add man page for sa_cache.
+
+* Mon Dec 31 2012 Igor Vuk
+- Fix the .sample file install in doc folder.
+
 * Wed Dec 24 2012 Gilles Darold
 - Copy sendmailanalyzer.conf in _sysconfdir and sendmailanalyzer.conf.sample
   in _docdir
