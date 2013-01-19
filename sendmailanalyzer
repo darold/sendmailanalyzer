@@ -164,6 +164,8 @@ my $action_int = POSIX::SigAction->new('terminate', $sigset_int, &POSIX::SA_NODE
 POSIX::sigaction(&POSIX::SIGTERM, $action_int);
 
 my $CURRENT_TIME = &format_time(localtime(time));
+my $START_DATE = $CURRENT_TIME;
+my $CURRENT_YEAR = (localtime(time))[5]+1900;
 
 # Run in interactive mode if required
 if ($INTERACTIVE) {
@@ -1979,19 +1981,15 @@ sub incremental_check
 {
 	my ($last_parsed, $old_last_parsed) = @_;
 
+	my ($month,$day,$time,@f) = split(/\D+/, $last_parsed);
+	my $date = $CURRENT_YEAR . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day) . sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
 	
-	my ($month,$day,$time) = split(/\s+/, $last_parsed);
-	my @f = split(/:/, $time);
-	my $date = 1900+(localtime(time))[5] . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day) . sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
-	
-	my ($old_month,$old_day,$old_time) = split(/\s+/, $old_last_parsed);
-	my @old_f = split(/:/, $old_time);
-	my $old_date = 1900+(localtime(time))[5] . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . sprintf("%02d",$old_f[0]) . sprintf("%02d",$old_f[1]) . sprintf("%02d",$old_f[2]);
+	my ($old_month,$old_day,$old_time,@old_f) = split(/\D+/, $old_last_parsed);
+	my $old_date = $CURRENT_YEAR . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . sprintf("%02d",$old_f[0]) . sprintf("%02d",$old_f[1]) . sprintf("%02d",$old_f[2]);
 
 	if ($old_date > $date) {
-		($old_month,$old_day,$old_time) = split(/\s+/, $old_last_parsed);
-		@old_f = split(/:/, $old_time);
-		$old_date = (1900 + (localtime(time))[5] - 1) . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . sprintf("%02d",$old_f[0]) . sprintf("%02d",$old_f[1]) . sprintf("%02d",$old_f[2]);
+		($old_month,$old_day,$old_time,@old_f) = split(/\D+/, $old_last_parsed);
+		$old_date = ($CURRENT_YEAR - 1) . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . sprintf("%02d",$old_f[0]) . sprintf("%02d",$old_f[1]) . sprintf("%02d",$old_f[2]);
 
 	}
 
