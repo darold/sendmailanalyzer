@@ -1,3 +1,17 @@
+2013-01-20 Version 8.8
+
+	- Fix case where log line can appear in the future to sendmailanalyzer
+	  with automatically subtracts one year if sendmailanalyzer detect that
+	  the date is in the future from the time it is run or the date from
+	  the LAST_PARSED file.
+	- Add the -y | --year command line option that can be use to force the
+	  year of the log as syslog doesn't log the year in the date on most
+	  distribution.
+	- sa_report.cgi has also been modified to add default current year in
+	  the select box if not present as it always goes to the current day
+	  by default.
+
+
 2013-01-05 Version 8.7
 
 	- Fix major bug with new year change when LAST_PARSED has a last line
