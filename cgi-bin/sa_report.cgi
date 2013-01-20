@@ -718,13 +718,18 @@ sub year_link
 {
 	my ($hostname, $domain, $curyear) = @_;
 
+	# Look at all years directories in data dir
 	if (not opendir(DIR, "$CONFIG{OUT_DIR}/$hostname")) {
 		&logerror("Can't open directory $CONFIG{OUT_DIR}/$hostname: $!\n");
 		return;
 	}
 	my @dirs = grep { /^\d+$/ && -d "$CONFIG{OUT_DIR}/$hostname/$_" } readdir(DIR);
 	closedir(DIR);
-
+	# Append current year if it is not present
+	my $current_year = (localtime(time))[5]+1900;
+	if (!grep(/$current_year$/, @dirs)) {
+		push(@dirs, $current_year);
+	}
 	my $str = qq{
 <select name="year" onchange="document.location.href='$ENV{SCRIPT_NAME}?host=$hostname&date='+this.options[this.options.selectedIndex].value+'0000'+'&domain=$domain&lang=$LANG&update='+window.frames['info'].document.forms['viewname'].elements['view'].value;">
 };

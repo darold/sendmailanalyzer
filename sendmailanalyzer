@@ -101,6 +101,7 @@ GetOptions (
 	'v|version!' => \$SHOW_VER,
 	'w|write-delay=i' => \$CONFIG{DELAY},
 	'z|zcat=s' => \$CONFIG{ZCAT_PROG},
+	'y|year=s' => \$CONFIG{DEFAULT_YEAR},
 	'spamd=s' => \$CONFIG{SPAMD_NAME},
 );
 
@@ -108,6 +109,11 @@ GetOptions (
 
 # Read configuration file
 &read_config($CONFIG_FILE);
+
+# Checked forced year syntax
+if ($CONFIG{DEFAULT_YEAR} && ($CONFIG{DEFAULT_YEAR} !~ /^\d{4}$/)) {
+	die "FATAL: Default year $CONFIG{DEFAULT_YEAR} should be 4 digits!\n";
+}
 
 # Check if output dir exist and we can write file
 if (!-d $CONFIG{OUT_DIR}) {
@@ -164,8 +170,6 @@ my $action_int = POSIX::SigAction->new('terminate', $sigset_int, &POSIX::SA_NODE
 POSIX::sigaction(&POSIX::SIGTERM, $action_int);
 
 my $CURRENT_TIME = &format_time(localtime(time));
-my $START_DATE = $CURRENT_TIME;
-my $CURRENT_YEAR = (localtime(time))[5]+1900;
 
 # Run in interactive mode if required
 if ($INTERACTIVE) {
@@ -222,6 +226,9 @@ sendmailanalyzer v$VERSION usage:
 -z | --zcat zcat_prog  : path to the zcat command for compressed maillog.
                          Default /usr/bin/zcat.
 -p | --piddir dir      : path where pid file will be stored. Default /var/run/.
+-y | --year 2001       : force the years date part of the log to given value.
+			 Default is current year or previous year if log lines
+			 appear in the future.
 };
 	exit 0;
 }
@@ -239,10 +246,10 @@ sub dprint
 ####
 # Start reading maillog file
 ####
+my $OLD_LAST_PARSED = '';
 sub start_loop
 {
 	if ($CONFIG{FULL}) {
-		my $OLD_LAST_PARSED = '';
 		if (-e "$CONFIG{OUT_DIR}/$LAST_PARSE_FILE") {
 			if ( not open(IN, "$CONFIG{OUT_DIR}/$LAST_PARSE_FILE")) {
 				&logerror("Can't read file $CONFIG{OUT_DIR}/$LAST_PARSE_FILE: $!");
@@ -280,19 +287,21 @@ sub start_loop
 			# Only catch relevant logs
 			if ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\d]+/) {
 				if ($OLD_LAST_PARSED) {
-				      my $ret = incremental_check($LAST_PARSED, $OLD_LAST_PARSED);
-				      $OLD_LAST_PARSED = '' if ($ret != 0);
-				      next if ($ret <= 0);
+					# Line already parsed ? If yes, go to retrieve next log line
+					next if (&incremental_check($LAST_PARSED, $OLD_LAST_PARSED) != 0);
+					# The line have not already been parsed so erase last date
+					# to not go back to this block again
+					$OLD_LAST_PARSED = ''; 
 				}
 				# Extract common fields and store data in memory
 				&store_data(&parse_common_fields(split(/\s+/, $LAST_PARSED)));
-			}
-			# Flush data to disk each 5 seconds ny default
-			my $check_time = &format_time(localtime(time));
-			if ($check_time > $CURRENT_TIME+$CONFIG{DELAY}) {
-				$CURRENT_TIME = $check_time;
-				&dprint("Flushing data to disk...");
-				&flush_data();
+				# Flush data to disk each kind of 5 seconds at least by default
+				my $check_time = &format_time(localtime(time));
+				if ($check_time > $CURRENT_TIME+$CONFIG{DELAY}) {
+					$CURRENT_TIME = $check_time;
+					&dprint("Flushing data to disk...");
+					&flush_data();
+				}
 			}
 		}
 		&dprint("Flushing data to disk...");
@@ -365,9 +374,25 @@ sub parse_common_fields
 		$type = $time;
 		$time = "$4$5$6";
 	} else {
-		$date = 1900+(localtime(time))[5] . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day);
+		my $current_year = 0;
+		if ($CONFIG{DEFAULT_YEAR}) {
+			$current_year = $CONFIG{DEFAULT_YEAR};
+		} else {
+			$current_year = (localtime(time))[5]+1900;
+		}
+		$date = $current_year . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day);
 		my @f = split(/:/, $time);
-		$time = sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
+		$f[0] = sprintf("%02d",$f[0]);
+		$f[1] = sprintf("%02d",$f[1]);
+		$f[2] = sprintf("%02d",$f[2]);
+		$time = "$f[0]$f[1]$f[2]";
+
+		if ("$date$time" > $CURRENT_TIME) {
+			# If log timestamp is in the future, use the given one 
+			if (!$CONFIG{DEFAULT_YEAR}) {
+				$date = ($current_year - 1) . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day);
+			}
+		}
 	}
 	$type =~ s/\://;
 
@@ -1362,7 +1387,10 @@ sub format_time
 {
 	my ($sec,$min,$hour,$mday,$mon,$year) = @_;
 
-	return 1900+$year . sprintf("%02d", $mon+1) . sprintf("%02d", $mday) . sprintf("%02d", $hour) . sprintf("%02d", $min) . sprintf("%02d",$sec);
+	$hour = sprintf("%02d", $hour);
+	$min  = sprintf("%02d", $min);
+	$sec  = sprintf("%02d", $sec);
+	return 1900+$year . sprintf("%02d", $mon+1) . sprintf("%02d", $mday) . "$hour$min$sec";
 }
 
 ####
@@ -1370,6 +1398,9 @@ sub format_time
 ####
 sub flush_data
 {
+	# In incremental mode if there's still no line parsed get out of there
+	return if ($OLD_LAST_PARSED ne '');
+
 	####
 	# Data are saved on disk as follow:
 	# 	$host/$year/$month/$day/filename.dat
@@ -1973,34 +2004,122 @@ sub clear_rejection_status
 
 
 ####
-# Check wether the current parsed line has alread been parsed
-# return 0 in this case, and 1 if not. If timestamp are the same
-# return -1
+# Check wether the current parsed line has alread been parsed.
+# return 1 if timestamp of log line is lower (already parsed)
+# return 0 if timestamp from log is upper (line not already parsed)
 ####
 sub incremental_check
 {
 	my ($last_parsed, $old_last_parsed) = @_;
 
-	my ($month,$day,$time,@f) = split(/\D+/, $last_parsed);
-	my $date = $CURRENT_YEAR . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day) . sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
-	
-	my ($old_month,$old_day,$old_time,@old_f) = split(/\D+/, $old_last_parsed);
-	my $old_date = $CURRENT_YEAR . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . sprintf("%02d",$old_f[0]) . sprintf("%02d",$old_f[1]) . sprintf("%02d",$old_f[2]);
-
-	if ($old_date > $date) {
-		($old_month,$old_day,$old_time,@old_f) = split(/\D+/, $old_last_parsed);
-		$old_date = ($CURRENT_YEAR - 1) . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . sprintf("%02d",$old_f[0]) . sprintf("%02d",$old_f[1]) . sprintf("%02d",$old_f[2]);
-
+	my $current_year = 0;
+	if ($CONFIG{DEFAULT_YEAR}) {
+		$current_year = $CONFIG{DEFAULT_YEAR}
+	} else {
+		$current_year = (localtime(time))[5]+1900;
 	}
 
-	return 1 if ($date > $old_date);
+	# set year date part of the current last parsed line from log file
+	my ($month,$day,@f) = split(/[\s\:]+/, $last_parsed, 5);
+	$f[0] = sprintf("%02d",$f[0]);
+	$f[1] = sprintf("%02d",$f[1]);
+	$f[2] = sprintf("%02d",$f[2]);
+	my $log_date = $current_year . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day) . "$f[0]$f[1]$f[2]";
 
-	if ($date == $old_date) {
-		return -1 if ($last_parsed eq $old_last_parsed)
+	# set year part of the last date from previous run stored in LAST_PARSED file
+	my ($old_month,$old_day,@old_f) = split(/[\s\:]+/, $old_last_parsed, 5);
+	$old_f[0] = sprintf("%02d",$old_f[0]);
+	$old_f[1] = sprintf("%02d",$old_f[1]);
+	$old_f[2] = sprintf("%02d",$old_f[2]);
+	my $old_date = $current_year . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . "$old_f[0]$old_f[1]$old_f[2]";
+
+	# Assume that date in the future are in fact logs from previous year so
+	# substract one year to datetime or use the one given at command line.
+	if (!$CONFIG{DEFAULT_YEAR}) {
+		$current_year -= 1;
 	}
-	
+	if ($log_date > $CURRENT_TIME) {
+		$log_date =~ s/^\d{4}//;
+		$log_date = $current_year . $log_date;
+	}
+	if ($old_date > $CURRENT_TIME) {
+		$old_date =~ s/^\d{4}//;
+		$old_date = $current_year . $old_date;
+	}
+
+	# The current line has already been parsed. You can not parse data that
+	# are older than the last run of sendmailanalyzer
+	return 1 if ($log_date < $old_date);
+
 	return 0;
 }
+
+####
+# Check wether the current parsed line has alread been parsed
+# return 0 in this case, and 1 if not. If timestamp are the same
+# return -1
+####
+#sub incremental_check2
+#{
+#	my ($last_parsed, $old_last_parsed) = @_;
+#
+#	# set year date part of the current last parsed line from log file
+#	my ($month,$day,$time,@f) = split(/[\s\:]+/, $last_parsed);
+#
+#	my $date = $CURRENT_YEAR . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day) . sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
+#
+#	# set year part of the last date from previous run stored in LAST_PARSED file
+#	my ($old_month,$old_day,$old_time,@old_f) = split(/[\s\:]+/, $old_last_parsed);
+#	my $old_date = $CURRENT_YEAR . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . sprintf("%02d",$old_f[0]) . sprintf("%02d",$old_f[1]) . sprintf("%02d",$old_f[2]);
+#	
+#	# The current line has already been parsed. You can not parse data that
+#	# are older than the last run of sendmailanalyzer
+#	return -1 if ($date > $old_date);
+#
+#	# Case of the December-Last-Parse-Case: in this case, $date is
+#	# always upper than $old_date so that all next lines are not parsed.
+#	#
+#	# If date from log is greater than the current timestamp + 1 day
+#	# assume that the log is comming from past year. The one day more
+#	# is to add time offset margin.
+#	my $compare_time = &format_time(localtime(time+86400));
+#	if ($date > $compare_time) {
+#		# Set timestamp from log dated back one year
+#		($month,$day,$time,@f) = split(/[\s\:]+/, $last_parsed);
+#		$date = ($CURRENT_YEAR - 1) . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day) . sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
+#	}
+#	# Date from previous run stored in LAST_PARSED file is January
+#	# but logs still have log line from December and a full parsing is
+#	# run again. Let's says that if date from log is upper that the
+#	# script start date + one day, this is a date in the past.
+#	if (($date > $old_date) && ($date > $CURRENT_TIME)) {
+#		# Set timestamp from log dated back one year
+#		($month,$day,$time,@f) = split(/[\s\:]+/, $last_parsed);
+#		$date = ($CURRENT_YEAR - 1) . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day) . sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
+#	}
+#	# Now, if date from the previous run stored in the LAST_PARSED file
+#	# is upper than the date of the current parsed line this means that
+#	# the year have changed so let's remove one year from the this date.
+#	if ($old_date > $date) {
+#print STDERR "ZZZZZZZZZ $old_date > $date\n";
+#		# Set timestamp from LAST_PARSE file dated back one year
+#		($old_month,$old_day,$old_time,@old_f) = split(/[\s\:]+/, $old_last_parsed);
+#		$old_date = ($CURRENT_YEAR - 1) . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . sprintf("%02d",$old_f[0]) . sprintf("%02d",$old_f[1]) . sprintf("%02d",$old_f[2]);
+#	}
+#	
+#	# The current line has already been parsed. You can not parse data that
+#	# are older than the last run of sendmailanalyzer
+#	return 1 if ($date < $old_date);
+#
+#	# When date are the same, try to find the exact matching line.
+#	# If we can't reach an exact match, previous condition will match at end.
+#	if ($date == $old_date) {
+#		return -1 if ($last_parsed eq $old_last_parsed)
+#	}
+#	
+#	return 0;
+#}
+
 
 # Generate a unique identifier
 sub get_uniqueid
