@@ -204,31 +204,31 @@ sub usage
 	print STDERR qq{
 sendmailanalyzer v$VERSION usage:
 
+-a | --args "tail_args": tail command line arguments. Default "-n 0 -f".
+-b | --break           : do not run tail after parsing full maillog and exit.
 -c | --config file     : path to configuration file. Default is to read it from
                          /etc/sendmailanalyzer.conf.
 -d | --debug           : turn on debug mode.
+-f | --full            : parse full maillog and compute stat. Default is to read
+			 LAST_PARSED file to start from last collected event.
 -h | --help            : show this short help and exit.
--v | --version         : show version and exit
 -i | --interactive     : run in interactive mode useful if you want day to day
                        : report. Default is daemon mode, real time statistics.
 -l | --log file        : path to maillog file. Default is /var/log/maillog.
+-m | --mailscanner name: syslog MailScanner program name. Default Mailscanner.
 -o | --output dir      : path to the output directory where data file will be
                          written. Default /var/www/htdocs.
--t | --tail tail_prog  : path to the tail system command. Default /usr/bin/tail.
--a | --args "tail_args": tail command line arguments. Default "-n 0 -f".
+-p | --piddir dir      : path where pid file will be stored. Default /var/run/.
 -s | --sendmail name   : syslog sendmail program name. Default sm-mta|sendmail.
--m | --mailscanner name: syslog MailScanner program name. Default Mailscanner.
--f | --full            : parse full maillog and compute stat. Default is to read
-			 LAST_PARSED file to start from last collected event.
--b | --break           : do not run tail after parsing full maillog and exit.
+-t | --tail tail_prog  : path to the tail system command. Default /usr/bin/tail.
+-v | --version         : show version and exit
 -w | --write-delay sec : memory storage delay in second before saving data
                          to disk. Default: 60 secondes.
--z | --zcat zcat_prog  : path to the zcat command for compressed maillog.
-                         Default /usr/bin/zcat.
--p | --piddir dir      : path where pid file will be stored. Default /var/run/.
 -y | --year 2001       : force the years date part of the log to given value.
 			 Default is current year or previous year if log lines
 			 appear in the future.
+-z | --zcat zcat_prog  : path to the zcat command for compressed maillog.
+                         Default /usr/bin/zcat.
 };
 	exit 0;
 }
@@ -2053,73 +2053,6 @@ sub incremental_check
 
 	return 0;
 }
-
-####
-# Check wether the current parsed line has alread been parsed
-# return 0 in this case, and 1 if not. If timestamp are the same
-# return -1
-####
-#sub incremental_check2
-#{
-#	my ($last_parsed, $old_last_parsed) = @_;
-#
-#	# set year date part of the current last parsed line from log file
-#	my ($month,$day,$time,@f) = split(/[\s\:]+/, $last_parsed);
-#
-#	my $date = $CURRENT_YEAR . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day) . sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
-#
-#	# set year part of the last date from previous run stored in LAST_PARSED file
-#	my ($old_month,$old_day,$old_time,@old_f) = split(/[\s\:]+/, $old_last_parsed);
-#	my $old_date = $CURRENT_YEAR . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . sprintf("%02d",$old_f[0]) . sprintf("%02d",$old_f[1]) . sprintf("%02d",$old_f[2]);
-#	
-#	# The current line has already been parsed. You can not parse data that
-#	# are older than the last run of sendmailanalyzer
-#	return -1 if ($date > $old_date);
-#
-#	# Case of the December-Last-Parse-Case: in this case, $date is
-#	# always upper than $old_date so that all next lines are not parsed.
-#	#
-#	# If date from log is greater than the current timestamp + 1 day
-#	# assume that the log is comming from past year. The one day more
-#	# is to add time offset margin.
-#	my $compare_time = &format_time(localtime(time+86400));
-#	if ($date > $compare_time) {
-#		# Set timestamp from log dated back one year
-#		($month,$day,$time,@f) = split(/[\s\:]+/, $last_parsed);
-#		$date = ($CURRENT_YEAR - 1) . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day) . sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
-#	}
-#	# Date from previous run stored in LAST_PARSED file is January
-#	# but logs still have log line from December and a full parsing is
-#	# run again. Let's says that if date from log is upper that the
-#	# script start date + one day, this is a date in the past.
-#	if (($date > $old_date) && ($date > $CURRENT_TIME)) {
-#		# Set timestamp from log dated back one year
-#		($month,$day,$time,@f) = split(/[\s\:]+/, $last_parsed);
-#		$date = ($CURRENT_YEAR - 1) . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day) . sprintf("%02d",$f[0]) . sprintf("%02d",$f[1]) . sprintf("%02d",$f[2]);
-#	}
-#	# Now, if date from the previous run stored in the LAST_PARSED file
-#	# is upper than the date of the current parsed line this means that
-#	# the year have changed so let's remove one year from the this date.
-#	if ($old_date > $date) {
-#print STDERR "ZZZZZZZZZ $old_date > $date\n";
-#		# Set timestamp from LAST_PARSE file dated back one year
-#		($old_month,$old_day,$old_time,@old_f) = split(/[\s\:]+/, $old_last_parsed);
-#		$old_date = ($CURRENT_YEAR - 1) . $MONTH_TO_NUM{"$old_month"} . sprintf("%02d",$old_day) . sprintf("%02d",$old_f[0]) . sprintf("%02d",$old_f[1]) . sprintf("%02d",$old_f[2]);
-#	}
-#	
-#	# The current line has already been parsed. You can not parse data that
-#	# are older than the last run of sendmailanalyzer
-#	return 1 if ($date < $old_date);
-#
-#	# When date are the same, try to find the exact matching line.
-#	# If we can't reach an exact match, previous condition will match at end.
-#	if ($date == $old_date) {
-#		return -1 if ($last_parsed eq $old_last_parsed)
-#	}
-#	
-#	return 0;
-#}
-
 
 # Generate a unique identifier
 sub get_uniqueid
