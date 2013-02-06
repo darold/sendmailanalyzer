@@ -203,6 +203,7 @@ sub read_config
 	$CONFIG{TOP} ||= 25;
 	$CONFIG{MAIL_HUB} ||= '';
 	$CONFIG{MAIL_GW} ||= '';
+	$CONFIG{PID_DIR} ||= $CONFIG{PID_FILE};
 	$CONFIG{LANG} ||= 'lang/en_US';
 	if (!exists $CONFIG{SPAM_DETAIL}) {
 		$CONFIG{SPAM_DETAIL} = 1;

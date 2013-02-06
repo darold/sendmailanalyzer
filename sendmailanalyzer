@@ -1864,6 +1864,7 @@ sub read_config
 	$CONFIG{TAIL_PROG} ||= '/usr/bin/tail';
 	$CONFIG{TAIL_ARGS} ||= '-n 0 -f';
 	$CONFIG{OUT_DIR} ||= '/var/www/sendmailanalyzer';
+	$CONFIG{PID_DIR} ||= $CONFIG{PID_FILE};
 	$CONFIG{DEBUG} ||= 0;
 	$CONFIG{FULL} ||= 0;
 	$CONFIG{BREAK} ||= 0;

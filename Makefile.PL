@@ -51,7 +51,7 @@ unless(open(OUTCFG, ">sendmailanalyzer.conf")) {
 LOG_FILE	$LOGFILE
 
 # Path to store the pid file (sendmailanalyzer.pid).
-PID_FILE	$PIDDIR
+PID_DIR		$PIDDIR
 
 # Path to the system tail command.
 # Can be overwritten with --tail or -t
