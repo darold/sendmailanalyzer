@@ -1147,10 +1147,11 @@ sub parse_mailscanner
 		$VIRUS{$host}{$1}{file} = 'message';
 		$VIRUS{$host}{$1}{virus} = $2;
 		$VIRUS{$host}{$1}{date} = $date . $time;
-	} elsif ($str =~ /\/([^\/]+)\/([^\/]+): ([^\s]+) FOUND/) {
-		$VIRUS{$host}{$1}{file} = $2;
-		$VIRUS{$host}{$1}{virus} = $3;
-		$VIRUS{$host}{$1}{date} = $date . $time;
+# Revove this part as it is duplicating virus report
+#	} elsif ($str =~ /\/([^\/]+)\/([^\/]+): ([^\s]+) FOUND/) {
+#		$VIRUS{$host}{$q}{file} = $2;
+#		$VIRUS{$host}{$q}{virus} = $3;
+#		$VIRUS{$host}{$q}{date} = $date . $time;
 	}
 }
 
