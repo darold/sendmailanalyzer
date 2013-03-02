@@ -37,12 +37,9 @@ POSTFIX SUPPORT
     the Postfix MTA, Since release v7.0 SendmailAnalyzer now also support
     the Postfix mail.log statistics report.
 
-    This is a work in progress and for now you may want to disable spam,
-    virus and notification menu link to limit the "No record for this
-    period" screen.
-
-    Note that I don't run Postfix so I need your help to handle more
-    statistical report.
+    Postfix is now fully supported, if you have any issue or unsupported
+    feature please let me know. Note that as I don't use postfix I may ask
+    you for log file to reproduce some issues or develop features.
 
 FEATURES
     It reports all you ever wanted to know about email trafic on your
