@@ -1183,13 +1183,15 @@ sub parse_amavis
 		if (!exists $FROM{$host}{$id}{from}) {
 			$FROM{$host}{$id}{from} = $sender;
 			$FROM{$host}{$id}{date} = $date . $time;
-			push(@{$TO{$host}{$id}{queue_date}}, $date . $time);
-			push(@{$TO{$host}{$id}{queue_to}}, $to);
 			if ($str =~ /size: (\d+)/) {
 				$FROM{$host}{$id}{size} = $1;
 			}
 			$FROM{$host}{$id}{nrcpts} = 1;
 			$FROM{$host}{$id}{relay} = &clean_relay($relay);
+		}
+		if (!exists $FROM{$host}{$id}{queue_to}) {
+			push(@{$TO{$host}{$id}{queue_date}}, $date . $time);
+			push(@{$TO{$host}{$id}{queue_to}}, $to);
 		}
 		if ($CONFIG{SPAM_DETAIL}) {
 			if (exists $SPAMDETAIL{$host}{$pid}) {
@@ -1216,13 +1218,15 @@ sub parse_amavis
 		if (!exists $FROM{$host}{$id}{from}) {
 			$FROM{$host}{$id}{from} = $from;
 			$FROM{$host}{$id}{date} = $date . $time;
-			push(@{$TO{$host}{$id}{queue_date}}, $date . $time);
-			push(@{$TO{$host}{$id}{queue_to}}, $to);
 			if ($str =~ /size: (\d+)/) {
 				$FROM{$host}{$id}{size} = $1;
 			}
 			$FROM{$host}{$id}{nrcpts} = 1;
 			$FROM{$host}{$id}{relay} = &clean_relay($relay);
+		}
+		if (!exists $FROM{$host}{$id}{queue_to}) {
+			push(@{$TO{$host}{$id}{queue_date}}, $date . $time);
+			push(@{$TO{$host}{$id}{queue_to}}, $to);
 		}
 	}
 
