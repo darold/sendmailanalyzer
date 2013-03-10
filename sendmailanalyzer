@@ -1208,7 +1208,6 @@ sub parse_amavis
 		if ($queue_id =~ /Queue-ID: ([^,]+),/) {
 			$id = $1;
 		}
-print STDERR "AAAAAAAAAAAAAAAAAA $id => $virus : $from -> $to\n";
 		$VIRUS{$host}{$id}{file} = 'Inline';
 		$VIRUS{$host}{$id}{virus} = $virus;
 		$VIRUS{$host}{$id}{from} = $from;
@@ -1244,7 +1243,6 @@ print STDERR "AAAAAAAAAAAAAAAAAA $id => $virus : $from -> $to\n";
 			$SPAMDETAIL{$host}{$id}{spam} = $spam;
 			$SPAMDETAIL{$host}{$id}{autolearn} = $autolearn;
 			($SPAMDETAIL{$host}{$id}{from}, $SPAMDETAIL{$host}{$id}{to}) = split(/ -> /, $from_to);
-print STDERR "BBBBBBBBBBBB $id => $SPAMDETAIL{$host}{$id}{from}, $SPAMDETAIL{$host}{$id}{to}\n";
 		} elsif ($str =~ /\(([^\)]+)\) SPAM, (.*), Yes, score=([^\s]+).* tests=(.*)/) {
 			my $from_to = $2;
 			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
