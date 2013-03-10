@@ -1027,7 +1027,7 @@ sub show_stats
 				# Get sender statistics
 				&get_sender_stat($hostname,$year,$m,$d,$mon,$mday,$hour);
 				# Get recipient statistics and delivery status
-				&get_recipient_stat($hostname,$year,$m,$d,$mon,$mday,$hour);
+				&get_recipient_stat($hostname,$year,$m,$d,$mon,$mday,$hour, 1);
 				# Get virus statistics
 				&get_virus_stat($hostname,$year,$m,$d,$mon,$mday,$hour);
 			} elsif ($type eq 'topdsn') {
@@ -1177,9 +1177,10 @@ sub get_sender_stat
 ####
 sub get_recipient_stat
 {
-	my ($hostname, $year, $month, $day, $mon, $mday, $hour) = @_;
+	my ($hostname, $year, $month, $day, $mon, $mday, $hour, $enable_queued) = @_;
 
 	my $file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/recipient.dat";
+
 	open(IN, $file) || return;
 	while (my $l = <IN>) { 
 		chomp($l);
@@ -1204,6 +1205,34 @@ sub get_recipient_stat
 		$STATS{$data[1]}{idx_rcpt} = "$idx";
 	}
 	close(IN);
+
+	if ($enable_queued) {
+		open(IN, $file) || return;
+		while (my $l = <IN>) { 
+			chomp($l);
+			# Format: Hour:Id:recipient:Relay:Status
+			my @data = split(/:/, $l);
+			$data[0] =~ /^(\d{2})/;
+			next if (($hour ne '') && ($1 != $hour));
+			next if (exists $STATS{$data[1]}{rcpt} || ($data[4] !~ /Queued/));
+			push(@{$STATS{$data[1]}{rcpt}}, $data[2]);
+			push(@{$STATS{$data[1]}{rcpt_relay}}, $data[3]);
+			push(@{$STATS{$data[1]}{status}}, $data[4]);
+			my $idx = $month;
+			if ($hour ne '') {
+				$data[0] =~ /(\d{2})\d{2}$/;
+				$idx = sprintf("%02d", $1);
+			} elsif ($mday ne '00') {
+				$data[0] =~ s/\d{4}$//;
+				$idx = sprintf("%02d", $data[0]);
+			} elsif ($mon ne '00') {
+				$idx = $day;
+			}
+			$STATS{$data[1]}{idx_rcpt} = "$idx";
+		}
+		close(IN);
+	}
+
 }
 
 ####
