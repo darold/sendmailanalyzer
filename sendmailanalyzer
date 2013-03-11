@@ -453,6 +453,9 @@ sub parse_sendmail
 	# POSTFIX temporary blacklist/whitelist messsage
 	} elsif ($str =~ m#^(PASS OLD|PASS NEW|WHITELISTED|BLACKLISTED)#i) {
 		return;
+	# POSTFIX: Skip postscreen messages
+	} elsif ($str =~ m#^(WHITELIST VETO|BARE NEWLINE)#i) {
+		return;
 	# POSTFIX pregreet test
 	} elsif ($str =~ m#^(PREGREET|HANGUP)#i) {
 		return;
