@@ -89,10 +89,10 @@ select { font-size:8pt; height: 15px; color: #4179a1; border:1px solid #f0f0f0;}
 #report a:link { color: #4179a1; }
 #report a:hover { color: #ffffff; background-color: #CC6600; }
 td {padding:0px;font-family:sans-serif;font-size:8pt;color:#000000;background-color:#f0f0f0;}
-.tdtop {padding:2px;font-family:sans-serif;font-size:8pt; font-weight: bold; color:#4179a1;background-color:#ffffff; border: 1px solid #4179a1;}
-.tdtopn {padding:2px;font-family:sans-serif;font-size:8pt; font-weight: normal; color:#4179a1;background-color:#ffffff; border: 1px solid #4179a1; text-align: left;}
-.tdtopnr {padding:2px;font-family:sans-serif;font-size:8pt; font-weight: normal; color:#4179a1;background-color:#ffffff; border: 1px solid #4179a1; text-align: right;}
-.tdtopnc {padding:2px;font-family:sans-serif;font-size:8pt; font-weight: normal; color:#4179a1;background-color:#ffffff; border: 1px solid #4179a1; text-align: center;}
+.tdtop {vertical-align: top; padding:2px;font-family:sans-serif;font-size:8pt; font-weight: bold; color:#4179a1;background-color:#ffffff; border: 1px solid #4179a1;}
+.tdtopn {vertical-align: top; padding:2px;font-family:sans-serif;font-size:8pt; font-weight: normal; color:#4179a1;background-color:#ffffff; border: 1px solid #4179a1; text-align: left;}
+.tdtopnr {vertical-align: top; padding:2px;font-family:sans-serif;font-size:8pt; font-weight: normal; color:#4179a1;background-color:#ffffff; border: 1px solid #4179a1; text-align: right;}
+.tdtopnc {vertical-align: top; padding:2px;font-family:sans-serif;font-size:8pt; font-weight: normal; color:#4179a1;background-color:#ffffff; border: 1px solid #4179a1; text-align: center;}
 th {padding:0px;font-family:sans-serif;font-size:8pt;color:#ffffff;background-color:#4179a1; border: solid thin #4179a1;}
 .thhead2 {padding:0px;font-family:sans-serif;font-size:12pt;color:#CC6600;background-color:#ffffff; border: solid thin #4179a1; text-align: center;}
 .thhead {padding:0px;font-family:sans-serif;font-size:10pt;color:#ffffff;background-color:#4179a1; border: solid thin #4179a1; text-align: center;}
