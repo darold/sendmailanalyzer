@@ -3352,6 +3352,7 @@ sub compute_top_spamdetail
 
 	foreach my $id (keys %STATS) {
 		next if ($DOMAIN && ($STATS{$id}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS{$id}{rcpt}}));
+		$STATS{$id}{spam} =~ s/;.*// if ($type eq 'dnsbl');
 		$topspamdetail{$type}{score}{$STATS{$id}{score}}++ if ($STATS{$id}{score});
 		$topspamdetail{$type}{rule}{$STATS{$id}{spam}}++;
 		$topspamdetail{$type}{cache}{$STATS{$id}{cache}}++ if ($STATS{$id}{cache});
