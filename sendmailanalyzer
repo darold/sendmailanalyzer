@@ -282,6 +282,7 @@ sub start_loop
 			chomp($l);
 			$l =~ s/[\[\]\\]//g;
 			$l =~ s/ ID \d+ mail.\w//;
+			next if ($l =~ /policy-spf/);
 			$LAST_PARSED = $l;
 			$l = '';
 			# Only catch relevant logs
@@ -338,6 +339,7 @@ sub start_loop
 		chomp($l);
 		$l =~ s/[\[\]\\]//g;
 		$l =~ s/ ID \d+ mail.\w//;
+		next if ($l =~ /policy-spf/);
 		$LAST_PARSED = $l;
 		$l = '';
 		# Only catch relevant logs
@@ -365,7 +367,6 @@ sub parse_common_fields
 	my ($month,$day,$time,$host,$type,@other) = @_;
 	
 	my $date = '';
-
 	if ($month =~ /(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)/) {
 		$date = "$1$2$3";
 		unshift(@other, $type);
@@ -461,6 +462,12 @@ sub parse_sendmail
 		return;
 	# POSTFIX dnsbl message
 	} elsif ($str =~ m#^DNSBL rank#i) {
+		return;
+	# Debug and info messages from POSTFIX
+	} elsif  ($str =~ /^(DEBUG|INFO) /) {
+		return;
+	# POSFIX TLS connexion
+	} elsif  ($str =~ /(connect from|setting up TLS connection from)/) {
 		return;
 	# POSTFIX dnsbl message ???
 	} elsif ($str =~ m#addr \d+\.\d+\.\d+\.\d+ listed#i) {
