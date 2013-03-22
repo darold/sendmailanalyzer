@@ -594,7 +594,10 @@ CONFIGURATION
         to use Arial.
 
     URL_LOGO
-        Url to the barorng image. Default: /salogo.gif
+        Url to the barorng image. Default: salogo.gif
+
+    URL_JSCRIPT
+        Url to the flotr2 javascript library. Default: flotr2.js
 
     TOP Number of object displayed in the top statistics. Default is 25.
 

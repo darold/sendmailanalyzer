@@ -729,7 +729,11 @@ to use Arial.
 
 =item URL_LOGO
 
-Url to the barorng image. Default: /salogo.gif
+Url to the barorng image. Default: salogo.gif
+
+=item URL_JSCRIPT
+
+Url to the flotr2 javascript library. Default: flotr2.js
 
 =item TOP
 
