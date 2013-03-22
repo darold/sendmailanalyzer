@@ -664,7 +664,7 @@ sub parse_sendmail
 			$t = &edecode($t);
 			return if ($t eq 'more');
 			push(@{$TO{$host}{$id}{date}}, $date . $time);
-			push(@{$TO{$host}{$id}{relay}}, 'localhost');
+			push(@{$TO{$host}{$id}{relay}}, $relay);
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
 		}
@@ -685,7 +685,7 @@ sub parse_sendmail
 			$t = &edecode($t);
 			return if ($t eq 'more');
 			push(@{$TO{$host}{$id}{date}}, $date . $time);
-			push(@{$TO{$host}{$id}{relay}}, 'localhost');
+			push(@{$TO{$host}{$id}{relay}}, $relay);
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
 		}
