@@ -654,8 +654,6 @@ sub parse_sendmail
 		my $to = &edecode($2);
 		my $relay = &clean_relay($3);
 		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
-			delete $TO{$host}{$id};
-			delete $FROM{$host}{$id};
 			return;
 		}
 		my $status = &clear_status($4);
@@ -677,8 +675,6 @@ sub parse_sendmail
 		my $to = &edecode($2);
 		my $relay = &clean_relay($4);
 		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
-			delete $TO{$host}{$id};
-			delete $FROM{$host}{$id};
 			return;
 		}
 		my $status = &clear_status($5);
@@ -747,8 +743,6 @@ sub parse_sendmail
 		my $ctladdr = &edecode($3);
 		my $relay = &clean_relay($4);
 		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
-			delete $TO{$host}{$id};
-			delete $FROM{$host}{$id};
 			return;
 		}
 		my $status = &clear_status($5);
@@ -798,8 +792,6 @@ sub parse_sendmail
 		my $relay = &clean_relay(lc($3));
 		my $status = &clear_status($4);
 		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
-			delete $TO{$host}{$id};
-			delete $FROM{$host}{$id};
 			return;
 		}
 		delete $TO{$host}{$id}{queue_date};
