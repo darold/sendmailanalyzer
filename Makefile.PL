@@ -163,8 +163,11 @@ MAX_LINE	100
 #DOMAIN_USER	user1	domain1.com,domain3.com
 #DOMAIN_USER	user2	domain2.com,...
 
-# Path to the Sendmail.org logo
+# Path to the Sendmail.org logo. Default current directory
 URL_LOGO	salogo.png
+
+# Path to the flotr2 javascript library. Default current directory
+URL_JSCRIPT	flotr2.js
 
 # Syslog name of Amavis. Syslog write it to maillog with the pid as follow:
 # ... amavis[1234] ... This is required to only parse relevant logged lines
@@ -302,6 +305,7 @@ install -m 755 cgi-bin/sa_report.cgi $DESTDIR$HTMLDIR/
 install -m 755 cgi-bin/grafit.cgi $DESTDIR$HTMLDIR/
 install -m 644 cgi-bin/lang/* $DESTDIR$HTMLDIR/lang/
 install -m 644 salogo.png $DESTDIR$HTMLDIR/
+install -m 644 flotr2.js $DESTDIR$HTMLDIR/
 pod2man doc/sendmailanalyzer.pod doc/sendmailanalyzer.3
 pod2man doc/sa_cache.pod doc/sa_cache.3
 install -m 644 doc/sendmailanalyzer.3 $DESTDIR$MANDIR/
