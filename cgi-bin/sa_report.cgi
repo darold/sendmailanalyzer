@@ -1872,8 +1872,12 @@ sub display_messageflow
 <tr><td class="tdtop">$TRANSLATE{'Outgoing'}</td><td class="tdtopnr">$messaging{outbound}</td><td class="tdtopnr">$messaging{outbound_bytes}</td><td class="tdtopnr">$messaging{outbound_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Local delivery'}</td><td class="tdtopnr">$messaging{local_outbound}</td><td class="tdtopnr">$messaging{local_outbound_bytes}</td><td class="tdtopnr">$messaging{local_outbound_mean}</td></tr>
 <tr><th>$TRANSLATE{'Total outgoing'}</th><th align="right">$messaging{total_outbound}</th><th align="right">$messaging{total_outbound_bytes}</th><th align="right">$messaging{total_outbound_mean}</th></tr>
-<tr><td colspan="4" align="center"><img src=\"grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$messaging{lbls}&values=$messaging{values}&values1=$messaging{values1}&legend=$TRANSLATE{'Inbound'}&legend1=$TRANSLATE{'Outbound'}&title=$TRANSLATE{'Messaging%20Flow'}&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20message'}\"></td></tr>
-<tr><td colspan="4" align="center"><img src=\"grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$messaging{lbls}&values=$messaging{values_bytes}&values1=$messaging{values1_bytes}&legend=$TRANSLATE{'Inbound'}&legend1=$TRANSLATE{'Outbound'}&title=$TRANSLATE{'Messaging%20Size%20Flow'}&width=400&height=227&x_label=$x_label&y_label=$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})\"></td>
+<tr><td colspan="4" align="center">
+<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$messaging{lbls}&values=$messaging{values}&values1=$messaging{values1}&legend=$TRANSLATE{'Inbound'}&legend1=$TRANSLATE{'Outbound'}&title=$TRANSLATE{'Messaging%20Flow'}&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20message'}">
+</td></tr>
+<tr><td colspan="4" align="center">
+<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$messaging{lbls}&values=$messaging{values_bytes}&values1=$messaging{values1_bytes}&legend=$TRANSLATE{'Inbound'}&legend1=$TRANSLATE{'Outbound'}&title=$TRANSLATE{'Messaging%20Size%20Flow'}&width=400&height=227&x_label=$x_label&y_label=$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})">
+</td>
 </tr>
 </table>
 
@@ -1919,7 +1923,9 @@ sub display_messageflow
 <tr><td class="tdtop" nowrap="1">$TRANSLATE{'Internal -> Internal'}</td><td class="tdtopnr">$delivery{'Int_Int'}</td><td class="tdtopnr">$delivery{'Int_Int_bytes'}</td><td class="tdtopnr">$delivery{'Int_Int_percent'} %</td></tr>
 <tr><td class="tdtop" nowrap="1">$TRANSLATE{'Internal -> Internet'}</td><td class="tdtopnr">$delivery{'Int_Ext'}</td><td class="tdtopnr">$delivery{'Int_Ext_bytes'}</td><td class="tdtopnr">$delivery{'Int_Ext_percent'} %</td></tr>
 <tr><td colspan="4">&nbsp;</td></tr>
-<tr><td colspan="4" align="center"><img src=\"grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$delivery{lbls}&values=$delivery{vals}&title=$TRANSLATE{'Delivery%20Direction'}&width=300&height=200&x_label=$TRANSLATE{'Direction'}&y_label=$TRANSLATE{'Percentage%20of%20message'}&vertical=1&show_values=1\"></td></tr>
+<tr><td colspan="4" align="center">
+<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$delivery{lbls}&values=$delivery{vals}&title=$TRANSLATE{'Delivery%20Direction'}&width=300&height=200&x_label=$TRANSLATE{'Direction'}&y_label=$TRANSLATE{'Percentage%20of%20message'}&vertical=1&show_values=1">
+</td></tr>
 <tr><td colspan="4">&nbsp;</td></tr>
 };
 	} else {
@@ -2064,7 +2070,9 @@ sub display_spamflow
 <tr><td class="tdtop">$TRANSLATE{'Outgoing'}</td><td class="tdtopnr">$spam{outbound}</td><td class="tdtopnr">$spam{outbound_bytes}</td><td class="tdtopnr">$spam{outbound_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Local delivery'}</td><td class="tdtopnr">$spam{local_outbound}</td><td class="tdtopnr">$spam{local_outbound_bytes}</td><td class="tdtopnr">$spam{local_outbound_mean}</td></tr>
 <tr><th>$TRANSLATE{'Total outgoing'}</th><th align="right">$spam{total_outbound}</th><th align="right">$spam{total_outbound_bytes}</th><th align="right">$spam{total_outbound_mean}</th></tr>
-<tr><td colspan="4" align="center"><img src=\"grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$spam{lbls}&values=$spam{values}&title=$TRANSLATE{'Spamming%20Flow'}&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20spam'}\"></td></tr>
+<tr><td colspan="4" align="center">
+<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$spam{lbls}&values=$spam{values}&title=$TRANSLATE{'Spamming%20Flow'}&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20spam'}">
+</td></tr>
 };
 	if ($CONFIG{SHOW_DIRECTION}) {
 		print qq{
@@ -2202,7 +2210,9 @@ sub display_virusflow
 <tr><td class="tdtop">$TRANSLATE{'Outgoing'}</td><td class="tdtopnr">$virus{outbound}</td><td class="tdtopnr">$virus{outbound_bytes}</td><td class="tdtopnr">$virus{outbound_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Local delivery'}</td><td class="tdtopnr">$virus{local_outbound}</td><td class="tdtopnr">$virus{local_outbound_bytes}</td><td class="tdtopnr">$virus{local_outbound_mean}</td></tr>
 <tr><th>$TRANSLATE{'Total outgoing'}</th><th align="right">$virus{total_outbound}</th><th align="right">$virus{total_outbound_bytes}</th><th align="right">$virus{total_outbound_mean}</th></tr>
-<tr><td colspan="4" align="center"><img src=\"grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$virus{lbls}&values=$virus{values}&title=$TRANSLATE{'Viruses%20Flow'}&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20virus'}\"></td></tr>
+<tr><td colspan="4" align="center">
+<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$virus{lbls}&values=$virus{values}&title=$TRANSLATE{'Viruses%20Flow'}&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20virus'}">
+</td></tr>
 };
 	if ($CONFIG{SHOW_DIRECTION}) {
 		print qq{
@@ -2298,7 +2308,9 @@ sub display_dsnflow
 <tr><td class="tdtop">$TRANSLATE{'Outgoing'}</td><td class="tdtopnr">$dsn{total_outbound}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'In Error'}</td><td class="tdtopnr">$dsn{error}</td></tr>
 <tr><th>$TRANSLATE{'Total'}</th><th align="right">$total_dsn</th></tr>
-<tr><td colspan="2" align="center"><img src=\"grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$dsn{lbls}&values=$dsn{values}&title=$TRANSLATE{'DSN%20Flow'}&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20dsn'}\"></td></tr>
+<tr><td colspan="2" align="center">
+<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$dsn{lbls}&values=$dsn{values}&title=$TRANSLATE{'DSN%20Flow'}&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20dsn'}">
+</td></tr>
 };
 	if ($CONFIG{SHOW_DIRECTION}) {
 		print qq{
@@ -2510,7 +2522,9 @@ sub display_statusflow
 	$status{values} =~ s/:$//;
         print qq{
 <tr><td colspan="4" align="center">&nbsp;</td></tr>
-<tr><td colspan="4" align="center"><img src=\"grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$status{lbls}&values=$status{values}&title=$TRANSLATE{'Messaging%20status'}&width=500&height=300\"></td></tr>
+<tr><td colspan="4" align="center">
+<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$status{lbls}&values=$status{values}&title=$TRANSLATE{'Messaging%20status'}&width=500&height=300">
+</td></tr>
 </table>
 };
 
@@ -2580,12 +2594,15 @@ sub display_authflow
 			my $total = 0;
 			foreach my $mech (sort keys %{$auth{$type}}) {
 				next if ($mech =~ /(lbls|values|x_label)/);
-				print "<td class=\"tdtopnr\">$mech</td><td class=\"tdtopnr\">$auth{$type}{$mech}</td></tr>\n";
+				print "<tr><td class=\"tdtopnr\">$mech</td><td class=\"tdtopnr\">$auth{$type}{$mech}</td></tr>\n";
 				$total += $auth{$type}{$mech};
 				
 			}
-			print "<tr><th>$TRANSLATE{'Total'}</th><th align=\"right\">$total</th></tr>\n";
-			print "<tr><td colspan=\"2\" align=\"center\"><img src=\"grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$auth{$type}{lbls}&values=$auth{$type}{values}&title=$TRANSLATE{'Authent%20Flow'}:%20$type&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20connection'}\"></td></tr>\n";
+			print qq{<tr><th>$TRANSLATE{'Total'}</th><th align="right">$total</th></tr>
+<tr><td colspan="2" align="center">
+<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$auth{$type}{lbls}&values=$auth{$type}{values}&title=$TRANSLATE{'Authent%20Flow'}:%20$type&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20connection'}">
+</td></tr>
+};
 		}
 		print "</table>\n";
 	} else {
@@ -2708,7 +2725,9 @@ sub display_top_sender
 <td class="tdtopn"  nowrap valign="top">$topemail</td>
 </tr>
 <tr><td colspan="3" align="center">&nbsp;</td></tr>
-<tr><td colspan="3" align="center"><img src=\"grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$relays{lbls}&values=$relays{values}&title=$TRANSLATE{'Top%20Sender%20Relay'}&width=700&height=500\"></td></tr>
+<tr><td colspan="3" align="center">
+<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$relays{lbls}&values=$relays{values}&title=$TRANSLATE{'Top%20Sender%20Relay'}&width=700&height=500">
+</td></tr>
 };
 	} else {
 		print qq {
@@ -2722,7 +2741,9 @@ sub display_top_sender
 <td class="tdtopn" nowrap valign="top">$toprelay</td>
 </tr>
 <tr><td colspan="2" align="center">&nbsp;</td></tr>
-<tr><td colspan="2" align="center"><img src=\"grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$relays{lbls}&values=$relays{values}&title=$TRANSLATE{'Top%20Sender%20Relay'}&width=700&height=500\"></td></tr>
+<tr><td colspan="2" align="center">
+<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$relays{lbls}&values=$relays{values}&title=$TRANSLATE{'Top%20Sender%20Relay'}&width=700&height=500">
+</td></tr>
 };
         }
 	print "</table>\n";
@@ -2831,7 +2852,9 @@ sub display_top_recipient
 <td class="tdtopn" nowrap valign="top">$topemail</td>
 </tr>
 <tr><td colspan="3" align="center">&nbsp;</td></tr>
-<tr><td colspan="3" align="center"><img src=\"grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$relays{lbls}&values=$relays{values}&title=$TRANSLATE{'Top%20Recipient%20Relay'}&width=700&height=500\"></td></tr>
+<tr><td colspan="3" align="center">
+<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$relays{lbls}&values=$relays{values}&title=$TRANSLATE{'Top%20Recipient%20Relay'}&width=700&height=500">
+</td></tr>
 
 };
 	} else {
@@ -2847,7 +2870,9 @@ sub display_top_recipient
 <td class="tdtopn" nowrap valign="top">$toprelay</td>
 </tr>
 <tr><td colspan="2" align="center">&nbsp;</td></tr>
-<tr><td colspan="2" align="center"><img src=\"grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$relays{lbls}&values=$relays{values}&title=$TRANSLATE{'Top%20Recipient%20Relay'}&width=700&height=500\"></td></tr>
+<tr><td colspan="2" align="center">
+<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$relays{lbls}&values=$relays{values}&title=$TRANSLATE{'Top%20Recipient%20Relay'}&width=700&height=500">
+</td></tr>
 };
 	}
 
