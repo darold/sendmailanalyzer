@@ -77,6 +77,8 @@ print $CGI->header();
 print $CGI->start_html(-title=>"sendmailanalyzer v$VERSION");
 	
 	print qq{
+<!-- javascript to draw graphics -->
+<script type="text/javascript" src="$CONFIG{URL_JSCRIPT}"></script>
 <style type="text/css">
 <!--/* <![CDATA[ */
 body {font-family:sans-serif;font-size:10pt;color:#000000;background-color:#f0f0f0;}
@@ -299,7 +301,7 @@ print qq{
 } else {
 	print qq{
 <form name="viewname"><input type="hidden" name="view" value="$VIEW"></form>
-<table id="report" width="100%" height="550px"" valign="top"><tr><td valign="center" align="center">
+<table id="report" width="100%" height="550px" valign="top"><tr><td valign="center" align="center">
 };
 	&show_stats($HOST, $CURDATE, $HOUR, $DOMAIN, $VIEW) if (&check_auth);
 	print "\n</td></tr></table>\n";
@@ -493,7 +495,7 @@ sub sa_footer
 	print qq{
 </FORM>	
 <pre>
-Powered by <a href="http://sendmailanalyzer.darold.net/" target="_blank target="_blank">$SOFTWARE v$VERSION</a> (GPLv3)
+Powered by <a href="http://sendmailanalyzer.darold.net/" target="_blank">$SOFTWARE v$VERSION</a> (GPLv3)
 $TRANSLATE{'Acknowledgement'}
 </pre>
 };
@@ -893,22 +895,22 @@ sub normalyze_date
 
 	# Set default labels for graph output
 	my $period = $TRANSLATE{'Monthly'};
-	my $x_label = $TRANSLATE{'Days%20of%20the%20month'};
+	my $x_label = $TRANSLATE{'Days of the month'};
 	my $begin = '01';
 	my $end = '31';
 	if ($hour ne '') {
 		$period = $TRANSLATE{'Hourly'};
-		$x_label = $TRANSLATE{'Minutes%20of%20the%20hour'};
+		$x_label = $TRANSLATE{'Minutes of the hour'};
 		$begin = '00';
 		$end = '60';
 	} elsif ($mday ne '00') {
 		$period = $TRANSLATE{'Daily'};
-		$x_label = $TRANSLATE{'Hours%20of%20the%20day'};
+		$x_label = $TRANSLATE{'Hours of the day'};
 		$begin = '00';
 		$end = '23';
 	} elsif ($mon eq '00') {
 		$period = $TRANSLATE{'Yearly'};
-		$x_label = $TRANSLATE{'Months%20of%20the%20year'};
+		$x_label = $TRANSLATE{'Months of the year'};
 		$end = '12';
 	}
 
@@ -1873,10 +1875,25 @@ sub display_messageflow
 <tr><td class="tdtop">$TRANSLATE{'Local delivery'}</td><td class="tdtopnr">$messaging{local_outbound}</td><td class="tdtopnr">$messaging{local_outbound_bytes}</td><td class="tdtopnr">$messaging{local_outbound_mean}</td></tr>
 <tr><th>$TRANSLATE{'Total outgoing'}</th><th align="right">$messaging{total_outbound}</th><th align="right">$messaging{total_outbound_bytes}</th><th align="right">$messaging{total_outbound_mean}</th></tr>
 <tr><td colspan="4" align="center">
-<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$messaging{lbls}&values=$messaging{values}&values1=$messaging{values1}&legend=$TRANSLATE{'Inbound'}&legend1=$TRANSLATE{'Outbound'}&title=$TRANSLATE{'Messaging%20Flow'}&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20message'}">
+};
+	print &grafit(  labels => $messaging{lbls}, title => $TRANSLATE{'Messaging Flow'},
+			values => $messaging{values}, legend => $TRANSLATE{'Inbound'},
+			values1 => $messaging{values1}, legend1 => $TRANSLATE{'Outbound'},
+			x_label => $x_label, y_label => $TRANSLATE{'Number of message'},
+			divid => 'messagingflow'
+	);
+        print qq{
 </td></tr>
 <tr><td colspan="4" align="center">
-<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$messaging{lbls}&values=$messaging{values_bytes}&values1=$messaging{values1_bytes}&legend=$TRANSLATE{'Inbound'}&legend1=$TRANSLATE{'Outbound'}&title=$TRANSLATE{'Messaging%20Size%20Flow'}&width=400&height=227&x_label=$x_label&y_label=$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})">
+};
+	print &grafit(  labels => $messaging{lbls}, title => $TRANSLATE{'Messaging Size Flow'},
+			values => $messaging{values_bytes}, legend => $TRANSLATE{'Inbound'},
+			values1 => $messaging{values1_bytes}, legend1 => $TRANSLATE{'Outbound'},
+			x_label => $x_label, y_label => "$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})",
+			divid => 'messagingflowsize'
+	);
+
+        print qq{
 </td>
 </tr>
 </table>
@@ -1888,17 +1905,18 @@ sub display_messageflow
 
 
 	# Message delivery flows
+	my %data = ();
 	$delivery{total} = $GLOBAL_STATUS{Sent} || 1;
 	$delivery{total_bytes} = $GLOBAL_STATUS{Sent_bytes} || 1;
 	$delivery{lbls} = "$TRANSLATE{'Ext -> Int'}:$TRANSLATE{'Ext -> Ext'}:$TRANSLATE{'Int -> Int'}:$TRANSLATE{'Int -> Ext'}";
 	$delivery{'Ext_Int_percent'} = sprintf("%.2f", ($delivery{'Ext_Int'}*100) / $delivery{'total'});
-	$delivery{vals} = $delivery{'Ext_Int_percent'} . ':';
+	$data{$TRANSLATE{'Ext -> Int'}} = $delivery{'Ext_Int_percent'};
 	$delivery{'Ext_Ext_percent'} = sprintf("%.2f", ($delivery{'Ext_Ext'}*100) / $delivery{'total'});
-	$delivery{vals} .= $delivery{'Ext_Ext_percent'} . ':';
+	$data{$TRANSLATE{'Ext -> Ext'}} = $delivery{'Ext_Ext_percent'};
 	$delivery{'Int_Int_percent'} = sprintf("%.2f", ($delivery{'Int_Int'}*100) / $delivery{'total'});
-	$delivery{vals} .= $delivery{'Int_Int_percent'} . ':';
+	$data{$TRANSLATE{'Int -> Int'}} = $delivery{'Int_Int_percent'};
 	$delivery{'Int_Ext_percent'} = sprintf("%.2f", ($delivery{'Int_Ext'}*100) / $delivery{'total'});
-	$delivery{vals} .= $delivery{'Int_Ext_percent'};
+	$data{$TRANSLATE{'Int -> Ext'}} = $delivery{'Int_Ext_percent'};
 	my $nbsender = 0;
 	my $nbrcpt = 0;
 	if (ref $messaging{nbsender} eq 'HASH') {
@@ -1907,7 +1925,11 @@ sub display_messageflow
 		delete $messaging{nbsender};
 		delete $messaging{nbrcpt};
 	} elsif ($messaging{nbsender} =~ /:/) {
-		$nbsender = "<img src=\"grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$messaging{lbls}&values=$messaging{nbsender}&values1=$messaging{nbrcpt}&legend=$TRANSLATE{'Senders'}&legend1=$TRANSLATE{'Recipients'}&title=$TRANSLATE{'Different%20senders/recipients'}&width=400&height=200&x_label=$x_label\">";
+		$nbsender = &grafit(    labels => $messaging{lbls}, values => $messaging{nbsender},
+					values1 => $messaging{nbrcpt}, legend => $TRANSLATE{'Senders'},
+					legend1 => $TRANSLATE{'Recipients'}, title => $TRANSLATE{'Different senders/recipients'},
+					x_label => $x_label
+		);
 
 	} else {
 		$nbsender = $messaging{nbsender} || 0;
@@ -1924,7 +1946,12 @@ sub display_messageflow
 <tr><td class="tdtop" nowrap="1">$TRANSLATE{'Internal -> Internet'}</td><td class="tdtopnr">$delivery{'Int_Ext'}</td><td class="tdtopnr">$delivery{'Int_Ext_bytes'}</td><td class="tdtopnr">$delivery{'Int_Ext_percent'} %</td></tr>
 <tr><td colspan="4">&nbsp;</td></tr>
 <tr><td colspan="4" align="center">
-<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$delivery{lbls}&values=$delivery{vals}&title=$TRANSLATE{'Delivery%20Direction'}&width=300&height=200&x_label=$TRANSLATE{'Direction'}&y_label=$TRANSLATE{'Percentage%20of%20message'}&vertical=1&show_values=1">
+};
+		print &grafit_pie(      title => $TRANSLATE{'Delivery Direction'}, values => \%data,
+					x_label => $TRANSLATE{'Direction'}, y_label => $TRANSLATE{'Percentage of message'},
+					divid => 'messagedeliveryflow'
+		);
+		print qq {
 </td></tr>
 <tr><td colspan="4">&nbsp;</td></tr>
 };
@@ -2071,9 +2098,13 @@ sub display_spamflow
 <tr><td class="tdtop">$TRANSLATE{'Local delivery'}</td><td class="tdtopnr">$spam{local_outbound}</td><td class="tdtopnr">$spam{local_outbound_bytes}</td><td class="tdtopnr">$spam{local_outbound_mean}</td></tr>
 <tr><th>$TRANSLATE{'Total outgoing'}</th><th align="right">$spam{total_outbound}</th><th align="right">$spam{total_outbound_bytes}</th><th align="right">$spam{total_outbound_mean}</th></tr>
 <tr><td colspan="4" align="center">
-<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$spam{lbls}&values=$spam{values}&title=$TRANSLATE{'Spamming%20Flow'}&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20spam'}">
-</td></tr>
 };
+	print &grafit(  labels => $spam{lbls}, values => $spam{values},
+			title => $TRANSLATE{'Spamming Flow'},
+			x_label => $x_label, y_label => $TRANSLATE{'Number of spam'},
+			divid => 'spamflow'
+	);
+	print qq{</td></tr>};
 	if ($CONFIG{SHOW_DIRECTION}) {
 		print qq{
 <tr><th colspan="4" class="thhead">$TRANSLATE{'Spam delivery flows'}</th></tr>
@@ -2211,9 +2242,13 @@ sub display_virusflow
 <tr><td class="tdtop">$TRANSLATE{'Local delivery'}</td><td class="tdtopnr">$virus{local_outbound}</td><td class="tdtopnr">$virus{local_outbound_bytes}</td><td class="tdtopnr">$virus{local_outbound_mean}</td></tr>
 <tr><th>$TRANSLATE{'Total outgoing'}</th><th align="right">$virus{total_outbound}</th><th align="right">$virus{total_outbound_bytes}</th><th align="right">$virus{total_outbound_mean}</th></tr>
 <tr><td colspan="4" align="center">
-<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$virus{lbls}&values=$virus{values}&title=$TRANSLATE{'Viruses%20Flow'}&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20virus'}">
-</td></tr>
 };
+	print &grafit(  labels => $virus{lbls}, values => $virus{values},
+			title => $TRANSLATE{'Viruses Flow'},
+			x_label => $x_label, y_label => $TRANSLATE{'Number of virus'},
+			divid => 'virusflow'
+	);
+	print qq{</td></tr>};
 	if ($CONFIG{SHOW_DIRECTION}) {
 		print qq{
 <tr><th colspan="4" class="thhead">$TRANSLATE{'Viruses delivery flows'}</th></tr>
@@ -2309,9 +2344,13 @@ sub display_dsnflow
 <tr><td class="tdtop">$TRANSLATE{'In Error'}</td><td class="tdtopnr">$dsn{error}</td></tr>
 <tr><th>$TRANSLATE{'Total'}</th><th align="right">$total_dsn</th></tr>
 <tr><td colspan="2" align="center">
-<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$dsn{lbls}&values=$dsn{values}&title=$TRANSLATE{'DSN%20Flow'}&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20dsn'}">
-</td></tr>
 };
+print &grafit(  labels => $dsn{lbls}, values => $dsn{values},
+		title => $TRANSLATE{'DSN Flow'},
+		x_label => $x_label, y_label => $TRANSLATE{'Number of dsn'},
+		divid => 'dsnflow'
+);
+print qq{</td></tr>};
 	if ($CONFIG{SHOW_DIRECTION}) {
 		print qq{
 <tr><th colspan="2" class="thhead">$TRANSLATE{'DSN delivery flows'}</th></tr>
@@ -2488,7 +2527,7 @@ sub display_statusflow
                 next if (/_bytes/ || /virus /);
 		if (/_Sent$/) {
 			$delivery_global_total -= $GLOBAL_STATUS{$_};
-			next
+			next;
 		}
                 $delivery_global_total += $GLOBAL_STATUS{$_};
         }
@@ -2501,7 +2540,6 @@ sub display_statusflow
 		next if ( ($s eq '') || ($s =~ /Command rejected/));
                 next if ( ($s =~ /_bytes/) || ($s =~ /virus /) );
                 my $percent = sprintf("%.2f", ($GLOBAL_STATUS{$s}/$delivery_global_total) * 100);
-                $total_percent += $GLOBAL_STATUS{$s};
                 if ($s =~ /^(\d{3}) \d\.(\d\.\d)$/) {
                         if (exists $SMTP_ERROR_CODE{$1} || exists $ESMTP_ERROR_CODE{$2}) {
                                 print "<tr><td class=\"tdtopn\">$s ",$SMTP_ERROR_CODE{$1} . " " . $ESMTP_ERROR_CODE{$2} , "</td>";
@@ -2512,18 +2550,24 @@ sub display_statusflow
                         print "<tr><td class=\"tdtopn\">$s</td>";
                 }
                 print "<td class=\"tdtopnr\">$GLOBAL_STATUS{$s}</td><td class=\"tdtopnr\">", sprintf("%.2f", $GLOBAL_STATUS{$s . '_bytes'}/$SIZE_UNIT), "</td><td class=\"tdtopnr\">$percent %</td></tr>\n";
-		if ( ($piecount < $MAXPIECOUNT) && ($percent > 1)) {
-			$status{lbls} .= "$s ($percent %):";
-			$status{values} .= "$percent:";
+		if ( ($piecount < $MAXPIECOUNT) && ($percent > 2)) {
+			$status{"$s"} = $percent;
+			$total_percent += $GLOBAL_STATUS{$s};
 			$piecount++;
 		}
         }
-	$status{lbls} =~ s/:$//;
-	$status{values} =~ s/:$//;
+	my $other_percent = 100 - sprintf("%.2f", ($total_percent/$delivery_global_total) * 100);
+	$status{"Others"} = $other_percent;
+	
         print qq{
 <tr><td colspan="4" align="center">&nbsp;</td></tr>
 <tr><td colspan="4" align="center">
-<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$status{lbls}&values=$status{values}&title=$TRANSLATE{'Messaging%20status'}&width=500&height=300">
+};
+	print &grafit_pie(	labels => $status{lbls}, values => \%status,
+				title => $TRANSLATE{'Messaging status'},
+				divid => 'messagingstatus'
+	);
+print qq{
 </td></tr>
 </table>
 };
@@ -2584,6 +2628,7 @@ sub display_authflow
 	if (scalar keys %auth) {
 		print qq{
 };
+		my $i = 1;
 		foreach my $type (sort keys %auth) {
 			print qq{
 <p>&nbsp;</p>
@@ -2600,9 +2645,16 @@ sub display_authflow
 			}
 			print qq{<tr><th>$TRANSLATE{'Total'}</th><th align="right">$total</th></tr>
 <tr><td colspan="2" align="center">
-<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&labels=$auth{$type}{lbls}&values=$auth{$type}{values}&title=$TRANSLATE{'Authent%20Flow'}:%20$type&width=400&height=200&x_label=$x_label&y_label=$TRANSLATE{'Number%20of%20connection'}">
+};
+			print &grafit(  labels => $auth{$type}{lbls}, values => $auth{$type}{values},
+					title => "$TRANSLATE{'Authent Flow'}: $type",
+					x_label => $x_label, y_label => $TRANSLATE{'Number of connection'},
+					divid => "connection_$i"
+			);
+			print qq{
 </td></tr>
 };
+			$i++;
 		}
 		print "</table>\n";
 	} else {
@@ -2677,20 +2729,22 @@ sub display_top_sender
 	$top = 0;
 	my %relays = ();
 	my $piecount = 0;
+	my $percent_total = 0;
 	foreach my $d (sort { $topsender{relay}{$b} <=> $topsender{relay}{$a} } keys %{$topsender{relay}}) {
 		last if ($top == $CONFIG{TOP});
 		my $percent = sprintf("%.2f", ($topsender{relay}{$d}*100)/$totalrelay);
 		$toprelay .= &detail_link($hostname,$date,'sender','relay',$d,$hour) . " ($topsender{relay}{$d})<br>";
-		if ( ($piecount < $MAXPIECOUNT) && ($percent > 1)) {
-			$relays{lbls} .= "$d ($percent %):";
-			$relays{values} .= "$percent:";
+		if ( ($piecount < $MAXPIECOUNT) && ($percent > 2)) {
+			$relays{"$d"} = $percent;
+			$percent_total += $topsender{relay}{$d};
 			$piecount++;
 		}
 		$top++;
 	}
+	my $other_percent = 100 - sprintf("%.2f", ($percent_total*100)/$totalrelay);
+	$relays{"Others"} = $other_percent;
+
 	delete $topsender{relay};
-	$relays{lbls} =~ s/:$//;
-	$relays{values} =~ s/:$//;
 	if (exists $CONFIG{REPLACE_HOST}) {
 		foreach my $pat (keys %{$CONFIG{REPLACE_HOST}}) {
 			$toprelay =~ s/$pat/$CONFIG{REPLACE_HOST}{$pat}/g;
@@ -2710,43 +2764,32 @@ sub display_top_sender
 		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
-
-	if (!$CONFIG{ANONYMIZE}) {
-		print qq {
-<table align="left" width="100%">
+	if ($CONFIG{ANONYMIZE}) {
+		$topemail = '&nbsp;';
+	}
+	print qq{
+<table align="center">
 <tr><th colspan="3" class="thhead">$TRANSLATE{'Senders Statistics'} (top $CONFIG{TOP})</th></tr>
+<tr><td colspan="3" align="center">
+};
+	print &grafit_pie(	values => \%relays, title => $TRANSLATE{'Top Sender Relay'},
+				divid => 'topsenderrelay', width => 800, height => 300
+	);
+	print qq{
+</td></tr>
+<tr><td colspan="3" align="center">&nbsp;</td></tr>
 <tr>
 <td class="tdhead">$TRANSLATE{'Top Sender Domain'}</td>
 <td class="tdhead">$TRANSLATE{'Top Sender Relay'}</td>
-<td class="tdhead">$TRANSLATE{'Top Sender Address'}</td></tr>
-<tr>
-<td class="tdtopn" nowrap valign="top">$topdomain</td>
-<td class="tdtopn"  nowrap valign="top">$toprelay</td>
-<td class="tdtopn"  nowrap valign="top">$topemail</td>
+<td class="tdhead">$TRANSLATE{'Top Sender Address'}</td>
 </tr>
-<tr><td colspan="3" align="center">&nbsp;</td></tr>
-<tr><td colspan="3" align="center">
-<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$relays{lbls}&values=$relays{values}&title=$TRANSLATE{'Top%20Sender%20Relay'}&width=700&height=500">
-</td></tr>
-};
-	} else {
-		print qq {
-<table align="center">
-<tr><th colspan="2" class="thhead">$TRANSLATE{'Senders Statistics'}</th></tr>
-<tr>
-<td class="tdhead">$TRANSLATE{'Top Sender Domain'}</td>
-<td class="tdhead">$TRANSLATE{'Top Sender Relay'}</td></tr>
 <tr>
 <td class="tdtopn" nowrap valign="top">$topdomain</td>
 <td class="tdtopn" nowrap valign="top">$toprelay</td>
+<td class="tdtopn" nowrap valign="top">$topemail</td>
 </tr>
-<tr><td colspan="2" align="center">&nbsp;</td></tr>
-<tr><td colspan="2" align="center">
-<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$relays{lbls}&values=$relays{values}&title=$TRANSLATE{'Top%20Sender%20Relay'}&width=700&height=500">
-</td></tr>
+</table>
 };
-        }
-	print "</table>\n";
 
 }
 
@@ -2811,8 +2854,7 @@ sub display_top_recipient
 		my $percent = sprintf("%.2f", ($toprcpt{relay}{$d}*100)/$totalrelay);
 		$toprelay .= &detail_link($hostname,$date,'recipient','relay',$d,$hour) . " ($toprcpt{relay}{$d})<br>";
 		if ( ($piecount < $MAXPIECOUNT) && ($percent > 1)) {
-			$relays{lbls} .= "$d ($percent %):";
-			$relays{values} .= "$percent:";
+			$relays{"$d ($percent %)"} = $percent;
 			$piecount++;
 		}
 		$top++;
@@ -2837,46 +2879,33 @@ sub display_top_recipient
 		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
-	if (!$CONFIG{ANONYMIZE}) {
-		print qq {
+	if ($CONFIG{ANONYMIZE}) {
+		$topemail = '&nbsp;';
+	}
+	print qq {
 <table align="left" width="100%">
 <tr><td colspan="3"><p>&nbsp;</p></td></tr>
 <tr><th colspan="3" class="thhead">$TRANSLATE{'Recipients Statistics'} (top $CONFIG{TOP})</th></tr>
+<tr><td colspan="3" align="center">
+};
+	print &grafit_pie(	values => \%relays, title => $TRANSLATE{'Top Recipient Relay'},
+				divid => 'toprecipientrelay', width => 800, height => 300
+	);
+	print qq{</td></tr>
+<tr><td colspan="3" align="center">&nbsp;</td></tr>
 <tr>
 <td class="tdhead">$TRANSLATE{'Top Recipient Domain'}</td>
 <td class="tdhead">$TRANSLATE{'Top Recipient Relay'}</td>
 <td class="tdhead">$TRANSLATE{'Top Recipients Address'}</td>
+</tr>
 <tr>
 <td class="tdtopn" nowrap valign="top">$topdomain</td>
 <td class="tdtopn" nowrap valign="top">$toprelay</td>
 <td class="tdtopn" nowrap valign="top">$topemail</td>
 </tr>
-<tr><td colspan="3" align="center">&nbsp;</td></tr>
-<tr><td colspan="3" align="center">
-<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$relays{lbls}&values=$relays{values}&title=$TRANSLATE{'Top%20Recipient%20Relay'}&width=700&height=500">
-</td></tr>
-
+</table>
 };
-	} else {
-		print qq {
-<table align="left" width="100%">
-<tr><td colspan="2"><p>&nbsp;</p></td></tr>
-<tr><th colspan="2" class="thhead">$TRANSLATE{'Recipients Statistics'}</th></tr>
-<tr>
-<td class="tdhead">$TRANSLATE{'Top Recipient Domain'}</td>
-<td class="tdhead">$TRANSLATE{'Top Recipient Relay'}</td>
-<tr>
-<td class="tdtopn" nowrap valign="top">$topdomain</td>
-<td class="tdtopn" nowrap valign="top">$toprelay</td>
-</tr>
-<tr><td colspan="2" align="center">&nbsp;</td></tr>
-<tr><td colspan="2" align="center">
-<img src="grafit.cgi?ttfont=$CONFIG{'TTFONT'}&type=pie&labels=$relays{lbls}&values=$relays{values}&title=$TRANSLATE{'Top%20Recipient%20Relay'}&width=700&height=500">
-</td></tr>
-};
-	}
 
-	print "</td></tr></table>\n";
 }
 
 sub compute_top_spam
@@ -4439,7 +4468,7 @@ sub secure_params
 		return "peri: $PERI";
 	}
 
-	return "";
+	return '';
 }
 
 ####
@@ -4456,3 +4485,227 @@ sub get_curdate
 	return "$year/$mon/$mday"
 
 }
+
+####
+# Use to return a flotr2 javascript code to draw graph.
+####
+sub grafit
+{
+	my (%params) = @_;
+
+	my $data1 = '';
+	my $data2 = '';
+	my @xdata = split(/:/, $params{labels});
+	my @ydata = split(/:/, $params{values});
+	for (my $i = 0; $i <= $#xdata; $i++) {
+		$data1 .= "['$xdata[$i]',$ydata[$i]],";
+	}
+	$data1 =~ s/,$//;
+	if ($params{values1}) {
+		@ydata = split(/:/, $params{values1});
+		for (my $i = 0; $i <= $#xdata; $i++) {
+			$data2 .= "['$xdata[$i]',$ydata[$i]],";
+		}
+		$data2 =~ s/,$//;
+	}
+	$data1 = "var d1 = [$data1];";
+	$data2 = "var d2 = [$data2];";
+
+	my $xlabel = '';
+	my $numticks = 0;
+	if ($#xdata == 11) {
+		$xlabel = qq{var months = [ "$TRANSLATE{'01'}", "$TRANSLATE{'02'}", "$TRANSLATE{'03'}", "$TRANSLATE{'04'}", "$TRANSLATE{'05'}", "$TRANSLATE{'06'}", "$TRANSLATE{'07'}", "$TRANSLATE{'08'}", "$TRANSLATE{'09'}", "$TRANSLATE{'10'}", "$TRANSLATE{'11'}", "$TRANSLATE{'12'}" ];
+		return months[(x -1) % 12];
+};
+		$numticks = 12;
+	} elsif ($#xdata == 30) {
+		$xlabel = qq{var days = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31'];
+		return days[(x - 1) % 31];
+};
+		$numticks = 31;
+	} else  {
+		$xlabel = qq{var hours = ['00','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23'];
+		return hours[x % 24];
+};
+		$numticks = 24;
+	}
+	$params{width}  ||= 400;
+	$params{height} ||= 200;
+
+	return <<EOF;
+<style type="text/css">
+#$params{divid}
+{
+     width : $params{width}px;
+     height: $params{height}px;
+     background:#F3F2ED;
+     border:6px double white;
+     padding:0 10px;
+     margin:30px 10px 30px 10px;
+     border-radius:10px;
+     -moz-border-radius:10px;
+     -webkit-border-radius:10px;
+     box-shadow:3px 3px 6px 2px #A9A9A9;
+     -moz-box-shadow:3px 3px 6px 2px #A9A9A9;
+     -webkit-box-shadow:3px 3px 6px #A9A9A9;
+}
+</style>
+<div id="$params{divid}"></div>
+<script type="text/javascript">
+(function mouse_zoom(container) {
+    $data1
+    $data2
+    lines1 = {
+        data: d1,
+        label: "$params{legend}",
+        lines: {
+            show: true,
+        }
+    },
+    lines2 = {
+        data: d2,
+        label: "$params{legend1}",
+        lines: {
+            show: true,
+        }
+    };
+    var options = {
+        mouse: {
+            track: true,
+            relative: true
+        },
+        yaxis: {
+            min: 0,
+            autoscaleMargin: 1,
+            mode: "normal",
+            title: "$params{y_label}",
+        },
+        xaxis: {
+            mode: "normal",
+            noTicks: $numticks,
+            tickFormatter: function(x) {
+                var x = parseInt(x);
+		$xlabel
+            },
+            title: "$params{x_label}",
+        },
+        title: "$params{title}",
+        legend: {
+            position: "nw",
+            backgroundColor: "#D2E8FF",
+	    backgroundOpacity: 0.4
+        },
+        HtmlText: false,
+    };
+
+    function drawGraph(opts) {
+        var o = Flotr._.extend(Flotr._.clone(options), opts );
+        return Flotr.draw(
+        	container,
+        	[
+        		lines1,
+        		lines2
+    		],
+    		o
+    	);
+    }
+
+    var graph = drawGraph();
+    Flotr.EventAdapter.observe(container, "flotr:select", function(area) {
+        f = drawGraph({
+            xaxis: {
+                min: area.x1,
+                max: area.x2
+            },
+            yaxis: {
+                min: area.y1,
+                max: area.y2
+            }
+        });
+    });
+    Flotr.EventAdapter.observe(container, "flotr:click", function() {
+        drawGraph();
+    });
+
+})(document.getElementById("$params{divid}"));
+</script>
+EOF
+
+}
+
+sub grafit_pie
+{
+	my (%params) = @_;
+
+	my @datadef = ();
+	my @contdef = ();
+	my $i       = 1;
+	foreach my $k (sort {$params{values}->{$b} <=> $params{values}->{$a}} keys %{$params{values}}) {
+		push(@datadef, "var d$i = [ [0,$params{values}->{$k}] ];\n");
+		push(@contdef, "{ data: d$i, label: \"$k\" },\n");
+		$i++;
+	}
+	$params{width}  ||= 400;
+	$params{height} ||= 200;
+
+	return <<EOF;
+<style type="text/css">
+#$params{divid}
+{
+     width : $params{width}px;
+     height: $params{height}px;
+     background:#F3F2ED;
+     border:6px double white;
+     padding:0 10px;
+     margin:30px 10px 30px 10px;
+     border-radius:10px;
+     -moz-border-radius:10px;
+     -webkit-border-radius:10px;
+     box-shadow:3px 3px 6px 2px #A9A9A9;
+     -moz-box-shadow:3px 3px 6px 2px #A9A9A9;
+     -webkit-box-shadow:3px 3px 6px #A9A9A9;
+}
+</style>
+<div id="$params{divid}"></div>
+<script type="text/javascript">
+(function basic_pie(container) {
+    @datadef
+    var graph = Flotr.draw(container, [
+    @contdef
+    ], {
+        title: "$params{title}",
+        HtmlText: false,
+        grid: {
+            verticalLines: false,
+            horizontalLines: false,
+	    outline: '',
+        },
+        xaxis: {
+            showLabels: false,
+	    title: "$params{x_label}"
+        },
+        yaxis: {
+            showLabels: false,
+	    title: "$params{y_label}"
+        },
+        pie: {
+            show: true,
+	    explode: 6
+        },
+        mouse: {
+            track: true,
+	    trackFormatter: function(obj){ return obj.y },
+        },
+        legend: {
+            position: "sw",
+            backgroundColor: "#D2E8FF",
+	    backgroundOpacity: 0.4
+        }
+    });
+})(document.getElementById("$params{divid}"));
+</script>
+EOF
+
+}
+
+
