@@ -8,12 +8,8 @@ You need a modern perl distribution, and some Perl modules:
 
 	MIME::Base64;
 	MIME::QuotedPrint;
-	GD
-	GD::Graph
-	GD::Text
-        GD::Graph3d
 
-and some useful libraries like libgd and libpng.
+In modern Perl distribution those modules are already included.
 
 
 Installation and usage instruction

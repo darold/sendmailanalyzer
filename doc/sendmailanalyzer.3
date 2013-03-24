@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "SENDMAILANALYZER 1"
-.TH SENDMAILANALYZER 1 "2013-03-22" "perl v5.14.2" "User Contributed Perl Documentation"
+.TH SENDMAILANALYZER 1 "2013-03-24" "perl v5.14.2" "User Contributed Perl Documentation"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -319,22 +319,16 @@ version should also work.
 You need the following Perl modules. If they are not yet include in your
 \&\s-1OS\s0 distribution you can always find them at http://search.cpan.org/
 .PP
-.Vb 6
+.Vb 2
 \&        MIME::Base64;
 \&        MIME::QuotedPrint;
-\&        GD
-\&        GD::Graph
-\&        GD::TextUtil
-\&        GD::Graph::bars3d;
 .Ve
 .PP
-The graph output are generated using the libgd and libpng. You can get them
-at the following places:
+Those modules are normaly already included in Perl core modules on modern
+distributions.
 .PP
-.Vb 2
-\&        http://www.libgd.org/
-\&        http://www.libpng.org/
-.Ve
+The graph output is generated using the flotr2 javascript library so no need
+to install additional library or package, you just need a modern browser.
 .SH "INSTALLATION"
 .IX Header "INSTALLATION"
 .SS "Generic install"
@@ -726,18 +720,6 @@ is running. Default: lang/en_US.
 .IX Item "HTML_CHARSET"
 Used to define the \s-1HTML\s0 charset to use. Default is iso\-8859\-1, but with cyrillics
 character you have to use utf\-8 instead.
-.IP "\s-1TTFONT\s0" 4
-.IX Item "TTFONT"
-True type font to use in graphs. When using Bulgarian langage for example,
-GD::Graph is unable to draw Cyrillics font without a true type font. You can
-also use it with other langage, this must be the full path to the ttf file.
-For example:
-.Sp
-.Vb 1
-\&        TTFONT  /usr/share/fonts/truetype/msttcorefonts/arial.ttf
-.Ve
-.Sp
-to use Arial.
 .IP "\s-1URL_LOGO\s0" 4
 .IX Item "URL_LOGO"
 Url to the barorng image. Default: salogo.gif

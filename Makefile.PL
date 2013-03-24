@@ -253,11 +253,6 @@ POSTGREY_NAME	postgrey
 # to use utf-8 instead.
 #HTML_CHARSET	utf-8
 
-# True type font to use in graphs. When using Bulgarian langage for example,
-# GD::Graph is unable to draw Cyrillics font without true type font. You can
-# also use it with other langage, this must be the full path to a ttf file.
-#TTFONT          /usr/share/fonts/truetype/msttcorefonts/arial.ttf
-
 # Use this to set the recipient relay used for local delivery if your message
 # appears twice in details view and in messaging, sender and recipient counter.
 # This is especially right when with postfix configuraed to have local delivery

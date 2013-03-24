@@ -315,16 +315,12 @@ OS distribution you can always find them at http://search.cpan.org/
 
 	MIME::Base64;
 	MIME::QuotedPrint;
-	GD
-	GD::Graph
-	GD::TextUtil
-	GD::Graph::bars3d;
 
-The graph output are generated using the libgd and libpng. You can get them
-at the following places:
+Those modules are normaly already included in Perl core modules on modern
+distributions.
 
-	http://www.libgd.org/
-	http://www.libpng.org/
+The graph output is generated using the flotr2 javascript library so no need
+to install additional library or package, you just need a modern browser.
 
 =head1 INSTALLATION
 
@@ -715,17 +711,6 @@ is running. Default: lang/en_US.
 
 Used to define the HTML charset to use. Default is iso-8859-1, but with cyrillics
 character you have to use utf-8 instead.
-
-=item TTFONT
-
-True type font to use in graphs. When using Bulgarian langage for example,
-GD::Graph is unable to draw Cyrillics font without a true type font. You can
-also use it with other langage, this must be the full path to the ttf file.
-For example:
-
-	TTFONT	/usr/share/fonts/truetype/msttcorefonts/arial.ttf
-
-to use Arial.
 
 =item URL_LOGO
 
