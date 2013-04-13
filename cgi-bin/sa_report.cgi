@@ -101,7 +101,19 @@ th {padding:0px;font-family:sans-serif;font-size:8pt;color:#ffffff;background-co
 .tdhead {padding:0px;font-family:sans-serif;font-size:8pt; font-weight: bold;color:#CC6600;background-color:#ffffff; border: solid thin #4179a1; text-align: center;}
 .title {font-family:sans-serif;font-weight:bold;font-size:20pt;color:#CC6600;}
 .usertitle {font-family:sans-serif;font-size:14pt;color:#ffffff;}
-.calborder {padding: 0px; border: solid thin #4179a1; background-color:#dddddd;}
+.calborder { padding: 0px; border: solid thin #4179a1; background-color:#dddddd; }
+.calborder2 {
+	background-color:#dddddd;
+	border:4px double white;
+	padding:0 0px;
+	margin:10px 0 10px 0;
+	border-radius:10px;
+	-moz-border-radius:10px;
+	-webkit-border-radius:10px;
+	box-shadow:3px 3px 6px 2px #A9A9A9;
+	-moz-box-shadow:3px 3px 6px 2px #A9A9A9;
+	-webkit-box-shadow:3px 3px 6px #A9A9A9;
+}
 .smalltitle {font-family:sans-serif;font-size:14pt;color:#CC6600;}
 .subtitle {font-family:sans-serif;font-size:12pt;color:#4179a1;}
 .small {font-family:sans-serif;font-size:8pt;color:#000000;}
@@ -133,11 +145,54 @@ pre a:hover { color: #ffffff; background-color: #CC6600; }
 #temporal a:link { color: #4179a1; background-color:#dddddd;}
 #temporal a:hover { color: #ffffff; background-color: #CC6600; }
 #temporal td {padding:0px;font-family:sans-serif;font-size:8pt;color:#000000;background-color:#dddddd;}
-a { border-style: none; text-decoration: none; font-family:sans-serif;color:#4179a1;}
+a { border-style: none; text-decoration: none; font-family:sans-serif; color:#4179a1;}
 a:active { color: #4179a1; }
 a:visited { color: #4179a1; }
 a:link { color: #4179a1; }
 a:hover { color: #ffffff; background-color: #CC6600; }
+table, th, td {
+	vertical-align:top;
+	horizontal-align: center;
+}
+table.counter {
+	vertical-align:top; 
+	background:#F3F2ED;
+	border:4px double white;
+	padding:0 10px;
+	margin:30px 0 30px 0;
+	border-radius:10px;
+	-moz-border-radius:10px;
+	-webkit-border-radius:10px;
+	box-shadow:3px 3px 6px 2px #A9A9A9;
+	-moz-box-shadow:3px 3px 6px 2px #A9A9A9;
+	-webkit-box-shadow:3px 3px 6px #A9A9A9;
+	width: 450px;
+}
+.thheadcounter {
+	padding:5px;
+	font-family:sans-serif;
+	font-size:10pt;color:#ffffff;
+	background-color:#4179a1;
+	border: solid thin #F3F2ED;
+	text-align: center;
+	border-radius:10px;
+	-moz-border-radius:10px;
+	-webkit-border-radius:10px;
+}
+table.topcounter {
+	vertical-align:top; 
+	background:#F3F2ED;
+	border:4px double white;
+	padding:0 10px;
+	margin:30px 0 30px 0;
+	border-radius:10px;
+	-moz-border-radius:10px;
+	-webkit-border-radius:10px;
+	box-shadow:3px 3px 6px 2px #A9A9A9;
+	-moz-box-shadow:3px 3px 6px 2px #A9A9A9;
+	-webkit-box-shadow:3px 3px 6px #A9A9A9;
+	width: 800px;
+}
 /* ]]> */-->
 </style>
 };
@@ -642,20 +697,20 @@ sub hour_link
 
 	return if ( ($mon ne $month) || ($day eq '00'));
 	
-	my $str = "<TABLE class=\"calborder\">\n<TR><TH colspan=\"24\">$TRANSLATE{'Hour View'}</TH></TR>\n<TR>";
+	my $str = "<table class=\"calborder\">\n<tr><th colspan=\"24\">$TRANSLATE{'Hour View'}</th></tr>\n<tr>";
 	for my $d ("00" .. "23") {
 		if ( ("$year$month$day" eq "$y$mon$mday") && ($d > $h) ) {
-			$str .= "<TD>$d</TD>";
+			$str .= "<td>$d</td>";
 		} else {
-			my $tag = 'TD';
-			$tag = 'TH' if (($hour ne '') && ($d == $hour));
+			my $tag = 'td';
+			$tag = 'th' if (($hour ne '') && ($d == $hour));
 			my $type = '';
 			$type = $SELCURRENT if (($hour ne '') && ($d == $hour));
 			my $date = $year . $month . $day;
 			$str .= "<$tag><a$type href=\"javascript:\" onclick=\"document.location.href='$ENV{SCRIPT_NAME}?host=$hostname&date=$date&hour=$d&domain=$domain&lang=$LANG&update='+window.frames['info'].document.forms['viewname'].elements['view'].value; return false;\">$d</a></$tag>";
 		}
 	}
-	$str .=  "</TR>\n</TABLE>\n";
+	$str .=  "</tr>\n</table>\n";
 
 	return $str;
 }
@@ -1858,15 +1913,15 @@ sub display_messageflow
 	$messaging{total_outbound_mean} = sprintf("%.2f", $messaging{total_outbound_bytes} / ($messaging{total_outbound} || 1));
 
 	if (!$messaging{total_inbound} && !$messaging{total_outbound}) {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
 	# Messaging flows
         print qq{
 <table align="center" width="100%"><tr><td valign="top" align="center">
 
-<table>
-<tr><th colspan="4" class="thhead">$TRANSLATE{'Messaging flows'}</th></tr>
+<table class="counter">
+<tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Messaging flows'}</th></tr>
 <tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Mean'}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Incoming'}</td><td class="tdtopnr">$messaging{inbound}</td><td class="tdtopnr">$messaging{inbound_bytes}</td><td class="tdtopnr">$messaging{inbound_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Local incoming'}</td><td class="tdtopnr">$messaging{local_inbound}</td><td class="tdtopnr">$messaging{local_inbound_bytes}</td><td class="tdtopnr">$messaging{local_inbound_mean}</td></tr>
@@ -1874,6 +1929,9 @@ sub display_messageflow
 <tr><td class="tdtop">$TRANSLATE{'Outgoing'}</td><td class="tdtopnr">$messaging{outbound}</td><td class="tdtopnr">$messaging{outbound_bytes}</td><td class="tdtopnr">$messaging{outbound_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Local delivery'}</td><td class="tdtopnr">$messaging{local_outbound}</td><td class="tdtopnr">$messaging{local_outbound_bytes}</td><td class="tdtopnr">$messaging{local_outbound_mean}</td></tr>
 <tr><th>$TRANSLATE{'Total outgoing'}</th><th align="right">$messaging{total_outbound}</th><th align="right">$messaging{total_outbound_bytes}</th><th align="right">$messaging{total_outbound_mean}</th></tr>
+<tr><td colspan="4">&nbsp;</td></tr>
+</table>
+<table>
 <tr><td colspan="4" align="center">
 };
 	print &grafit(  labels => $messaging{lbls}, title => $TRANSLATE{'Messaging Flow'},
@@ -1937,15 +1995,18 @@ sub display_messageflow
 	}
 	if ($CONFIG{SHOW_DIRECTION}) {
 		print qq {
-<table>
-<tr><th colspan="4" class="thhead">$TRANSLATE{'Message delivery flows'}</th></tr>
+<table class="counter">
+<tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Message delivery flows'}</th></tr>
 <tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Percentage'}</td></tr>
 <tr><td class="tdtop" nowrap="1">$TRANSLATE{'Internet -> Internal'}</td><td class="tdtopnr">$delivery{'Ext_Int'}</td><td class="tdtopnr">$delivery{'Ext_Int_bytes'}</td><td class="tdtopnr">$delivery{'Ext_Int_percent'} %</td></tr>
 <tr><td class="tdtop" nowrap="1">$TRANSLATE{'Internet -> Internet'}</td><td class="tdtopnr">$delivery{'Ext_Ext'}</td><td class="tdtopnr">$delivery{'Ext_Ext_bytes'}</td><td class="tdtopnr">$delivery{'Ext_Ext_percent'} %</td></tr>
 <tr><td class="tdtop" nowrap="1">$TRANSLATE{'Internal -> Internal'}</td><td class="tdtopnr">$delivery{'Int_Int'}</td><td class="tdtopnr">$delivery{'Int_Int_bytes'}</td><td class="tdtopnr">$delivery{'Int_Int_percent'} %</td></tr>
 <tr><td class="tdtop" nowrap="1">$TRANSLATE{'Internal -> Internet'}</td><td class="tdtopnr">$delivery{'Int_Ext'}</td><td class="tdtopnr">$delivery{'Int_Ext_bytes'}</td><td class="tdtopnr">$delivery{'Int_Ext_percent'} %</td></tr>
 <tr><td colspan="4">&nbsp;</td></tr>
-<tr><td colspan="4" align="center">
+</table>
+
+<table>
+<tr><td align="center">
 };
 		print &grafit_pie(      title => $TRANSLATE{'Delivery Direction'}, values => \%data,
 					x_label => $TRANSLATE{'Direction'}, y_label => $TRANSLATE{'Percentage of message'},
@@ -1953,20 +2014,26 @@ sub display_messageflow
 		);
 		print qq {
 </td></tr>
-<tr><td colspan="4">&nbsp;</td></tr>
+</table>
 };
 	} else {
 		print "<table>\n";
 	}
 	if ($nbsender !~ /<img/) {
-		print qq{<tr><th colspan="4" class="thhead">$TRANSLATE{'Different senders/recipients'}</th></tr>
+		print qq{
+<table class="counter">
+<tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Different senders/recipients'}</th></tr>
 <tr><td class="tdhead" colspan="2">$TRANSLATE{'Senders'}</td><td class="tdhead" colspan="2">$TRANSLATE{'Recipients'}</td></tr>
 <tr><td class="tdtopnc" colspan="2">$nbsender</td><td class="tdtopnc" colspan="2">$nbrcpt</td></tr>
+<tr><td colspan="4" align="center">&nbsp;</td></tr>
 </table>
 };
 	} else {
-		print qq{<tr><th colspan="4" class="thhead">$TRANSLATE{'Different senders/recipients'}</th></tr>
+		print qq{
+<table class="counter">
+<tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Different senders/recipients'}</th></tr>
 <tr><td colspan="4" align="center">$nbsender</td></tr>
+<tr><td colspan="4" align="center">&nbsp;</td></tr>
 </table>
 };
 	}
@@ -2083,13 +2150,15 @@ sub display_spamflow
         $spam{'Ext_Int_bytes'} = sprintf("%.2f", $spam{'Ext_Int_bytes'}/$SIZE_UNIT);
 
 	if (!$spam{total_inbound} && !$spam{total_outbound}) {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
 
         print qq {
-<table align="center">
-<tr><th colspan="4" class="thhead">$TRANSLATE{'Spamming flows'}</th></tr>
+<table width="100%"><tr><td align="center">
+
+<table align="center" class="counter">
+<tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Spamming flows'}</th></tr>
 <tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Mean'}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Incoming'}</td><td class="tdtopnr">$spam{inbound}</td><td class="tdtopnr">$spam{inbound_bytes}</td><td class="tdtopnr">$spam{inbound_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Local incoming'}</td><td class="tdtopnr">$spam{local_inbound}</td><td class="tdtopnr">$spam{local_inbound_bytes}</td><td class="tdtopnr">$spam{local_inbound_mean}</td></tr>
@@ -2097,25 +2166,41 @@ sub display_spamflow
 <tr><td class="tdtop">$TRANSLATE{'Outgoing'}</td><td class="tdtopnr">$spam{outbound}</td><td class="tdtopnr">$spam{outbound_bytes}</td><td class="tdtopnr">$spam{outbound_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Local delivery'}</td><td class="tdtopnr">$spam{local_outbound}</td><td class="tdtopnr">$spam{local_outbound_bytes}</td><td class="tdtopnr">$spam{local_outbound_mean}</td></tr>
 <tr><th>$TRANSLATE{'Total outgoing'}</th><th align="right">$spam{total_outbound}</th><th align="right">$spam{total_outbound_bytes}</th><th align="right">$spam{total_outbound_mean}</th></tr>
-<tr><td colspan="4" align="center">
+<tr><td colspan="4" align="center">&nbsp;</td></tr>
+</table>
+};
+	if ($CONFIG{SHOW_DIRECTION}) {
+		print qq{
+<table align="center" class="counter">
+<tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Spam delivery flows'}</th></tr>
+<tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Mean'}</td></tr>
+<tr><td class="tdtop">$TRANSLATE{'Internet -> Internal'}</td><td class="tdtopnr">$spam{'Ext_Int'}</td><td class="tdtopnr">$spam{'Ext_Int_bytes'}</td><td class="tdtopnr">$spam{Ext_Int_mean}</td></tr>
+<tr><td class="tdtop">$TRANSLATE{'Internet -> Internet'}</td><td class="tdtopnr">$spam{'Ext_Ext'}</td><td class="tdtopnr">$spam{'Ext_Ext_bytes'}</td><td class="tdtopnr">$spam{Ext_Ext_mean}</td></tr>
+<tr><td class="tdtop">$TRANSLATE{'Internal -> Internal'}</td><td class="tdtopnr">$spam{'Int_Int'}</td><td class="tdtopnr">$spam{'Int_Int_bytes'}</td><td class="tdtopnr">$spam{Int_Int_mean}</td></tr>
+<tr><td class="tdtop">$TRANSLATE{'Internal -> Internet'}</td><td class="tdtopnr">$spam{'Int_Ext'}</td><td class="tdtopnr">$spam{'Int_Ext_bytes'}</td><td class="tdtopnr">$spam{Int_Ext_mean}</td></tr>
+<tr><td colspan="4" align="center">&nbsp;</td></tr>
+</table>
+
+</td>
+<td align="center">
+
+<table align="center">
+<tr><td align="center">
 };
 	print &grafit(  labels => $spam{lbls}, values => $spam{values},
 			title => $TRANSLATE{'Spamming Flow'},
 			x_label => $x_label, y_label => $TRANSLATE{'Number of spam'},
 			divid => 'spamflow'
 	);
-	print qq{</td></tr>};
-	if ($CONFIG{SHOW_DIRECTION}) {
-		print qq{
-<tr><th colspan="4" class="thhead">$TRANSLATE{'Spam delivery flows'}</th></tr>
-<tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Mean'}</td></tr>
-<tr><td class="tdtop">$TRANSLATE{'Internet -> Internal'}</td><td class="tdtopnr">$spam{'Ext_Int'}</td><td class="tdtopnr">$spam{'Ext_Int_bytes'}</td><td class="tdtopnr">$spam{Ext_Int_mean}</td></tr>
-<tr><td class="tdtop">$TRANSLATE{'Internet -> Internet'}</td><td class="tdtopnr">$spam{'Ext_Ext'}</td><td class="tdtopnr">$spam{'Ext_Ext_bytes'}</td><td class="tdtopnr">$spam{Ext_Ext_mean}</td></tr>
-<tr><td class="tdtop">$TRANSLATE{'Internal -> Internal'}</td><td class="tdtopnr">$spam{'Int_Int'}</td><td class="tdtopnr">$spam{'Int_Int_bytes'}</td><td class="tdtopnr">$spam{Int_Int_mean}</td></tr>
-<tr><td class="tdtop">$TRANSLATE{'Internal -> Internet'}</td><td class="tdtopnr">$spam{'Int_Ext'}</td><td class="tdtopnr">$spam{'Int_Ext_bytes'}</td><td class="tdtopnr">$spam{Int_Ext_mean}</td></tr>
+	print qq{
+</td></tr>
+</table>
+
+</table>
 };
 	}
-	print "</table>\n";
+
+print "</td></tr></table>\n";
 
 }
 
@@ -2227,13 +2312,15 @@ sub display_virusflow
 	$virus{'Ext_Int_bytes'} = sprintf("%.2f", $virus{'Ext_Int_bytes'}/$SIZE_UNIT);
 
 	if (!$virus{total_inbound} && !$virus{total_outbound}) {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
 
         print qq {
-<table align="center">
-<tr><th colspan="4" class="thhead">$TRANSLATE{'Viruses flows'}</th></tr>
+<table width="100%"><tr><td>
+
+<table align="center" class="counter">
+<tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Viruses flows'}</th></tr>
 <tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Mean'}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Incoming'}</td><td class="tdtopnr">$virus{inbound}</td><td class="tdtopnr">$virus{inbound_bytes}</td><td class="tdtopnr">$virus{inbound_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Local incoming'}</td><td class="tdtopnr">$virus{local_inbound}</td><td class="tdtopnr">$virus{local_inbound_bytes}</td><td class="tdtopnr">$virus{local_inbound_mean}</td></tr>
@@ -2241,25 +2328,39 @@ sub display_virusflow
 <tr><td class="tdtop">$TRANSLATE{'Outgoing'}</td><td class="tdtopnr">$virus{outbound}</td><td class="tdtopnr">$virus{outbound_bytes}</td><td class="tdtopnr">$virus{outbound_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Local delivery'}</td><td class="tdtopnr">$virus{local_outbound}</td><td class="tdtopnr">$virus{local_outbound_bytes}</td><td class="tdtopnr">$virus{local_outbound_mean}</td></tr>
 <tr><th>$TRANSLATE{'Total outgoing'}</th><th align="right">$virus{total_outbound}</th><th align="right">$virus{total_outbound_bytes}</th><th align="right">$virus{total_outbound_mean}</th></tr>
-<tr><td colspan="4" align="center">
+<tr><td colspan="4" align="center">&nbsp;</td></tr>
+</table>
 };
-	print &grafit(  labels => $virus{lbls}, values => $virus{values},
-			title => $TRANSLATE{'Viruses Flow'},
-			x_label => $x_label, y_label => $TRANSLATE{'Number of virus'},
-			divid => 'virusflow'
-	);
-	print qq{</td></tr>};
 	if ($CONFIG{SHOW_DIRECTION}) {
 		print qq{
+<table class="counter">
 <tr><th colspan="4" class="thhead">$TRANSLATE{'Viruses delivery flows'}</th></tr>
 <tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Mean'}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Internet -> Internal'}</td><td class="tdtopnr">$virus{'Ext_Int'}</td><td class="tdtopnr">$virus{'Ext_Int_bytes'}</td><td class="tdtopnr">$virus{Ext_Int_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Internet -> Internet'}</td><td class="tdtopnr">$virus{'Ext_Ext'}</td><td class="tdtopnr">$virus{'Ext_Ext_bytes'}</td><td class="tdtopnr">$virus{Ext_Ext_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Internal -> Internal'}</td><td class="tdtopnr">$virus{'Int_Int'}</td><td class="tdtopnr">$virus{'Int_Int_bytes'}</td><td class="tdtopnr">$virus{Int_Int_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Internal -> Internet'}</td><td class="tdtopnr">$virus{'Int_Ext'}</td><td class="tdtopnr">$virus{'Int_Ext_bytes'}</td><td class="tdtopnr">$virus{Int_Ext_mean}</td></tr>
+<tr><td colspan="4" align="center">&nbsp;</td></tr>
+</table>
+
+</td><td>
 };
 	}
-	print "</table>\n";
+	print qq{
+<table class="counter">
+<tr><td align="center">
+};
+	print &grafit(  labels => $virus{lbls}, values => $virus{values},
+			title => $TRANSLATE{'Viruses Flow'},
+			x_label => $x_label, y_label => $TRANSLATE{'Number of virus'},
+			divid => 'virusflow'
+	);
+	print qq{
+</td></tr>
+</table>
+
+</td></tr></table>
+};
 }
 
 sub compute_dsnflow
@@ -2332,34 +2433,50 @@ sub display_dsnflow
 	# DSN flow
 	my $total_dsn = $dsn{total_outbound} + $dsn{error};
 	if (!$total_dsn) {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
 
         print qq {
-<table align="center">
-<tr><th colspan="2" class="thhead">$TRANSLATE{'DSN flows'}</th></tr>
+<table width="100%"><tr><td>
+
+<table align="center" class="counter">
+<tr><th colspan="2" class="thheadcounter">$TRANSLATE{'DSN flows'}</th></tr>
 <tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Outgoing'}</td><td class="tdtopnr">$dsn{total_outbound}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'In Error'}</td><td class="tdtopnr">$dsn{error}</td></tr>
 <tr><th>$TRANSLATE{'Total'}</th><th align="right">$total_dsn</th></tr>
-<tr><td colspan="2" align="center">
+<tr><td colspan="2">&nbsp;</td></tr>
+</table>
+};
+	if ($CONFIG{SHOW_DIRECTION}) {
+		print qq{
+<table align="center" class="counter">
+<tr><th colspan="2" class="thheadcounter">$TRANSLATE{'DSN delivery flows'}</th></tr>
+<tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td></tr>
+<tr><td class="tdtop">$TRANSLATE{'Internal -> Internal'}</td><td class="tdtopnr">$dsn{'Int_Int'}</td></tr>
+<tr><td class="tdtop">$TRANSLATE{'Internal -> Internet'}</td><td class="tdtopnr">$dsn{'Int_Ext'}</td></tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+</table>
+};
+	}
+	print qq{
+</td><td>
+
+<table>
+<tr><td align="center">
 };
 print &grafit(  labels => $dsn{lbls}, values => $dsn{values},
 		title => $TRANSLATE{'DSN Flow'},
 		x_label => $x_label, y_label => $TRANSLATE{'Number of dsn'},
 		divid => 'dsnflow'
 );
-print qq{</td></tr>};
-	if ($CONFIG{SHOW_DIRECTION}) {
-		print qq{
-<tr><th colspan="2" class="thhead">$TRANSLATE{'DSN delivery flows'}</th></tr>
-<tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td></tr>
-<tr><td class="tdtop">$TRANSLATE{'Internal -> Internal'}</td><td class="tdtopnr">$dsn{'Int_Int'}</td></tr>
-<tr><td class="tdtop">$TRANSLATE{'Internal -> Internet'}</td><td class="tdtopnr">$dsn{'Int_Ext'}</td></tr>
+print qq{
+</td></tr>
+</table>
+
+</td></tr></table>
 };
-	}
-	print "</table>\n";
 
 }
 
@@ -2436,31 +2553,40 @@ sub display_rejectflow
 	$reject{total_inbound_mean} = sprintf("%.2f", $reject{total_inbound_bytes} / ($reject{total_inbound} || 1));
 
 	if (!$reject{total_inbound} && !$err{total_inbound}) {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
 
 	print qq {
-<table align="center">
-<tr><th colspan="4" class="thhead">$TRANSLATE{'Rejection flows'}</th></tr>
+<table width="100%"><tr><td>
+
+<table align="center" class="counter">
+<tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Rejection flows'}</th></tr>
 <tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Mean'}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Incoming'}</td><td class="tdtopnr">$reject{inbound}</td><td class="tdtopnr">$reject{inbound_bytes}</td><td class="tdtopnr">$reject{inbound_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Local incoming'}</td><td class="tdtopnr">$reject{local_inbound}</td><td class="tdtopnr">$reject{local_inbound_bytes}</td><td class="tdtopnr">$reject{local_inbound_mean}</td></tr>
 <tr><th>$TRANSLATE{'Total incoming'}</th><th align="right">$reject{total_inbound}</th><th align="right">$reject{total_inbound_bytes}</th><th align="right">$reject{total_inbound_mean}</th</tr>
 <tr><td colspan="4">&nbsp;</td></tr>
-<tr><td colspan="4">&nbsp;</td></tr>
-<tr><td colspan="4">&nbsp;</td></tr>
+</table>
+
+</td><td>
+
 };
 	$err{inbound_mean} = sprintf("%.2f", $err{inbound_bytes} / ($err{inbound} || 1));
 	$err{local_inbound_mean} = sprintf("%.2f", $err{local_inbound_bytes} / ($err{local_inbound} || 1));
 	$err{total_inbound_mean} = sprintf("%.2f", $err{total_inbound_bytes} / ($err{total_inbound} || 1));
 
-	print qq {<tr><th colspan="4" class="thhead">$TRANSLATE{'Syserr flows'}</th></tr>
+	print qq {
+<table align="center" class="counter">
+<tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Syserr flows'}</th></tr>
 <tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Mean'}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Incoming'}</td><td class="tdtopnr">$err{inbound}</td><td class="tdtopnr">$err{inbound_bytes}</td><td class="tdtopnr">$err{inbound_mean}</td></tr>
 <tr><td class="tdtop">$TRANSLATE{'Local incoming'}</td><td class="tdtopnr">$err{local_inbound}</td><td class="tdtopnr">$err{local_inbound_bytes}</td><td class="tdtopnr">$err{local_inbound_mean}</td></tr>
 <tr><th>$TRANSLATE{'Total incoming'}</th><th align="right">$err{total_inbound}</th><th align="right">$err{total_inbound_bytes}</th><th align="right">$err{total_inbound_mean}</th></tr>
+<tr><td colspan="4">&nbsp;</td></tr>
 </table>
+
+</td></tr></table>
 };
 
 }
@@ -2512,64 +2638,73 @@ sub display_statusflow
         delete $GLOBAL_STATUS{'Queued_bytes'};
 
 	if (scalar keys %GLOBAL_STATUS == 0) {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
 
         print qq{
-<table>
-<tr><th colspan="4" class="thhead">$TRANSLATE{'Messaging Status'}</th></tr>
+<table width="100%"><tr><td>
+
+<table class="counter">
+<tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Messaging Status'}</th></tr>
 <tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Percentage'}</td></tr>
 };
-        my $delivery_global_total = 1;
-        foreach (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
-		next if ( ($_ eq '') || /Command rejected/);
-                next if (/_bytes/ || /virus /);
-		if (/_Sent$/) {
-			$delivery_global_total -= $GLOBAL_STATUS{$_};
-			next;
+my $delivery_global_total = 1;
+foreach (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
+	next if ( ($_ eq '') || /Command rejected/);
+	next if (/_bytes/ || /virus /);
+	if (/_Sent$/) {
+		$delivery_global_total -= $GLOBAL_STATUS{$_};
+		next;
+	}
+	$delivery_global_total += $GLOBAL_STATUS{$_};
+}
+my $delivery_total = $GLOBAL_STATUS{Sent} || 1;
+my $delivery_total_bytes = $GLOBAL_STATUS{Sent_bytes} || 1;
+my $total_percent = 0;
+my %status = ();
+my $piecount = 0;
+foreach my $s (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
+	next if ( ($s eq '') || ($s =~ /Command rejected/));
+	next if ( ($s =~ /_bytes/) || ($s =~ /virus /) );
+	my $percent = sprintf("%.2f", ($GLOBAL_STATUS{$s}/$delivery_global_total) * 100);
+	if ($s =~ /^(\d{3}) \d\.(\d\.\d)$/) {
+		if (exists $SMTP_ERROR_CODE{$1} || exists $ESMTP_ERROR_CODE{$2}) {
+			print "<tr><td class=\"tdtopn\">$s ",$SMTP_ERROR_CODE{$1} . " " . $ESMTP_ERROR_CODE{$2} , "</td>";
+		} else {
+			print "<tr><td class=\"tdtopn\">$s</td>";
 		}
-                $delivery_global_total += $GLOBAL_STATUS{$_};
-        }
-        my $delivery_total = $GLOBAL_STATUS{Sent} || 1;
-        my $delivery_total_bytes = $GLOBAL_STATUS{Sent_bytes} || 1;
-        my $total_percent = 0;
-	my %status = ();
-	my $piecount = 0;
-        foreach my $s (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
-		next if ( ($s eq '') || ($s =~ /Command rejected/));
-                next if ( ($s =~ /_bytes/) || ($s =~ /virus /) );
-                my $percent = sprintf("%.2f", ($GLOBAL_STATUS{$s}/$delivery_global_total) * 100);
-                if ($s =~ /^(\d{3}) \d\.(\d\.\d)$/) {
-                        if (exists $SMTP_ERROR_CODE{$1} || exists $ESMTP_ERROR_CODE{$2}) {
-                                print "<tr><td class=\"tdtopn\">$s ",$SMTP_ERROR_CODE{$1} . " " . $ESMTP_ERROR_CODE{$2} , "</td>";
-                        } else {
-                                print "<tr><td class=\"tdtopn\">$s</td>";
-                        }
-                } else {
-                        print "<tr><td class=\"tdtopn\">$s</td>";
-                }
-                print "<td class=\"tdtopnr\">$GLOBAL_STATUS{$s}</td><td class=\"tdtopnr\">", sprintf("%.2f", $GLOBAL_STATUS{$s . '_bytes'}/$SIZE_UNIT), "</td><td class=\"tdtopnr\">$percent %</td></tr>\n";
-		if ( ($piecount < $MAXPIECOUNT) && ($percent > 2)) {
-			$status{"$s"} = $percent;
-			$total_percent += $GLOBAL_STATUS{$s};
-			$piecount++;
-		}
-        }
-	my $other_percent = 100 - sprintf("%.2f", ($total_percent/$delivery_global_total) * 100);
-	$status{"Others"} = $other_percent;
-	
-        print qq{
+	} else {
+		print "<tr><td class=\"tdtopn\">$s</td>";
+	}
+	print "<td class=\"tdtopnr\">$GLOBAL_STATUS{$s}</td><td class=\"tdtopnr\">", sprintf("%.2f", $GLOBAL_STATUS{$s . '_bytes'}/$SIZE_UNIT), "</td><td class=\"tdtopnr\">$percent %</td></tr>\n";
+	if ( ($piecount < $MAXPIECOUNT) && ($percent > 2)) {
+		$status{"$s"} = $percent;
+		$total_percent += $GLOBAL_STATUS{$s};
+		$piecount++;
+	}
+}
+my $other_percent = 100 - sprintf("%.2f", ($total_percent/$delivery_global_total) * 100);
+$status{"Others"} = $other_percent;
+
+print qq{
 <tr><td colspan="4" align="center">&nbsp;</td></tr>
-<tr><td colspan="4" align="center">
+</table>
+
+</td><td>
+
+<table>
+<tr><td align="center">
 };
-	print &grafit_pie(	labels => $status{lbls}, values => \%status,
-				title => $TRANSLATE{'Messaging status'},
-				divid => 'messagingstatus'
-	);
+print &grafit_pie(	labels => $status{lbls}, values => \%status,
+			title => $TRANSLATE{'Messaging status'},
+			divid => 'messagingstatus'
+);
 print qq{
 </td></tr>
 </table>
+
+</td></tr></table>
 };
 
 }
@@ -2631,9 +2766,10 @@ sub display_authflow
 		my $i = 1;
 		foreach my $type (sort keys %auth) {
 			print qq{
-<p>&nbsp;</p>
-<table>
-<tr><th colspan="2" class="thhead">$TRANSLATE{'SMTP Auth'}: $type</th></tr>
+<table width="100%"><tr><td>
+
+<table class="counter">
+<tr><th colspan="2" class="thheadcounter">$TRANSLATE{'SMTP Auth'}: $type</th></tr>
 <tr><td class="tdhead">$TRANSLATE{'Mechanism'}</td><td class=\"tdhead\">$TRANSLATE{'Count'}</td></tr>
 };
 			my $total = 0;
@@ -2643,7 +2779,12 @@ sub display_authflow
 				$total += $auth{$type}{$mech};
 				
 			}
-			print qq{<tr><th>$TRANSLATE{'Total'}</th><th align="right">$total</th></tr>
+			print qq{
+<tr><th>$TRANSLATE{'Total'}</th><th align="right">$total</th></tr>
+<tr><td colspan="2">&nbsp;</td></tr>
+</table>
+</td><td>
+<table>
 <tr><td colspan="2" align="center">
 };
 			print &grafit(  labels => $auth{$type}{lbls}, values => $auth{$type}{values},
@@ -2653,12 +2794,14 @@ sub display_authflow
 			);
 			print qq{
 </td></tr>
+</table>
+
+</td></tr></table>
 };
 			$i++;
 		}
-		print "</table>\n";
 	} else {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 	}
 
 }
@@ -2761,7 +2904,7 @@ sub display_top_sender
 	}
 	%topsender = ();
 	if (!$topdomain) {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
 	if ($CONFIG{ANONYMIZE}) {
@@ -2769,15 +2912,16 @@ sub display_top_sender
 	}
 	print qq{
 <table align="center">
-<tr><th colspan="3" class="thhead">$TRANSLATE{'Senders Statistics'} (top $CONFIG{TOP})</th></tr>
-<tr><td colspan="3" align="center">
+<tr><td align="center">
 };
 	print &grafit_pie(	values => \%relays, title => $TRANSLATE{'Top Sender Relay'},
 				divid => 'topsenderrelay', width => 800, height => 300
 	);
 	print qq{
 </td></tr>
-<tr><td colspan="3" align="center">&nbsp;</td></tr>
+</table>
+<table align="center" class="topcounter">
+<tr><th colspan="3" class="thheadcounter">$TRANSLATE{'Senders Statistics'} (top $CONFIG{TOP})</th></tr>
 <tr>
 <td class="tdhead">$TRANSLATE{'Top Sender Domain'}</td>
 <td class="tdhead">$TRANSLATE{'Top Sender Relay'}</td>
@@ -2876,23 +3020,24 @@ sub display_top_recipient
 	}
 	%toprcpt = ();
 	if (!$topdomain) {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
 	if ($CONFIG{ANONYMIZE}) {
 		$topemail = '&nbsp;';
 	}
 	print qq {
-<table align="left" width="100%">
-<tr><td colspan="3"><p>&nbsp;</p></td></tr>
-<tr><th colspan="3" class="thhead">$TRANSLATE{'Recipients Statistics'} (top $CONFIG{TOP})</th></tr>
-<tr><td colspan="3" align="center">
+<table align="center">
+<tr><td align="center">
 };
 	print &grafit_pie(	values => \%relays, title => $TRANSLATE{'Top Recipient Relay'},
 				divid => 'toprecipientrelay', width => 800, height => 300
 	);
-	print qq{</td></tr>
-<tr><td colspan="3" align="center">&nbsp;</td></tr>
+	print qq{
+</td></tr>
+</table>
+<table align="center" class="topcounter">
+<tr><th colspan="3" class="thheadcounter">$TRANSLATE{'Recipients Statistics'} (top $CONFIG{TOP})</th></tr>
 <tr>
 <td class="tdhead">$TRANSLATE{'Top Recipient Domain'}</td>
 <td class="tdhead">$TRANSLATE{'Top Recipient Relay'}</td>
@@ -2984,9 +3129,8 @@ sub display_top_spam
 	%topspam = ();
 	if ($toprule) {
 		print qq {
-<table align="left" width="100%">
-<tr><td colspan="2"><p>&nbsp;</p></td></tr>
-<tr><th colspan="2" class="thhead">$TRANSLATE{'Spam Statistics'} (top $CONFIG{TOP})</th></tr>
+<table align="center" class="topcounter">
+<tr><th colspan="2" class="thheadcounter">$TRANSLATE{'Spam Statistics'} (top $CONFIG{TOP})</th></tr>
 <tr><td class="tdhead">$TRANSLATE{'Top Spams Rules'}</td><td class="tdtopn">$toprule</td></tr>
 <tr><td class="tdhead">$TRANSLATE{'Top Spammers Domain'}</td><td class="tdtopn">$topdomain</td></tr>
 <tr><td class="tdhead">$TRANSLATE{'Top Spammers Relays'}</td><td class="tdtopn">$toprelay</td></tr>
@@ -2999,7 +3143,7 @@ sub display_top_spam
 } if ($topdest);
 		print "</table>\n";
 	} else {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 	}
 }
 
@@ -3025,7 +3169,6 @@ sub display_top_virus
 {
 	my ($hostname, $date, $hour) = @_;
 
-	print qq{<table align="center"><tr><td valign="center" align="center">};
 	# Top virus statistics
 	my $topvirus = '';
 	my $top = 0;
@@ -3077,8 +3220,8 @@ sub display_top_virus
 	}
 	if ($topvirus) {
 		print qq {
-<tr><td colspan="2"><p>&nbsp;</p></td></tr>
-<tr><th colspan="2" class="thhead">$TRANSLATE{'Virus Statistics'} (top $CONFIG{TOP})</th></tr>
+<table class="topcounter" align="center">
+<tr><th colspan="2" class="thheadcounter">$TRANSLATE{'Virus Statistics'} (top $CONFIG{TOP})</th></tr>
 <tr><td class="tdhead">$TRANSLATE{'Top Virus'}</td><td class="tdtopn">$topvirus</td></tr>
 };
 		if (!$CONFIG{ANONYMIZE}) {
@@ -3095,11 +3238,11 @@ sub display_top_virus
 <tr><td class="tdhead">$TRANSLATE{'Top Recipient Address'}</td><td class="tdtopn">$topemail</td></tr>
 };
 		}
+		print "</table>\n";
 	} else {
-		print qq{<tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 	}
 
-	print "</table>\n";
 }
 
 sub compute_top_dsn
@@ -3124,7 +3267,6 @@ sub display_top_dsn
 {
 	my ($hostname, $date, $hour) = @_;
 
-	print qq{<table align="center"><tr><td valign="center" align="center">};
 	# Top dsn statistics
 	my $topdsnstatus = '';
 	my $top = 0;
@@ -3171,12 +3313,12 @@ sub display_top_dsn
 	delete $topdsn{rcpt};
 
 	if (!$topdsnstatus) {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
 	print qq {
-<tr><td colspan="2"><p>&nbsp;</p></td></tr>
-<tr><th colspan="2" class="thhead">$TRANSLATE{'DSN Statistics'} (top $CONFIG{TOP})</th></tr>
+<table class="topcounter" align="center">
+<tr><th colspan="2" class="thheadcounter">$TRANSLATE{'DSN Statistics'} (top $CONFIG{TOP})</th></tr>
 <tr><td class="tdhead">$TRANSLATE{'Top DSN Status'}</td><td class="tdtopn">$topdsnstatus</td></tr>};
 	print qq {
 <tr><td class="tdhead">$TRANSLATE{'Top DSN Senders'}</td><td class="tdtopn">$topsender</td></tr>} if (!$CONFIG{ANONYMIZE});
@@ -3219,8 +3361,6 @@ sub compute_top_reject
 sub display_top_reject
 {
 	my ($hostname, $date, $hour) = @_;
-
-	print qq{<table align="center"><tr><td valign="center" align="center">};
 
 	# Top rejection statistics
 	my $toprule = '';
@@ -3285,13 +3425,13 @@ sub display_top_reject
 	}
 	%topreject =();
 	if (!$toprule && (scalar keys %toperr == 0)) {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
 	if ($toprule) {
 		print qq {
-<table>
-<tr><th colspan="2" class="thhead">$TRANSLATE{'Rejection Statistics'} (top $CONFIG{TOP})</th></tr>
+<table align="center" class="topcounter">
+<tr><th colspan="2" class="thheadcounter">$TRANSLATE{'Rejection Statistics'} (top $CONFIG{TOP})</th></tr>
 <tr><td class="tdhead">$TRANSLATE{'Top Rules'}</td><td class="tdtopn">$toprule</td></tr>
 <tr><td class="tdhead">$TRANSLATE{'Top Domains'}</td><td class="tdtopn">$topdomain</td></tr>
 <tr><td class="tdhead">$TRANSLATE{'Top Relays'}</td><td class="tdtopn">$toprelay</td></tr>
@@ -3304,14 +3444,16 @@ sub display_top_reject
 		print qq {
 <tr><td class="tdhead">$TRANSLATE{'Top status'}</td><td class="tdtopn">$topstatus</td></tr>
 };
-		print "</table>\n<p>&nbsp;</p>";
+		print "</table>\n";
 	}
 
         if (scalar keys %toperr > 0) {
                 $top = 0;
-                print "<table>\n";
-                print "<tr><th colspan=\"2\" class=\"thhead\">$TRANSLATE{'System messages'}</th></tr>\n";
-                print "<tr><td class=\"tdhead\">$TRANSLATE{'Message'}</td><td class=\"tdhead\">$TRANSLATE{'Count'}</td></tr>\n";
+                print qq{
+<table align="center" class="topcounter">
+<tr><th colspan="2" class="thheadcounter">$TRANSLATE{'System messages'}</th></tr>
+<tr><td class="tdhead">$TRANSLATE{'Message'}</td><td class="tdhead">$TRANSLATE{'Count'}</td></tr>
+};
                 foreach my $msg (sort {$toperr{$b} <=> $toperr{$a}} keys %toperr) {
 			my $display = $msg;
 			$display =~ s/</\&lt;/g;
@@ -3357,14 +3499,14 @@ sub display_top_limit
 	my ($hostname, $date, $hour) = @_;
 
 	if ((scalar keys %topmaxrcpt == 0) && (scalar keys %topmaxsize == 0)) {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
 
 	if (scalar keys %topmaxrcpt > 0) {
 		print qq{
-<table align="center" width="100%"><tr><td valign="center" align="center">
-<tr><th colspan="2" class="thhead">$TRANSLATE{'Max Number of Recipients'} (top $CONFIG{TOP})</th></tr>
+<table class="topcounter" align="center">
+<tr><th colspan="2" class="thheadcounter">$TRANSLATE{'Max Number of Recipients'} (top $CONFIG{TOP})</th></tr>
 <tr><td class="tdhead">$TRANSLATE{'Number of Recipients'}</td><td class="tdhead">$TRANSLATE{'Senders'}</td></tr>
 };
 		my $top = 0;
@@ -3379,14 +3521,14 @@ sub display_top_limit
 			print "</td><tr>\n";
 			$top++;
 		}
-		print "</table>\n<p>&nbsp;</p>";
+		print "</table>\n";
 	}
 
 	if (scalar keys %topmaxsize > 0) {
 		my $top = 0;
 		print qq{
-<table align="center" width="100%"><tr><td valign="center" align="center">
-<tr><th colspan="3" class="thhead">$TRANSLATE{'Max Size Senders'} (top $CONFIG{TOP})</th></tr>
+<table class="topcounter" align="center">
+<tr><th colspan="3" class="thheadcounter">$TRANSLATE{'Max Size Senders'} (top $CONFIG{TOP})</th></tr>
 <tr><td class="tdhead">$TRANSLATE{'Message size'}</td><td class="tdhead">$TRANSLATE{'Number of Recipients'}</td><td class="tdhead">$TRANSLATE{'Senders'}</td></tr>
 };
 		foreach my $id (sort { ($topmaxsize{$b}{size}*$topmaxsize{$b}{nrcpt}) <=> ($topmaxsize{$a}{size}*$topmaxsize{$b}{nrcpt}) } keys %topmaxsize) {
@@ -3420,7 +3562,7 @@ sub display_top_spamdetail
 	my ($hostname, $date, $type, $hour) = @_;
 
 	if (scalar keys %{$topspamdetail{$type}} == 0) {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
 
@@ -3514,7 +3656,7 @@ sub display_top_auth
 	my ($hostname, $date, $hour) = @_;
 
 	if (scalar keys %{$topauth{authid}} == 0) {
-		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
 		return;
 	}
 
@@ -3541,8 +3683,8 @@ sub display_top_auth
 		$top++;
 	}
 	print qq{
-<table align="center" width="100%"><tr><td valign="center" align="center">
-<tr><th colspan="3" class="thhead">$TRANSLATE{'SMTP Auth Statistics'} (top $CONFIG{TOP})</th></tr>
+<table align="center" class="topcounter">
+<tr><th colspan="3" class="thheadcounter">$TRANSLATE{'SMTP Auth Statistics'} (top $CONFIG{TOP})</th></tr>
 <tr><td class="tdhead">$TRANSLATE{'Top Mechanism'}</td><td class="tdhead">$TRANSLATE{'Top Relay'}</td><td class="tdhead">$TRANSLATE{'Top Authid'}</td></tr>
 <tr><td class="tdtopn">$topmech</td><td class="tdtopn">$toprelay</td><td class="tdtopn">$topid</td></tr>
 </table>
