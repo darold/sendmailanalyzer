@@ -2035,6 +2035,7 @@ sub clear_status
 	$status =~ s/ \(.*//;
 	$status =~ s/ '.'//g;
 	$status =~ s/\.$//;
+	$status =~ s/;.*$//;
 
 	if ($status =~ /(\d{3} \d\.\d\.\d).*[^a-z\s:\.]+.*/i) {
 		return $1;
