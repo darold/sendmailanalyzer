@@ -24,7 +24,9 @@ no strict qw/refs/;
 use CGI;
 use Benchmark;
 use Getopt::Long;
-use POSIX ":sys_wait_h";
+use POSIX qw / strftime :sys_wait_h /;
+use Time::Local 'timelocal_nocheck';
+
 
 $VERSION     = '8.7';
 $AUTHOR = "Gilles Darold <gilles\@darold.net>";
@@ -288,13 +290,42 @@ sub cache_stat
 				&do_month_cache($hostname,$DOMAIN,$y,$m,$currentmonth);
 			}
 		}
+		# Build years cache
 		foreach my $DOMAIN (@{$CONFIG{DOMAIN_REPORT}}) {
 			&do_year_cache($hostname,$DOMAIN,$y,$year);
 		}
 		foreach my $DOMAIN (@{$CONFIG{DOMAIN_HOST_REPORT}{$hostname}}) {
 			&do_year_cache($hostname,$DOMAIN,$y,$year);
 		}
+		# Build weeks cache
+		my $curweek = POSIX::strftime("%W", gmtime time);
+		foreach my $week ("00" .. "53") {
+			last if ( ($y eq $year) && ($week > $curweek));
+			foreach my $DOMAIN (@{$CONFIG{DOMAIN_REPORT}}) {
+				&do_week_cache($hostname,$DOMAIN,$y,$year,$week,$curweek);
+			}
+			foreach my $DOMAIN (@{$CONFIG{DOMAIN_HOST_REPORT}{$hostname}}) {
+				&do_week_cache($hostname,$DOMAIN,$y,$year,$week,$curweek);
+			}
+		}
 	}
+}
+
+####
+# Get week number
+####
+sub get_week_number
+{
+	my ($year, $month, $day) = @_;
+
+	# Check if the date is valide first
+	my $datefmt = POSIX::strftime("%F", 1, 1, 1, $day, $month - 1, $year - 1900);
+	if ($datefmt ne "$year-$month-$day") {
+		return -1;
+	}
+	my $weekNumber = POSIX::strftime("%W", 1, 1, 1, $day, $month - 1, $year - 1900);
+
+	return $weekNumber;
 }
 
 ####
@@ -546,14 +577,14 @@ sub do_hour_cache
 			print "Writing cache file: $file\n" if ($CONFIG{DEBUG});
 			&clean_globals();
 			&compute_top_stats($file, $DOMAIN, \%localstat);
-			&compute_global_stats($file, $DOMAIN, \%localstat, '00', '60', 'Minutes%20of%20the%20hour', $hostname);
+			&compute_global_stats($file, $DOMAIN, \%localstat, '00', '60', 'Minutes of the hour', $hostname);
 		}
 		foreach my $DOMAIN (@{$CONFIG{DOMAIN_HOST_REPORT}{$hostname}}) {
 			$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/${hour}cache.pm\U$DOMAIN\E";
 			print "Writing cache file: $file\n" if ($CONFIG{DEBUG});
 			&clean_globals();
 			&compute_top_stats($file, $DOMAIN, \%localstat);
-			&compute_global_stats($file, $DOMAIN, \%localstat, '00', '60', 'Minutes%20of%20the%20hour', $hostname);
+			&compute_global_stats($file, $DOMAIN, \%localstat, '00', '60', 'Minutes of the hour', $hostname);
 		}
 	}
 }
@@ -1496,6 +1527,8 @@ sub free_space
 {
 	my $path = shift;
 
+	return if ( !$CONFIG{FREE_SPACE} || (lc($CONFIG{FREE_SPACE}) eq 'none') );
+
 	if ( (lc($CONFIG{FREE_SPACE}) eq 'archive') && !-e "$path/history.tar.gz") {
 		print "Backuping data file into $path/history.tar.gz\n" if ($CONFIG{DEBUG});
 		my @found = `find $path -name "*.dat"`;
@@ -1577,8 +1610,16 @@ sub do_day_cache
 			$localmessaging{values1} .= ($messaging{total_outbound} || 0) . ':';
 			$localmessaging{values_bytes} .= ($messaging{total_inbound_bytes} || 0) . ':';
 			$localmessaging{values1_bytes} .= ($messaging{total_outbound_bytes} || 0) . ':';
-			$localmessaging{nbsender} .= ($messaging{nbsender} || 0) . ':';
-			$localmessaging{nbrcpt} .= ($messaging{nbrcpt} || 0) . ':';
+			my $tmp = 0;
+			foreach (split(/:/, $messaging{nbsender})) {
+				$tmp += $_;
+			}
+			$localmessaging{nbsender} .= $tmp . ':';
+			$tmp = 0;
+			foreach (split(/:/, $messaging{nbrcpt})) {
+				$tmp += $_;
+			}
+			$localmessaging{nbrcpt} .= $tmp . ':';
 			%messaging = ();
 
 			foreach my $t (keys %auth) {
@@ -1729,7 +1770,7 @@ sub do_day_cache
 			print OUT "'$type' => {";
 			print OUT "'values' => '$localauth{$type}{values}',";
 			print OUT "'lbls' => '$lbls',";
-			print OUT "'x_label' => 'Day%20of%20the%20month',";
+			print OUT "'x_label' => 'Day of the month',";
 			foreach my $mech (keys %{$localauth{$type}}) {
 				next if (grep(/^$mech$/,'lbls','x_label','values'));
 				print OUT "'$mech' => '$localauth{$type}{$mech}',";
@@ -1752,7 +1793,7 @@ sub do_day_cache
 		print OUT "'total_outbound' => '$localmessaging{total_outbound}',\n";
 		print OUT "'total_outbound_bytes' => '$localmessaging{total_outbound_bytes}',\n";
 		print OUT "'lbls' => '$lbls',\n";
-		print OUT "'x_label' => 'Day%20of%20the%20month',\n";
+		print OUT "'x_label' => 'Day of the month',\n";
 		print OUT "'values' => '$localmessaging{values}',\n";
 		print OUT "'values1' => '$localmessaging{values1}',\n";
 		print OUT "'values_bytes' => '$localmessaging{values_bytes}',\n";
@@ -1776,7 +1817,7 @@ sub do_day_cache
 		print OUT "'total_outbound' => '$localspam{total_outbound}',\n";
 		print OUT "'total_outbound_bytes' => '$localspam{total_outbound_bytes}',\n";
 		print OUT "'lbls' => '$lbls',\n";
-		print OUT "'x_label' => 'Day%20of%20the%20month',\n";
+		print OUT "'x_label' => 'Day of the month',\n";
 		print OUT "'values' => '$localspam{values}',\n";
 		print OUT "'Ext_Int' => '$localspam{Ext_Int}',\n";
 		print OUT "'Int_Int' => '$localspam{Int_Int}',\n";
@@ -1813,7 +1854,7 @@ sub do_day_cache
 		print OUT "'total_outbound' => '$localvirus{total_outbound}',\n";
 		print OUT "'total_outbound_bytes' => '$localvirus{total_outbound_bytes}',\n";
 		print OUT "'lbls' => '$lbls',\n";
-		print OUT "'x_label' => 'Day%20of%20the%20month',\n";
+		print OUT "'x_label' => 'Day of the month',\n";
 		print OUT "'values' => '$localvirus{values}',\n";
 		print OUT "'Ext_Int' => '$localvirus{Ext_Int}',\n";
 		print OUT "'Int_Int' => '$localvirus{Int_Int}',\n";
@@ -1832,7 +1873,7 @@ sub do_day_cache
 		print OUT "'total_outbound' => '$localdsn{total_outbound}',\n";
 		print OUT "'error' => '$localdsn{error}',\n";
 		print OUT "'lbls' => '$lbls',\n";
-		print OUT "'x_label' => 'Day%20of%20the%20month',\n";
+		print OUT "'x_label' => 'Day of the month',\n";
 		print OUT "'values' => '$localdsn{values}',\n";
 		print OUT "'Ext_Int' => '$localdsn{Ext_Int}',\n";
 		print OUT "'Int_Int' => '$localdsn{Int_Int}',\n";
@@ -1863,7 +1904,7 @@ sub do_day_cache
 		my $elbls = 'Ext -> Int:Ext -> Ext:Int -> Int:Int -> Ext';
 		print OUT "\%::delivery = (\n";
 		print OUT "'lbls' => '$elbls',\n";
-		print OUT "'x_label' => 'Day%20of%20the%20month',\n";
+		print OUT "'x_label' => 'Day of the month',\n";
 		print OUT "'Ext_Int' => '$localdelivery{Ext_Int}',\n";
 		print OUT "'Int_Int' => '$localdelivery{Int_Int}',\n";
 		print OUT "'Int_Ext' => '$localdelivery{Int_Ext}',\n";
@@ -2295,8 +2336,16 @@ sub do_month_cache
 			$localmessaging{values1} .= ($messaging{total_outbound} || 0) . ':';
 			$localmessaging{values_bytes} .= ($messaging{total_inbound_bytes} || 0) . ':';
 			$localmessaging{values1_bytes} .= ($messaging{total_outbound_bytes} || 0) . ':';
-			$localmessaging{nbsender} .= ($messaging{nbsender} || 0) . ':';
-			$localmessaging{nbrcpt} .= ($messaging{nbrcpt} || 0) . ':';
+			my $tmp = 0;
+			foreach (split(/:/, $messaging{nbsender})) {
+				$tmp += $_;
+			}
+			$localmessaging{nbsender} .= $tmp . ':';
+			$tmp = 0;
+			foreach (split(/:/, $messaging{nbrcpt})) {
+				$tmp += $_;
+			}
+			$localmessaging{nbrcpt} .= $tmp . ':';
 			%messaging = ();
 
 			foreach my $t (keys %auth) {
@@ -2450,7 +2499,7 @@ sub do_month_cache
 			print OUT "'$type' => {";
 			print OUT "'values' => '$localauth{$type}{values}',";
 			print OUT "'lbls' => '$lbls',";
-			print OUT "'x_label' => 'Month%20of%20the%20year',";
+			print OUT "'x_label' => 'Month of the year',";
 			foreach my $mech (keys %{$localauth{$type}}) {
 				next if (grep(/^$mech$/,'lbls','x_label','values'));
 				print OUT "'$mech' => '$localauth{$type}{$mech}',";
@@ -2473,7 +2522,7 @@ sub do_month_cache
 		print OUT "'total_outbound' => '$localmessaging{total_outbound}',\n";
 		print OUT "'total_outbound_bytes' => '$localmessaging{total_outbound_bytes}',\n";
 		print OUT "'lbls' => '$lbls',\n";
-		print OUT "'x_label' => 'Month%20of%20the%20year',\n";
+		print OUT "'x_label' => 'Month of the year',\n";
 		print OUT "'values' => '$localmessaging{values}',\n";
 		print OUT "'values1' => '$localmessaging{values1}',\n";
 		print OUT "'values_bytes' => '$localmessaging{values_bytes}',\n";
@@ -2497,7 +2546,7 @@ sub do_month_cache
 		print OUT "'total_outbound' => '$localspam{total_outbound}',\n";
 		print OUT "'total_outbound_bytes' => '$localspam{total_outbound_bytes}',\n";
 		print OUT "'lbls' => '$lbls',\n";
-		print OUT "'x_label' => 'Month%20of%20the%20year',\n";
+		print OUT "'x_label' => 'Month of the year',\n";
 		print OUT "'values' => '$localspam{values}',\n";
 		print OUT "'Ext_Int' => '$localspam{Ext_Int}',\n";
 		print OUT "'Int_Int' => '$localspam{Int_Int}',\n";
@@ -2534,7 +2583,7 @@ sub do_month_cache
 		print OUT "'total_outbound' => '$localvirus{total_outbound}',\n";
 		print OUT "'total_outbound_bytes' => '$localvirus{total_outbound_bytes}',\n";
 		print OUT "'lbls' => '$lbls',\n";
-		print OUT "'x_label' => 'Month%20of%20the%20year',\n";
+		print OUT "'x_label' => 'Month of the year',\n";
 		print OUT "'values' => '$localvirus{values}',\n";
 		print OUT "'Ext_Int' => '$localvirus{Ext_Int}',\n";
 		print OUT "'Int_Int' => '$localvirus{Int_Int}',\n";
@@ -2553,7 +2602,7 @@ sub do_month_cache
 		print OUT "'total_outbound' => '$localdsn{total_outbound}',\n";
 		print OUT "'error' => '$localdsn{error}',\n";
 		print OUT "'lbls' => '$lbls',\n";
-		print OUT "'x_label' => 'Month%20of%20the%20year',\n";
+		print OUT "'x_label' => 'Month of the year',\n";
 		print OUT "'values' => '$localdsn{values}',\n";
 		print OUT "'Ext_Int' => '$localdsn{Ext_Int}',\n";
 		print OUT "'Int_Int' => '$localdsn{Int_Int}',\n";
@@ -2584,7 +2633,7 @@ sub do_month_cache
 		my $elbls = 'Ext -> Int:Ext -> Ext:Int -> Int:Int -> Ext';
 		print OUT "\%::delivery = (\n";
 		print OUT "'lbls' => '$elbls',\n";
-		print OUT "'x_label' => 'Month%20of%20the%20year',\n";
+		print OUT "'x_label' => 'Month of the year',\n";
 		print OUT "'Ext_Int' => '$localdelivery{Ext_Int}',\n";
 		print OUT "'Int_Int' => '$localdelivery{Int_Int}',\n";
 		print OUT "'Int_Ext' => '$localdelivery{Int_Ext}',\n";
@@ -3177,7 +3226,7 @@ sub do_year_cache
 			print OUT "'$type' => {\n";
 			print OUT "\t'values' => '$localauth{$type}{values}',\n";
 			print OUT "\t'lbls' => '$lbls',\n";
-			print OUT "\t'x_label' => 'Month%20of%20the%20year',\n";
+			print OUT "\t'x_label' => 'Month of the year',\n";
 			foreach my $mech (keys %{$localauth{$type}}) {
 				next if (grep(/^$mech$/,'lbls','x_label','values'));
 				print OUT "\t'$mech' => '$localauth{$type}{$mech}',\n";
@@ -3200,7 +3249,7 @@ sub do_year_cache
 		print OUT "'total_outbound' => '$localmessaging{total_outbound}',\n";
 		print OUT "'total_outbound_bytes' => '$localmessaging{total_outbound_bytes}',\n";
 		print OUT "'lbls' => '$lbls',\n";
-		print OUT "'x_label' => 'Month%20of%20the%20year',\n";
+		print OUT "'x_label' => 'Month of the year',\n";
 		print OUT "'values' => '$localmessaging{values}',\n";
 		print OUT "'values1' => '$localmessaging{values1}',\n";
 		print OUT "'values_bytes' => '$localmessaging{values_bytes}',\n";
@@ -3224,7 +3273,7 @@ sub do_year_cache
 		print OUT "'total_outbound' => '$localspam{total_outbound}',\n";
 		print OUT "'total_outbound_bytes' => '$localspam{total_outbound_bytes}',\n";
 		print OUT "'lbls' => '$lbls',\n";
-		print OUT "'x_label' => 'Month%20of%20the%20year',\n";
+		print OUT "'x_label' => 'Month of the year',\n";
 		print OUT "'values' => '$localspam{values}',\n";
 		print OUT "'Ext_Int' => '$localspam{Ext_Int}',\n";
 		print OUT "'Int_Int' => '$localspam{Int_Int}',\n";
@@ -3261,7 +3310,7 @@ sub do_year_cache
 		print OUT "'total_outbound' => '$localvirus{total_outbound}',\n";
 		print OUT "'total_outbound_bytes' => '$localvirus{total_outbound_bytes}',\n";
 		print OUT "'lbls' => '$lbls',\n";
-		print OUT "'x_label' => 'Month%20of%20the%20year',\n";
+		print OUT "'x_label' => 'Month of the year',\n";
 		print OUT "'values' => '$localvirus{values}',\n";
 		print OUT "'Ext_Int' => '$localvirus{Ext_Int}',\n";
 		print OUT "'Int_Int' => '$localvirus{Int_Int}',\n";
@@ -3280,7 +3329,7 @@ sub do_year_cache
 		print OUT "'total_outbound' => '$localdsn{total_outbound}',\n";
 		print OUT "'error' => '$localdsn{error}',\n";
 		print OUT "'lbls' => '$lbls',\n";
-		print OUT "'x_label' => 'Month%20of%20the%20year',\n";
+		print OUT "'x_label' => 'Month of the year',\n";
 		print OUT "'values' => '$localdsn{values}',\n";
 		print OUT "'Ext_Int' => '$localdsn{Ext_Int}',\n";
 		print OUT "'Int_Int' => '$localdsn{Int_Int}',\n";
@@ -3311,7 +3360,7 @@ sub do_year_cache
 		my $elbls = 'Ext -> Int:Ext -> Ext:Int -> Int:Int -> Ext';
 		print OUT "\%::delivery = (\n";
 		print OUT "'lbls' => '$elbls',\n";
-		print OUT "'x_label' => 'Month%20of%20the%20year',\n";
+		print OUT "'x_label' => 'Month of the year',\n";
 		print OUT "'Ext_Int' => '$localdelivery{Ext_Int}',\n";
 		print OUT "'Int_Int' => '$localdelivery{Int_Int}',\n";
 		print OUT "'Int_Ext' => '$localdelivery{Int_Ext}',\n";
@@ -3774,6 +3823,799 @@ sub clear_postfix
 		return 1;
 	}
 	return 0;
+}
+
+
+####
+# Weekly cache statistics
+####
+sub do_week_cache
+{
+	my ($hostname, $DOMAIN, $year, $curyear, $week, $curweek) = @_;
+
+	# This cache have been already build
+	if (-e "$CONFIG{OUT_DIR}/$hostname/$year/weeks/$week/cache.pm\U$DOMAIN\E" && ("$year$week" < "$curyear$curweek")) {
+		return;
+	}
+
+	print "Reading statistics from $CONFIG{OUT_DIR}/$hostname/$year/weeks/$week\n" if ($CONFIG{DEBUG});
+
+	my %localtopsender = ();
+	my %localtoprcpt = ();
+	my %localtopspam = ();
+	my %localtopvirus = ();
+	my %localtopdsn = ();
+	my %localtopreject = ();
+	my %localtoperr = ();
+	my %localdelivery = ();
+	my %localmessaging = ();
+	my %localspam = ();
+	my %localvirus = ();
+	my %localdsn = ();
+	my %localreject = ();
+	my %localerr = ();
+	my %localGLOBAL_STATUS = ();
+	my %localtopspamdetail = ();
+	my %localauth = ();
+	my %localtopauth = ();
+	my $lbls = '';
+	my %authval = ();
+	&clean_globals();
+	my @days = &get_week_boundaries($year, $week);
+	foreach my $path (@days) {
+		$path =~ /\/(\d+)$/;
+		my $day = "$1";
+		$lbls .= "$day:";
+		if (!-e "$CONFIG{OUT_DIR}/$hostname/$path/cache.pm\U$DOMAIN\E") {
+			$localmessaging{values} .=  '0:';
+			$localmessaging{values1} .= '0:';
+			$localmessaging{values_bytes} .= '0:';
+			$localmessaging{values1_bytes} .= '0:';
+			$localspam{values} .= '0:';
+			$localvirus{values} .= '0:';
+			$localdsn{values} .= '0:';
+			$localmessaging{nbsender} .= '0:';
+			$localmessaging{nbrcpt} .= '0:';
+			next;
+		} else {
+			my $file = "$CONFIG{OUT_DIR}/$hostname/$path/cache.pm\U$DOMAIN\E";
+			print "Loading cache statistics from $file\n" if ($CONFIG{DEBUG});
+			do "$file";
+			foreach my $k (keys %messaging) {
+				if (!grep(/^$k$/, 'lbls','x_label','values','values1','values_bytes','values1_bytes','nbsender','nbrcpt')) {
+				       $localmessaging{$k} += $messaging{$k};
+			       }
+			}
+
+			$localmessaging{values} .= ($messaging{total_inbound} || 0) . ':';
+			$localmessaging{values1} .= ($messaging{total_outbound} || 0) . ':';
+			$localmessaging{values_bytes} .= ($messaging{total_inbound_bytes} || 0) . ':';
+			$localmessaging{values1_bytes} .= ($messaging{total_outbound_bytes} || 0) . ':';
+			my $tmp = 0;
+			foreach (split(/:/, $messaging{nbsender})) {
+				$tmp += $_;
+			}
+			$localmessaging{nbsender} .= $tmp . ':';
+			$tmp = 0;
+			foreach (split(/:/, $messaging{nbrcpt})) {
+				$tmp += $_;
+			}
+			$localmessaging{nbrcpt} .= $tmp . ':';
+			%messaging = ();
+
+			foreach my $t (keys %auth) {
+				foreach my $m (keys %{$auth{$t}}) {
+					if (!grep(/^$m$/, 'lbls','x_label','values')) {
+						$localauth{$t}{$m} += $auth{$t}{$m};
+						$localauth{$t}{values}{"$day"} += $auth{$t}{$m};
+					}
+				}
+			}
+			%auth = ();
+
+			foreach my $k (keys %spam) {
+				if (!grep(/^$k$/, 'lbls','x_label','values')) {
+				       $localspam{$k} += $spam{$k};
+			       }
+			}
+			$localspam{values} .= ($spam{total_inbound} || 0) . ':';
+			%spam = ();
+			foreach my $k (keys %reject) {
+				if (!grep(/^$k$/, 'lbls','x_label','values')) {
+				       $localreject{$k} += $reject{$k};
+			       }
+			}
+			%reject = ();
+			foreach my $k (keys %virus) {
+				if (!grep(/^$k$/, 'lbls','x_label','values')) {
+				       $localvirus{$k} += $virus{$k};
+			       }
+			}
+			$localvirus{values} .= ($virus{total_inbound} || 0) . ':';
+			%virus = ();
+			foreach my $k (keys %dsn) {
+				if (!grep(/^$k$/, 'lbls','x_label','values')) {
+				       $localdsn{$k} += $dsn{$k};
+			       }
+			}
+			$localdsn{values} .= ($dsn{total_outbound} || 0) . ':';
+			%dsn = ();
+
+			foreach my $k (keys %err) {
+				if (!grep(/^$k$/, 'lbls','x_label','values')) {
+				       $localerr{$k} += $err{$k};
+			       }
+			}
+			%err = ();
+			foreach my $k (keys %GLOBAL_STATUS) {
+				$localGLOBAL_STATUS{$k} += $GLOBAL_STATUS{$k};
+			}
+			%GLOBAL_STATUS = ();
+			foreach my $k (keys %delivery) {
+				if (!grep(/^$k$/, 'lbls','x_label')) {
+				       $localdelivery{$k} += $delivery{$k};
+			       }
+			}
+
+			foreach my $k (keys %topsender) {
+				foreach my $d (keys %{$topsender{$k}}) {
+					$localtopsender{$k}{$d} += $topsender{$k}{$d} || 0;
+				}
+			}
+			%topsender = ();
+
+			foreach my $k (keys %toprcpt) {
+				foreach my $d (keys %{$toprcpt{$k}}) {
+					$localtoprcpt{$k}{$d} += $toprcpt{$k}{$d} || 0;
+				}
+			}
+			%toprcpt = ();
+
+			foreach my $k (keys %topreject) {
+				foreach my $d (keys %{$topreject{$k}}) {
+					$localtopreject{$k}{$d} += $topreject{$k}{$d} || 0;
+				}
+			}
+			%topreject = ();
+
+			foreach my $k (keys %topvirus) {
+				foreach my $d (keys %{$topvirus{$k}}) {
+					$localtopvirus{$k}{$d} += $topvirus{$k}{$d} || 0;
+				}
+			}
+			%topvirus = ();
+			
+			foreach my $k (keys %topdsn) {
+				foreach my $d (keys %{$topdsn{$k}}) {
+					$localtopdsn{$k}{$d} += $topdsn{$k}{$d} || 0;
+				}
+			}
+			%topdsn = ();
+			
+			foreach my $k (keys %topspam) {
+				foreach my $d (keys %{$topspam{$k}}) {
+					$localtopspam{$k}{$d} += $topspam{$k}{$d} || 0;
+				}
+			}
+			%topspam = ();
+			foreach my $k (keys %toperr) {
+				$localtoperr{$k} += $toperr{$k} || 0;
+			}
+			%toperr = ();
+
+			foreach my $t (keys %topspamdetail) {
+				foreach my $k (keys %{$topspamdetail{$t}}) {
+					foreach my $d (keys %{$topspamdetail{$t}{$k}}) {
+						$localtopspamdetail{$t}{$k}{$d} += $topspamdetail{$t}{$k}{$d} || 0;
+					}
+				}
+			}
+			%topspamdetail = ();
+
+			foreach my $k (keys %topauth) {
+				foreach my $d (keys %{$topauth{$k}}) {
+					$localtopauth{$k}{$d} += $topauth{$k}{$d} || 0;
+				}
+			}
+			%topauth = ();
+		}
+		foreach my $t (keys %localauth) {
+			$authval{$t} .= ($localauth{$t}{values}{"$day"} || 0) . ':';
+		}
+	}
+
+	foreach my $t (keys %localauth) {
+		delete $localauth{$t}{values};
+		$localauth{$t}{values} = $authval{$t};
+		$localauth{$t}{lbls} =~ s/:$//;
+		$localauth{$t}{values} =~ s/:$//;
+	}
+
+	$lbls =~ s/:$//;
+	$localmessaging{values} =~ s/:$//;
+	$localmessaging{values1} =~ s/:$//;
+	$localmessaging{values_bytes} =~ s/:$//;
+	$localmessaging{values1_bytes} =~ s/:$//;
+	$localspam{values} =~ s/:$//;
+	$localvirus{values} =~ s/:$//;
+	$localdsn{values} =~ s/:$//;
+	$localmessaging{nbrcpt} =~ s/:$//;
+	$localmessaging{nbsender} =~ s/:$//;
+
+	# Create weeks directory if they do not exist yet
+	if (!-d "$CONFIG{OUT_DIR}/$hostname/$year/weeks") {
+		&create_directory("$hostname/$year/weeks");
+	}
+	if (!-d "$CONFIG{OUT_DIR}/$hostname/$year/weeks/$week") {
+		&create_directory("$hostname/$year/weeks/$week");
+	}
+
+	my $file = "$CONFIG{OUT_DIR}/$hostname/$year/weeks/$week/cache.pm\U$DOMAIN\E";
+	
+	print "Writing cache file: $file\n" if ($CONFIG{DEBUG});
+
+	if (open(OUT, ">$file")) {
+		print OUT "\%::auth = (\n";
+		foreach my $type (keys %localauth) {
+			print OUT "'$type' => {";
+			print OUT "'values' => '$localauth{$type}{values}',";
+			print OUT "'lbls' => '$lbls',";
+			print OUT "'x_label' => 'Days of the week',";
+			foreach my $mech (keys %{$localauth{$type}}) {
+				next if (grep(/^$mech$/,'lbls','x_label','values'));
+				print OUT "'$mech' => '$localauth{$type}{$mech}',";
+			}
+			print OUT "},\n";
+		}
+		print OUT ");\n\n";
+		%localauth = ();
+		print OUT "\%::messaging = (\n";
+		print OUT "'inbound' => '$localmessaging{inbound}',\n";
+		print OUT "'inbound_bytes' => '$localmessaging{inbound_bytes}',\n";
+		print OUT "'local_inbound' => '$localmessaging{local_inbound}',\n";
+		print OUT "'local_inbound_bytes' => '$localmessaging{local_inbound_bytes}',\n";
+		print OUT "'total_inbound' => '$localmessaging{total_inbound}',\n";
+		print OUT "'total_inbound_bytes' => '$localmessaging{total_inbound_bytes}',\n";
+		print OUT "'outbound' => '$localmessaging{outbound}',\n";
+		print OUT "'outbound_bytes' => '$localmessaging{outbound_bytes}',\n";
+		print OUT "'local_outbound' => '$localmessaging{local_outbound}',\n";
+		print OUT "'local_outbound_bytes' => '$localmessaging{local_outbound_bytes}',\n";
+		print OUT "'total_outbound' => '$localmessaging{total_outbound}',\n";
+		print OUT "'total_outbound_bytes' => '$localmessaging{total_outbound_bytes}',\n";
+		print OUT "'lbls' => '$lbls',\n";
+		print OUT "'x_label' => 'Days of the week',\n";
+		print OUT "'values' => '$localmessaging{values}',\n";
+		print OUT "'values1' => '$localmessaging{values1}',\n";
+		print OUT "'values_bytes' => '$localmessaging{values_bytes}',\n";
+		print OUT "'values1_bytes' => '$localmessaging{values1_bytes}',\n";
+		print OUT "'nbsender' => '$localmessaging{nbsender}',\n";
+		print OUT "'nbrcpt' => '$localmessaging{nbrcpt}',\n";
+		print OUT ");\n\n";
+		%localmessaging = ();
+
+		print OUT "\%::spam = (\n";
+		print OUT "'inbound' => '$localspam{inbound}',\n";
+		print OUT "'inbound_bytes' => '$localspam{inbound_bytes}',\n";
+		print OUT "'local_inbound' => '$localspam{local_inbound}',\n";
+		print OUT "'local_inbound_bytes' => '$localspam{local_inbound_bytes}',\n";
+		print OUT "'total_inbound' => '$localspam{total_inbound}',\n";
+		print OUT "'total_inbound_bytes' => '$localspam{total_inbound_bytes}',\n";
+		print OUT "'outbound' => '$localspam{outbound}',\n";
+		print OUT "'outbound_bytes' => '$localspam{outbound_bytes}',\n";
+		print OUT "'local_outbound' => '$localspam{local_outbound}',\n";
+		print OUT "'local_outbound_bytes' => '$localspam{local_outbound_bytes}',\n";
+		print OUT "'total_outbound' => '$localspam{total_outbound}',\n";
+		print OUT "'total_outbound_bytes' => '$localspam{total_outbound_bytes}',\n";
+		print OUT "'lbls' => '$lbls',\n";
+		print OUT "'x_label' => 'Days of the week',\n";
+		print OUT "'values' => '$localspam{values}',\n";
+		print OUT "'Ext_Int' => '$localspam{Ext_Int}',\n";
+		print OUT "'Int_Int' => '$localspam{Int_Int}',\n";
+		print OUT "'Int_Ext' => '$localspam{Int_Ext}',\n";
+		print OUT "'Ext_Ext' => '$localspam{Ext_Ext}',\n";
+		print OUT "'Ext_Int_bytes' => '$localspam{Ext_Int_bytes}',\n";
+		print OUT "'Int_Int_bytes' => '$localspam{Int_Int_bytes}',\n";
+		print OUT "'Int_Ext_bytes' => '$localspam{Int_Ext_bytes}',\n";
+		print OUT "'Ext_Ext_bytes' => '$localspam{Ext_Ext_bytes}',\n";
+		print OUT ");\n\n";
+		%localspam = ();
+		
+		print OUT "\%::reject = (\n";
+		print OUT "'inbound' => '$localreject{inbound}',\n";
+		print OUT "'inbound_bytes' => '$localreject{inbound_bytes}',\n";
+		print OUT "'local_inbound' => '$localreject{local_inbound}',\n";
+		print OUT "'local_inbound_bytes' => '$localreject{local_inbound_bytes}',\n";
+		print OUT "'total_inbound' => '$localreject{total_inbound}',\n";
+		print OUT "'total_inbound_bytes' => '$localreject{total_inbound_bytes}',\n";
+		print OUT ");\n\n";
+		%localreject = ();
+		
+		print OUT "\%::virus = (\n";
+		print OUT "'inbound' => '$localvirus{inbound}',\n";
+		print OUT "'inbound_bytes' => '$localvirus{inbound_bytes}',\n";
+		print OUT "'local_inbound' => '$localvirus{local_inbound}',\n";
+		print OUT "'local_inbound_bytes' => '$localvirus{local_inbound_bytes}',\n";
+		print OUT "'total_inbound' => '$localvirus{total_inbound}',\n";
+		print OUT "'total_inbound_bytes' => '$localvirus{total_inbound_bytes}',\n";
+		print OUT "'outbound' => '$localvirus{outbound}',\n";
+		print OUT "'outbound_bytes' => '$localvirus{outbound_bytes}',\n";
+		print OUT "'local_outbound' => '$localvirus{local_outbound}',\n";
+		print OUT "'local_outbound_bytes' => '$localvirus{local_outbound_bytes}',\n";
+		print OUT "'total_outbound' => '$localvirus{total_outbound}',\n";
+		print OUT "'total_outbound_bytes' => '$localvirus{total_outbound_bytes}',\n";
+		print OUT "'lbls' => '$lbls',\n";
+		print OUT "'x_label' => 'Days of the week',\n";
+		print OUT "'values' => '$localvirus{values}',\n";
+		print OUT "'Ext_Int' => '$localvirus{Ext_Int}',\n";
+		print OUT "'Int_Int' => '$localvirus{Int_Int}',\n";
+		print OUT "'Int_Ext' => '$localvirus{Int_Ext}',\n";
+		print OUT "'Ext_Ext' => '$localvirus{Ext_Ext}',\n";
+		print OUT "'Ext_Int_bytes' => '$localvirus{Ext_Int_bytes}',\n";
+		print OUT "'Int_Int_bytes' => '$localvirus{Int_Int_bytes}',\n";
+		print OUT "'Int_Ext_bytes' => '$localvirus{Int_Ext_bytes}',\n";
+		print OUT "'Ext_Ext_bytes' => '$localvirus{Ext_Ext_bytes}',\n";
+		print OUT ");\n\n";
+		%localvirus = ();
+				
+		print OUT "\%::dsn = (\n";
+		print OUT "'outbound' => '$localdsn{outbound}',\n";
+		print OUT "'local_outbound' => '$localdsn{local_outbound}',\n";
+		print OUT "'total_outbound' => '$localdsn{total_outbound}',\n";
+		print OUT "'error' => '$localdsn{error}',\n";
+		print OUT "'lbls' => '$lbls',\n";
+		print OUT "'x_label' => 'Days of the week',\n";
+		print OUT "'values' => '$localdsn{values}',\n";
+		print OUT "'Ext_Int' => '$localdsn{Ext_Int}',\n";
+		print OUT "'Int_Int' => '$localdsn{Int_Int}',\n";
+		print OUT "'Int_Ext' => '$localdsn{Int_Ext}',\n";
+		print OUT "'Ext_Ext' => '$localdsn{Ext_Ext}',\n";
+		print OUT ");\n\n";
+		%localdsn = ();
+	
+		print OUT "\%::err = (\n";
+		print OUT "'inbound' => '$localerr{inbound}',\n";
+		print OUT "'inbound_bytes' => '$localerr{inbound_bytes}',\n";
+		print OUT "'local_inbound' => '$localerr{local_inbound}',\n";
+		print OUT "'local_inbound_bytes' => '$localerr{local_inbound_bytes}',\n";
+		print OUT "'total_inbound' => '$localerr{total_inbound}',\n";
+		print OUT "'total_inbound_bytes' => '$localerr{total_inbound_bytes}',\n";
+		print OUT ");\n\n";
+		%localerr = ();
+		
+		print OUT "\%::GLOBAL_STATUS = (\n";
+		foreach my $k (keys %localGLOBAL_STATUS) {
+			my $slbl = $k;
+			$slbl =~ s/'/\\'/g;
+			print OUT "'$slbl' => '$localGLOBAL_STATUS{$k}',\n";
+		}
+		print OUT ");\n\n";
+		%localGLOBAL_STATUS = ();
+
+		my $elbls = 'Ext -> Int:Ext -> Ext:Int -> Int:Int -> Ext';
+		print OUT "\%::delivery = (\n";
+		print OUT "'lbls' => '$elbls',\n";
+		print OUT "'x_label' => 'Days of the week',\n";
+		print OUT "'Ext_Int' => '$localdelivery{Ext_Int}',\n";
+		print OUT "'Int_Int' => '$localdelivery{Int_Int}',\n";
+		print OUT "'Int_Ext' => '$localdelivery{Int_Ext}',\n";
+		print OUT "'Ext_Ext' => '$localdelivery{Ext_Ext}',\n";
+		print OUT "'Ext_Int_bytes' => '$localdelivery{Ext_Int_bytes}',\n";
+		print OUT "'Int_Int_bytes' => '$localdelivery{Int_Int_bytes}',\n";
+		print OUT "'Int_Ext_bytes' => '$localdelivery{Int_Ext_bytes}',\n";
+		print OUT "'Ext_Ext_bytes' => '$localdelivery{Ext_Ext_bytes}',\n";
+		print OUT ");\n\n";
+		%localdelivery = ();
+
+		# Top SMTP Auth statistics
+		my $top = 0;
+		print OUT "\%::topauth = (\n";
+		print OUT "'relay' => {";
+		foreach my $d (sort { $localtopauth{relay}{$b} <=> $localtopauth{relay}{$a} } keys %{$localtopauth{relay}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopauth{relay}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopauth{relay};
+		$top = 0;
+		print OUT "'mech' => {";
+		foreach my $d (sort { $localtopauth{mech}{$b} <=> $localtopauth{mech}{$a} } keys %{$localtopauth{mech}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopauth{mech}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopauth{mech};
+		$top = 0;
+		print OUT "'authid' => {";
+		foreach my $d (sort { $localtopauth{authid}{$b} <=> $localtopauth{authid}{$a} } keys %{$localtopauth{authid}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopauth{authid}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		print OUT ");\n\n";
+		%localtopauth = ();
+
+		# Top sender statistics
+		$top = 0;
+		print OUT "\%::topsender = (\n";
+		print OUT "'domain' => {";
+		foreach my $d (sort { $localtopsender{domain}{$b} <=> $localtopsender{domain}{$a} } keys %{$localtopsender{domain}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopsender{domain}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopsender{domain};
+		$top = 0;
+		print OUT "'relay' => {";
+		foreach my $d (sort { $localtopsender{relay}{$b} <=> $localtopsender{relay}{$a} } keys %{$localtopsender{relay}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopsender{relay}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopsender{relay};
+		$top = 0;
+		print OUT "'email' => {";
+		foreach my $d (sort { $localtopsender{email}{$b} <=> $localtopsender{email}{$a} } keys %{$localtopsender{email}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopsender{email}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		print OUT ");\n\n";
+		%localtopsender = ();
+
+		# Top recipient statistics
+		$top = 0;
+		print OUT "\%::toprcpt = (\n";
+		print OUT "'domain' => {";
+		foreach my $d (sort { $localtoprcpt{domain}{$b} <=> $localtoprcpt{domain}{$a} } keys %{$localtoprcpt{domain}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtoprcpt{domain}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtoprcpt{domain};
+		$top = 0;
+		print OUT "'relay' => {";
+		foreach my $d (sort { $localtoprcpt{relay}{$b} <=> $localtoprcpt{relay}{$a} } keys %{$localtoprcpt{relay}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtoprcpt{relay}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtoprcpt{relay};
+		$top = 0;
+		print OUT "'email' => {";
+		foreach my $d (sort { $localtoprcpt{email}{$b} <=> $localtoprcpt{email}{$a} } keys %{$localtoprcpt{email}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtoprcpt{email}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		print OUT ");\n\n";
+		%localtoprcpt = ();
+
+		# Top rejection statistics
+		$top = 0;
+		print OUT "\%::topreject = (\n";
+		print OUT "'rule' => {";
+		foreach my $d (sort { $localtopreject{rule}{$b} <=> $localtopreject{rule}{$a} } keys %{$localtopreject{rule}}) {
+			last if ($top == $CONFIG{TOP});
+			my $c = $localtopreject{rule}{$d};
+			$d =~ s/'/\\'/g;
+			print OUT "'$d' => '$c',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopreject{rule};
+		$top = 0;
+		print OUT "'domain' => {";
+		foreach my $d (sort { $localtopreject{domain}{$b} <=> $localtopreject{domain}{$a} } keys %{$localtopreject{domain}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopreject{domain}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopreject{domain};
+		$top = 0;
+		print OUT "'relay' => {";
+		foreach my $d (sort { $localtopreject{relay}{$b} <=> $localtopreject{relay}{$a} } keys %{$localtopreject{relay}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopreject{relay}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopreject{relay};
+		$top = 0;
+		print OUT "'chck_status' => {";
+		foreach my $d (sort { $localtopreject{chck_status}{$b} <=> $localtopreject{chck_status}{$a} } keys %{$localtopreject{chck_status}}) {
+			last if ($top == $CONFIG{TOP});
+			my $c = $localtopreject{chck_status}{$d};
+			$d =~ s/'/\\'/g;
+			print OUT "'$d' => '$c',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopreject{chck_status};
+		$top = 0;
+		print OUT "'sender' => {";
+		foreach my $d (sort { $localtopreject{sender}{$b} <=> $localtopreject{sender}{$a} } keys %{$localtopreject{sender}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopreject{sender}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		print OUT ");\n\n";
+		%localtopreject = ();
+
+		# Top virus statistics
+		$top = 0;
+		print OUT "\%::topvirus = (\n";
+		print OUT "'virus' => {";
+		foreach my $d (sort { $localtopvirus{virus}{$b} <=> $localtopvirus{virus}{$a} } keys %{$localtopvirus{virus}}) {
+			last if ($top == $CONFIG{TOP});
+			my $c = $localtopvirus{virus}{$d};
+			$d =~ s/'/\\'/g;
+			print OUT "'$d' => '$c',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopvirus{virus};
+		$top = 0;
+		print OUT "'sender' => {";
+		foreach my $d (sort { $localtopvirus{sender}{$b} <=> $localtopvirus{sender}{$a} } keys %{$localtopvirus{sender}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopvirus{sender}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopvirus{sender};
+		$top = 0;
+		print OUT "'relay' => {";
+		foreach my $d (sort { $localtopvirus{relay}{$b} <=> $localtopvirus{relay}{$a} } keys %{$localtopvirus{relay}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopvirus{relay}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopvirus{relay};
+		$top = 0;
+		print OUT "'file' => {";
+		foreach my $d (sort { $localtopvirus{file}{$b} <=> $localtopvirus{file}{$a} } keys %{$localtopvirus{file}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopvirus{file}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopvirus{file};
+		$top = 0;
+		print OUT "'rcpt' => {";
+		foreach my $d (sort { $localtopvirus{rcpt}{$b} <=> $localtopvirus{rcpt}{$a} } keys %{$localtopvirus{rcpt}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopvirus{rcpt}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		print OUT ");\n\n";
+		%localtopvirus = ();
+	
+		# Top dsn statistics
+		$top = 0;
+		print OUT "\%::topdsn = (\n";
+		print OUT "'dsnstatus' => {";
+		foreach my $d (sort { $localtopdsn{dsnstatus}{$b} <=> $localtopdsn{dsnstatus}{$a} } keys %{$localtopdsn{dsnstatus}}) {
+			last if ($top == $CONFIG{TOP});
+			my $c = $localtopdsn{dsnstatus}{$d};
+			$d =~ s/'/\\'/g;
+			print OUT "'$d' => '$c',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopdsn{dsnstatus};
+		$top = 0;
+		print OUT "'sender' => {";
+		foreach my $d (sort { $localtopdsn{sender}{$b} <=> $localtopdsn{sender}{$a} } keys %{$localtopdsn{sender}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopdsn{sender}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopdsn{sender};
+		$top = 0;
+		print OUT "'relay' => {";
+		foreach my $d (sort { $localtopdsn{relay}{$b} <=> $localtopdsn{relay}{$a} } keys %{$localtopdsn{relay}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopdsn{relay}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		delete $localtopdsn{relay};
+		$top = 0;
+		print OUT "'rcpt' => {";
+		foreach my $d (sort { $localtopdsn{rcpt}{$b} <=> $localtopdsn{rcpt}{$a} } keys %{$localtopdsn{rcpt}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopdsn{rcpt}{$d}',";
+			$top++;
+		}
+		print OUT "},\n";
+		print OUT ");\n\n";
+		%localtopdsn = ();
+		
+		# Top spam statistics
+		$top = 0;
+		print OUT "\%::topspam = (\n";
+		print OUT "'rule' => {";
+		foreach my $d (sort { $localtopspam{rule}{$b} <=> $localtopspam{rule}{$a} } keys %{$localtopspam{rule}}) {
+			last if ($top == $CONFIG{TOP});
+			my $c = $localtopspam{rule}{$d};
+			$d =~ s/'/\\'/g;
+			print OUT "'$d' => '$c',";
+			$top++;
+		}
+		print OUT "},";
+		delete $localtopspam{rule};
+		$top = 0;
+		print OUT "'domain' => {";
+		foreach my $d (sort { $localtopspam{domain}{$b} <=> $localtopspam{domain}{$a} } keys %{$localtopspam{domain}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopspam{domain}{$d}',";
+			$top++;
+		}
+		print OUT "},";
+		delete $localtopspam{domain};
+		$top = 0;
+		print OUT "'sender_relay' => {";
+		foreach my $d (sort { $localtopspam{sender_relay}{$b} <=> $localtopspam{sender_relay}{$a} } keys %{$localtopspam{sender_relay}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopspam{sender_relay}{$d}',";
+			$top++;
+		}
+		print OUT "},";
+		delete $localtopspam{sender_relay};
+		$top = 0;
+		print OUT "'sender' => {";
+		foreach my $d (sort { $localtopspam{sender}{$b} <=> $localtopspam{sender}{$a} } keys %{$localtopspam{sender}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopspam{sender}{$d}',";
+			$top++;
+		}
+		print OUT "},";
+		delete $localtopspam{sender};
+		$top = 0;
+		print OUT "'rcpt' => {";
+		foreach my $d (sort { $localtopspam{rcpt}{$b} <=> $localtopspam{rcpt}{$a} } keys %{$localtopspam{rcpt}}) {
+			last if ($top == $CONFIG{TOP});
+			print OUT "'$d' => '$localtopspam{rcpt}{$d}',";
+			$top++;
+		}
+		print OUT "},";
+		print OUT ");\n\n";
+		%localtopspam = ();
+
+		# Top system message statistics
+		$top = 0;
+		print OUT "\%::toperr = (\n";
+		foreach my $m (sort { $localtopspam{$b} <=> $localtopspam{$a} } keys %localtoperr) {
+			my $c = $localtoperr{$m};
+			$m =~ s/'/\\'/g;
+			print OUT "'$m' => $c,\n";
+		}
+		print OUT ");\n";
+		%localtoperr = ();
+
+		# Top spam detail statistics
+		$top = 0;
+		print OUT "\%::topspamdetail = (\n";
+		foreach my $t (sort keys %localtopspamdetail) {
+			print OUT "'$t' => {";
+			print OUT "'rule' => {";
+			foreach my $d (sort { $localtopspamdetail{$t}{rule}{$b} <=> $localtopspamdetail{$t}{rule}{$a} } keys %{$localtopspamdetail{$t}{rule}}) {
+				last if ($top == $CONFIG{TOP});
+				my $c = $localtopspamdetail{$t}{rule}{$d};
+				$d =~ s/'/\\'/g;
+				print OUT "'$d' => '$c',";
+				$top++;
+			}
+			print OUT "},";
+			delete $localtopspamdetail{$t}{rule};
+			$top = 0;
+			print OUT "'score' => {";
+			foreach my $d (sort { $localtopspamdetail{$t}{score}{$b} <=> $localtopspamdetail{$t}{score}{$a} } keys %{$localtopspamdetail{$t}{score}}) {
+				last if ($top == $CONFIG{TOP});
+				print OUT "'$d' => '$localtopspamdetail{$t}{score}{$d}',";
+				$top++;
+			}
+			print OUT "},";
+			delete $localtopspamdetail{$t}{score};
+			$top = 0;
+			print OUT "'cache' => {";
+			foreach my $d (sort { $localtopspamdetail{$t}{cache}{$b} <=> $localtopspamdetail{$t}{cache}{$a} } keys %{$localtopspamdetail{$t}{cache}}) {
+				last if ($top == $CONFIG{TOP});
+				print OUT "'$d' => '$localtopspamdetail{$t}{cache}{$d}',";
+				$top++;
+			}
+			print OUT "},";
+			delete $localtopspamdetail{$t}{cache};
+			$top = 0;
+			print OUT "'autolearn' => {";
+			foreach my $d (sort { $localtopspamdetail{$t}{autolearn}{$b} <=> $localtopspamdetail{$t}{autolearn}{$a} } keys %{$localtopspamdetail{$t}{autolearn}}) {
+				last if ($top == $CONFIG{TOP});
+				print OUT "'$d' => '$localtopspamdetail{$t}{autolearn}{$d}',";
+				$top++;
+			}
+			print OUT "},";
+			delete $localtopspamdetail{$t}{autolearn};
+			$top = 0;
+			print OUT "},";
+		}
+		print OUT ");\n";
+		close(OUT);
+	} else {
+		&logerror("can't write cache file $file: $!");
+	}
+
+}
+
+####
+# Create output directory tree
+####
+sub create_directory
+{
+	my $dest = shift;
+
+	my $curdir = '';
+	foreach my $d (split(/\//, $dest)) {
+		$curdir .= $d . '/';
+		if (!-d "$CONFIG{OUT_DIR}/$curdir") {
+			if (not mkdir("$CONFIG{OUT_DIR}/$curdir")) {
+				&logerror("Can't create directory $CONFIG{OUT_DIR}/$curdir: $!");
+				&logerror("Data will be lost.");
+				return 0;
+			}
+		}
+	}
+
+	return 1;
+}
+
+####
+# Get all days of a week 
+####
+sub get_week_boundaries
+{
+	my ($year, $week) = @_;
+
+	my @days = ();
+	my $wn = 0;
+	for my $m ('01' .. '12') {
+		for my $d ('01' .. '31') {
+			$wn = &get_week_number($year,$m,$d);
+			next if ($wn == -1);
+			push(@days, "$year/$m/$d") if ($wn == $week);
+		}
+	}
+
+	return @days;
+}
+
+####
+# Get the week day of a date
+####
+sub get_day_of_week
+{
+	my ($year, $month, $day) = @_;
+
+#       %u     The day of the week as a decimal, range 1 to 7, Monday being 1.
+#       %w     The day of the week as a decimal, range 0 to 6, Sunday being 0.
+
+	#my $weekDay = POSIX::strftime("%u", gmtime timelocal_nocheck(0,0,0,$day,--$month,$year));
+	my $weekDay = POSIX::strftime("%u", 1,1,1,$day,--$month,$year-1900);
+
+	return $weekDay;
 }
 
 
