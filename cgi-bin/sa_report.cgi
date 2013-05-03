@@ -4755,11 +4755,25 @@ sub grafit
 	my $data2 = '';
 	my @xdata = split(/:/, $params{labels});
 	my @ydata = split(/:/, $params{values});
+
+	my @std_day = qw(Su Mo Tu We Th Fr Sa);
+	my %day_lbl = ();
+	if (exists $TRANSLATE{WeekDay}) {
+		my @tmpwday = split(/\s+/, $TRANSLATE{WeekDay});
+		for (my $i = 0; $i <= $#std_day; $i++) {
+			$day_lbl{$std_day[$i]} = $tmpwday[$i];
+		}
+	} else {
+                for (my $i = 0; $i <= $#std_day; $i++) {
+                        $day_lbl{$std_day[$i]} = $std_day[$i];
+                }
+	}
+
 	my @wdays = ('Mo','Tu','We','Th','Fr','Sa','Su');
 	for (my $i = 0; $i <= $#xdata; $i++) {
 		if ($#xdata == 6) {
 			$data1 .= "[$i,$ydata[$i]],";
-			$wdays[$i] = "$wdays[$i]-$xdata[$i]";
+			$wdays[$i] = "$day_lbl{$wdays[$i]}-$xdata[$i]";
 		} else {
 			$data1 .= "['$xdata[$i]',$ydata[$i]],";
 		}
