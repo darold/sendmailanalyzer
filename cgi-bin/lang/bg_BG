@@ -156,7 +156,7 @@
 	'Top DSN Relays' => 'Топ DSN релеи',
 	'Top DSN Recipients' => 'Топ DSN получатели',
 	'No dataset' => 'Няма записи за този период',
-	'WeekDay' => 'Пн Вт Ср Чт Пт Сб Нд',
+	'WeekDay' => 'Нд Пн Вт Ср Чт Пт Сб',
 	'AntiSpam details' => 'Антиспам детайли',
 	'Top spam scores' => 'Топ спам резултати',
 	'Score' => 'Резултат',

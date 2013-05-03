@@ -156,7 +156,7 @@
 	'Top DSN Relays' => 'Top-DSN-Relays',
 	'Top DSN Recipients' => 'Top-DSN-Empfänger',
 	'No dataset' => 'Keine Einträge in diesem Zeitraum',
-	'WeekDay' => 'Mo Di Mi Do Fr Sa So',
+	'WeekDay' => 'So Mo Di Mi Do Fr Sa',
 	'AntiSpam details' => 'Anti-Spam-Details',
 	'Top spam scores' => 'Top-Spam-Scores',
 	'Score' => 'Score',
