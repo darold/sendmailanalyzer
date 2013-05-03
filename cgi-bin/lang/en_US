@@ -31,6 +31,8 @@
 	'Hours of the day' => 'Hours of the day',
 	'Yearly' => 'Yearly',
 	'Months of the year' => 'Months of the year',
+	'Weekly' => 'Weekly',
+	'Days of the week' => 'Days of the week',
 	'Hourly' => 'Hourly',
 	'Minutes of the hour' => 'Minutes of the hour',
 	'Previous' => 'Previous',
