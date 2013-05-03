@@ -4835,7 +4835,7 @@ sub grafit
      width : $params{width}px;
      height: $params{height}px;
      background:#F3F2ED;
-     border:10px double white;
+     border:10px solid white;
      padding:0 10px;
      margin:30px 10px 30px 10px;
      border-radius:10px;
@@ -4888,6 +4888,9 @@ sub grafit
             backgroundColor: "#D2E8FF",
 	    backgroundOpacity: 0.4
         },
+	grid: {
+		labelMargin: 5
+	},
         HtmlText: false,
     };
 
@@ -4948,7 +4951,7 @@ sub grafit_pie
      width : $params{width}px;
      height: $params{height}px;
      background:#F3F2ED;
-     border:10px double white;
+     border:10px solid white;
      padding:0 10px;
      margin:30px 10px 30px 10px;
      border-radius:10px;
@@ -4979,7 +4982,7 @@ sub grafit_pie
         },
         yaxis: {
             showLabels: false,
-	    title: "$params{y_label}"
+	    //title: "$params{y_label}"
         },
         pie: {
             show: true,
@@ -4990,10 +4993,10 @@ sub grafit_pie
 	    trackFormatter: function(obj){ return obj.y },
         },
         legend: {
-            position: "sw",
+            position: "se",
             backgroundColor: "#D2E8FF",
 	    backgroundOpacity: 0.4
-        }
+        },
     });
 })(document.getElementById("$params{divid}"));
 </script>
