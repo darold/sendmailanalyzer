@@ -25,6 +25,7 @@ use Benchmark;
 use MIME::QuotedPrint qw(decode_qp);
 use MIME::Base64 qw(decode_base64);
 use Time::Local 'timelocal_nocheck';
+use POSIX qw/ strftime /;
 
 $| = 1;
 
@@ -55,15 +56,16 @@ our %ANTISPAM_NAME = (
 
 my $CGI = new CGI;
 
-my $HOST = $CGI->param('host') || '';
+my $HOST    = $CGI->param('host') || '';
 my $CURDATE = $CGI->param('date') || '';
-my $DOMAIN = $CGI->param('domain') || '';
-my $TYPE = $CGI->param('type') || '';
-my $PERI = $CGI->param('peri') || '';
-my $SEARCH = $CGI->param('search') || '';
-my $HOUR = $CGI->param('hour') || '';
-my $VIEW = $CGI->param('view') || '';
-my $LANG = $CGI->param('lang') || '';
+my $DOMAIN  = $CGI->param('domain') || '';
+my $TYPE    = $CGI->param('type') || '';
+my $PERI    = $CGI->param('peri') || '';
+my $SEARCH  = $CGI->param('search') || '';
+my $HOUR    = $CGI->param('hour') || '';
+my $VIEW    = $CGI->param('view') || '';
+my $LANG    = $CGI->param('lang') || '';
+my $WEEK    = $CGI->param('week') || '';
 
 my $MAXPIECOUNT = 10;
 my $DEFAULT_CHARSET='iso-8859-1';
@@ -251,7 +253,7 @@ if (!$HOST) {
 	&show_detail($HOST, $CURDATE, $HOUR, $TYPE, $PERI, $SEARCH) if (&check_auth);
 } elsif (!$VIEW) {
 	print "<table id=\"menu\" width=\"100%\"><tr><td colspan=\"2\">\n";
-	&show_temporal_menu($HOST, $CURDATE, $HOUR, $DOMAIN);
+	&show_temporal_menu($HOST, $CURDATE, $HOUR, $DOMAIN, $WEEK);
 	my $iframe_param = "view=empty&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN";
 	if ($CGI->param('update') ne '') {
 		foreach my $p ($CGI->param()) {
@@ -264,53 +266,53 @@ if (!$HOST) {
 </td></tr>
 <tr><th height="600px" align="left" valign="top" nowrap="1" style="padding: 10px">
 <br>
-<a href="$ENV{SCRIPT_NAME}?view=empty&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN" target="info">$TRANSLATE{'Global Statistics'}</a>
+<a href="$ENV{SCRIPT_NAME}?view=empty&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&week=$WEEK" target="info">$TRANSLATE{'Global Statistics'}</a>
 <ul>
-<li><a href="$ENV{SCRIPT_NAME}?view=messageflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'Messaging'}</a></li>};
+<li><a href="$ENV{SCRIPT_NAME}?view=messageflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Messaging'}</a></li>};
 	if ($CONFIG{SPAM_VIEW}) {
-		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=spamflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'Spamming'}</a></li>};
+		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=spamflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Spamming'}</a></li>};
 	}
 	if ($CONFIG{VIRUS_VIEW}) {
-		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=virusflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'Virus Detection'}</a></li>};
+		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=virusflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Virus Detection'}</a></li>};
 	}
 	if ($CONFIG{DSN_VIEW}) {
-		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=dsnflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'Delivery Status Notification'}</a></li>};
+		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=dsnflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Delivery Status Notification'}</a></li>};
 	}
 	print qq{
-<li><a href="$ENV{SCRIPT_NAME}?view=rejectflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'Rejection SysErr'}</a></li>
-<li><a href="$ENV{SCRIPT_NAME}?view=statusflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'Status'}</a></li>
+<li><a href="$ENV{SCRIPT_NAME}?view=rejectflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Rejection SysErr'}</a></li>
+<li><a href="$ENV{SCRIPT_NAME}?view=statusflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Status'}</a></li>
 };
 	# SMTP Auth can not be shown by domain
 	if (!$DOMAIN && $CONFIG{SMTP_AUTH}) {
 		print qq{
-<li><a href="$ENV{SCRIPT_NAME}?view=authflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'SMTP Auth'}</a></li>
+<li><a href="$ENV{SCRIPT_NAME}?view=authflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'SMTP Auth'}</a></li>
 };
 	}
 	print qq{
 </ul>
-<a href="$ENV{SCRIPT_NAME}?view=empty&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN" target="info">$TRANSLATE{'Top Statistics'}</a>
+<a href="$ENV{SCRIPT_NAME}?view=empty&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&week=$WEEK" target="info">$TRANSLATE{'Top Statistics'}</a>
 <ul>
-<li><a href="$ENV{SCRIPT_NAME}?view=topsender&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'Senders'}</a></li>
-<li><a href="$ENV{SCRIPT_NAME}?view=toprecipient&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'Recipients'}</a></li>};
+<li><a href="$ENV{SCRIPT_NAME}?view=topsender&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Senders'}</a></li>
+<li><a href="$ENV{SCRIPT_NAME}?view=toprecipient&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Recipients'}</a></li>};
 	if ($CONFIG{SPAM_VIEW}) {
-		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=topspam&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'Spamming'}</a></li>};
+		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=topspam&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Spamming'}</a></li>};
 	}
 	if ($CONFIG{VIRUS_VIEW}) {
-		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=topvirus&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'Virus Detection'}</a></li>};
+		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=topvirus&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Virus Detection'}</a></li>};
 	}
 	if ($CONFIG{DSN_VIEW}) {
-		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=topdsn&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'Delivery Status Notification'}</a></li>};
+		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=topdsn&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Delivery Status Notification'}</a></li>};
 	}
 	print qq{
-<li><a href="$ENV{SCRIPT_NAME}?view=topreject&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'Rejection SysErr'}</a></li>
+<li><a href="$ENV{SCRIPT_NAME}?view=topreject&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Rejection SysErr'}</a></li>
 };
 if ($CURDATE !~ /00$/) {
-	print qq{<li><a href="$ENV{SCRIPT_NAME}?view=toplimit&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'Limits'}</a></li>};
+	print qq{<li><a href="$ENV{SCRIPT_NAME}?view=toplimit&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Limits'}</a></li>};
 }
 # SMTP Auth can not be shown by domain
 if (!$DOMAIN && $CONFIG{SMTP_AUTH}) {
 	print qq{
-<li><a href="$ENV{SCRIPT_NAME}?view=topauth&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$TRANSLATE{'SMTP Auth'}</a></li>
+<li><a href="$ENV{SCRIPT_NAME}?view=topauth&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'SMTP Auth'}</a></li>
 };
 }
 print qq{
@@ -318,12 +320,12 @@ print qq{
 };
 	if ($CONFIG{SPAM_DETAIL}) {
 		print qq{
-<a href="$ENV{SCRIPT_NAME}?view=empty&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN" target="info">$TRANSLATE{'AntiSpam details'}</a>
+<a href="$ENV{SCRIPT_NAME}?view=empty&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&week=$WEEK" target="info">$TRANSLATE{'AntiSpam details'}</a>
 <ul>
 };
 		for my $typ (sort keys %ANTISPAM_NAME) {
 			print qq{
-<li><a href="$ENV{SCRIPT_NAME}?view=$typ&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR" target="info">$ANTISPAM_NAME{$typ}</a></li>
+<li><a href="$ENV{SCRIPT_NAME}?view=$typ&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$ANTISPAM_NAME{$typ}</a></li>
 };
 		}
 		print qq{
@@ -339,7 +341,7 @@ print qq{
 	$curdomain = " [$DOMAIN]" if ($DOMAIN);
 	my $back = '';
 	if ($CONFIG{ADMIN} && $ENV{REMOTE_USER} && !grep(/^$ENV{REMOTE_USER}$/, split(/[\s\t,;]+/, $CONFIG{ADMIN})) ) {
-		$back = "?host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN" if ($DOMAIN);
+		$back = "?host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&week=$WEEK" if ($DOMAIN);
 	} elsif ($LANG) {
 		$back = "?lang=$LANG";
 	}
@@ -358,7 +360,7 @@ print qq{
 <form name="viewname"><input type="hidden" name="view" value="$VIEW"></form>
 <table id="report" width="100%" height="550px" valign="top"><tr><td valign="center" align="center">
 };
-	&show_stats($HOST, $CURDATE, $HOUR, $DOMAIN, $VIEW) if (&check_auth);
+	&show_stats($HOST, $CURDATE, $HOUR, $DOMAIN, $VIEW, $WEEK) if (&check_auth);
 	print "\n</td></tr></table>\n";
 }
 
@@ -723,34 +725,57 @@ sub day_link
 {
 	my ($hostname, $year, $month, $day, $domain) = @_;
 
-	my $str = "<table class=\"calborder\">\n<tr><th colspan=\"7\">$TRANSLATE{'Day View'}</th></tr>\n";
-	my @wday = qw(Su Mo Tu We Th Fr Sa);
+	my $str = "<table class=\"calborder\">\n<tr><th colspan=\"8\">$TRANSLATE{'Day View'}</th></tr>\n";
+	my @wday = qw(Mo Tu We Th Fr Sa Su);
+	my @std_day = qw(Su Mo Tu We Th Fr Sa);
+	my %day_lbl = ();
 	if (exists $TRANSLATE{WeekDay}) {
-		@wday = split(/\s+/, $TRANSLATE{WeekDay});
+		my @tmpwday = split(/\s+/, $TRANSLATE{WeekDay});
+		for (my $i = 0; $i <= $#std_day; $i++) {
+			$day_lbl{$std_day[$i]} = $tmpwday[$i];
+		}
+	} else {
+                for (my $i = 0; $i <= $#wday; $i++) {
+                        $day_lbl{$wday[$i]} = $wday[$i];
+                }
 	}
-	$str .= "<tr><td align=\"center\">" . join('</td><td align=\"center\">', @wday) . "</td></tr>\n";
+	$str .= "<tr><td>&nbsp;</td>";
+	map { $str .= '<td align="center">' . $day_lbl{$_} . '</td>'; } @wday;
+	$str .= "</tr>\n";
 	my @currow = ('','','','','','','');
-	for my $d ("01" .. "31") {
+	my $old_week = 0;
+	my $d = '';
+	for $d ("01" .. "31") {
 		my $wd = &get_day_of_week($year,$month,$d);
+		my $wn =  &get_week_number($year,$month,$d);
+		next if ($wn == -1);
+		$old_week = $wn;
+		my $date = $year . $month . $d;
 		if ( !-d "$CONFIG{OUT_DIR}/$hostname/$year/$month/$d" ) {
-			$currow[$wd] = "<td>$d</td>";
+			$currow[$wd-1] = "<td>$d</td>";
 		} else {
-			my $date = $year . $month . $d;
 			my $tag = 'td';
 			$tag = 'th' if ($d eq $day);
 			my $type = '';
 			$type = $SELCURRENT if ($d eq $day);
-			$currow[$wd] = "<$tag><a$type href=\"javascript:\" onclick=\"document.location.href='$ENV{SCRIPT_NAME}?host=$hostname&date=$date&domain=$domain&lang=$LANG&update='+window.frames['info'].document.forms['viewname'].elements['view'].value; return false;\">$d</a></$tag>";
+			$currow[$wd-1] = "<$tag><a$type href=\"javascript:\" onclick=\"document.location.href='$ENV{SCRIPT_NAME}?host=$hostname&date=$date&domain=$domain&lang=$LANG&update='+window.frames['info'].document.forms['viewname'].elements['view'].value; return false;\">$d</a></$tag>";
 		}
-		if ($wd == 6) {
+		if ($wd == 7) {
+			my $week = "<th>" . ($wn+1) . "</th>";
+			$week = "<th><a href=\"javascript:\" onclick=\"document.location.href='$ENV{SCRIPT_NAME}?host=$hostname&date=$date&week=$wn&domain=$domain&lang=$LANG&update='+window.frames['info'].document.forms['viewname'].elements['view'].value; return false;\">".($wn+1)."</a></th>" if (grep(/href/, @currow));
 			map { $_ = "<td>&nbsp;</td>" if ($_ eq ''); } @currow;
-			$str .= "<tr>" . join('', @currow) . "</tr>\n";
+			$str .= "<tr>$week" . join('', @currow) . "</tr>\n";
 			@currow = ('','','','','','','');
-			
 		}
 	}
 	map { $_ = "<td>&nbsp;</td>" if ($_ eq ''); } @currow;
-	$str .= "<tr>" . join('', @currow) . "</tr>\n";
+	my $date = $year . $month . $d;
+	my $wn = &get_week_number($year,$month,28);
+	if (($wn == ($old_week + 1)) || grep(/href/, @currow)) {
+		my $week = "<th>" . ($wn+1) . "</th>";
+		$week = "<th><a href=\"javascript:\" onclick=\"document.location.href='$ENV{SCRIPT_NAME}?host=$hostname&date=$date&week=$wn&domain=$domain&lang=$LANG&update='+window.frames['info'].document.forms['viewname'].elements['view'].value; return false;\">" . ($wn+1) . "</a></th>" if (grep(/href/, @currow));
+		$str .= "<tr>$week" . join('', @currow) . "</tr>\n";
+	}
 	$str .=  "</table>\n";
 
 	return $str;
@@ -763,10 +788,39 @@ sub get_day_of_week
 {
 	my ($year, $month, $day) = @_;
 
-	$day = (localtime(timelocal_nocheck(0,0,0,$day,--$month,$year)))[6];
+#       %u     The day of the week as a decimal, range 1 to 7, Monday being 1.
+#       %w     The day of the week as a decimal, range 0 to 6, Sunday being 0.
 
-	return $day;
+	#my $weekDay = POSIX::strftime("%u", gmtime timelocal_nocheck(0,0,0,$day,--$month,$year));
+	my $weekDay = POSIX::strftime("%u", 1,1,1,$day,--$month,$year-1900);
+
+	return $weekDay;
 }
+
+####
+# Get week number
+####
+sub get_week_number
+{
+	my ($year, $month, $day) = @_;
+
+#       %U     The week number of the current year as a decimal number, range 00 to 53, starting with the first
+#              Sunday as the first day of week 01.
+#       %V     The  ISO 8601  week  number (see NOTES) of the current year as a decimal number, range 01 to 53,
+#              where week 1 is the first week that has at least 4 days in the new year.
+#       %W     The week number of the current year as a decimal number, range 00 to 53, starting with the first
+#              Monday as the first day of week 01.
+
+	# Check if the date is valide first
+	my $datefmt = POSIX::strftime("%F", 1, 1, 1, $day, $month - 1, $year - 1900);
+	if ($datefmt ne "$year-$month-$day") {
+		return -1;
+	}
+	my $weekNumber = POSIX::strftime("%W", 1, 1, 1, $day, $month - 1, $year - 1900);
+
+	return $weekNumber;
+}
+
 
 ####
 # Display year navigator
@@ -805,9 +859,9 @@ sub year_link
 ####
 sub show_temporal_menu
 {
-	my ($hostname, $date, $hour, $domain) = @_;
+	my ($hostname, $date, $hour, $domain, $week) = @_;
 
-	my ($current, $year, $mon, $mday, $period, $x_label, $begin, $end) = &normalyze_date($date, $hour);
+	my ($current, $year, $mon, $mday, $period, $x_label, $begin, $end) = &normalyze_date($date, $hour, $week);
 
 	my $timestamp = $year;
 	$timestamp = $TRANSLATE{$mon} . ' ' . $timestamp if ($mon ne '00');
@@ -855,7 +909,7 @@ $day_view
 <td valign="top" align="left" nowrap="1">
 <div id="temporal" align="center">
 $month_view
-<div>
+</div>
 </td>
 <td class="smalltitle" align="center">
 $period$curdomain
@@ -922,7 +976,7 @@ sub show_list_host
 
 sub normalyze_date
 {
-	my ($date, $hour) = @_;
+	my ($date, $hour, $week) = @_;
 
 	# Set default to current timestamp	
 	my ($s,$m,$h,$mday,$mon,$year,$wd,$yd,$isdst) = localtime(time);
@@ -947,6 +1001,13 @@ sub normalyze_date
 	}
 	$mon = sprintf("%02d",$mon);
 	$mday = sprintf("%02d",$mday);
+	if ($week) {
+		$mday = '00';
+		my $period = $TRANSLATE{'Weekly'};
+		my $x_label = $TRANSLATE{'Days of the week'};
+		my @days = &get_week_boundaries($year, $week);
+		return ($current, $year, $mon, $mday, $period, $x_label, join(':', @days));
+	}
 
 	# Set default labels for graph output
 	my $period = $TRANSLATE{'Monthly'};
@@ -973,36 +1034,58 @@ sub normalyze_date
 }
 
 ####
+# Get all days of a week 
+####
+sub get_week_boundaries
+{
+	my ($year, $week) = @_;
+
+	my @days = ();
+	my $wn = 0;
+	for my $m ('01' .. '12') {
+		for my $d ('01' .. '31') {
+			$wn = &get_week_number($year,$m,$d);
+			next if ($wn == -1);
+			push(@days, "$d") if ($wn == $week);
+		}
+	}
+	return @days;
+}
+
+####
 # Show global statistics
 ####
 sub show_stats
 {
-	my ($hostname, $date, $hour, $domain, $type) = @_;
+	my ($hostname, $date, $hour, $domain, $type, $week) = @_;
 
-	my ($current, $year, $mon, $mday, $period, $x_label, $begin, $end) = &normalyze_date($date, $hour);
+	my ($current, $year, $mon, $mday, $period, $x_label, $begin, $end) = &normalyze_date($date, $hour, $week);
 
 	my %period_stats = ();
 	my $cache_path = $date;
-	$cache_path =~ s/(\d{4})(\d{2})(\d{2})/$1\/$2\/$3/;
-	$cache_path =~ s/\/00//g;
+	if ($week) {
+		$cache_path = $year . '/weeks/' . $week;
+	}
+	$cache_path =~ s/^(\d{4})(\d{2})(\d{2})$/$1\/$2\/$3/;
+	$cache_path =~ s/^(\d{4})(\d{2})$/$1\/$2/;
+	$cache_path =~ s/\/00//g if (!$week);
+
 	# Prevent Out of memory
 	if ( ($mday eq '00') && !-e "$CONFIG{OUT_DIR}/$hostname/$cache_path/cache.pm") {
-		print "<h3 style=\"color: red;\">No cache file found, please run sa_cache as explain in the documentation (See Caching).</h3>\n";
+		print "<h3 style=\"color: red;\">No cache file found ($CONFIG{OUT_DIR}/$hostname/$cache_path/cache.pm) , please run sa_cache as explain in the documentation (See Caching).</h3>\n";
 		return;
 	}
 	# Use cache files if possible in hour view
 	if ($hour && -e "$CONFIG{OUT_DIR}/$hostname/$cache_path/${hour}cache.pm\U$domain\E") {
 		my $file = "$CONFIG{OUT_DIR}/$hostname/$cache_path/${hour}cache.pm\U$domain\E";
 		do "$file";
-		print "$@<br>\n";
 	} elsif ($hour && -e "$CONFIG{OUT_DIR}/$hostname/$cache_path/cache.pm\U$domain\E") {
 		# For caching usage to limit out of memory problem
 		print "<h3 style=\"color: red;\">No cache file yet for this hour, please wait for next run of 'sa_cache --actual-day-only'.</h3>\n";
-	# Use cache files if possible in day/month/year view
+	# Use cache files if possible for week or in year/month/day view
 	} elsif (!$hour && -e "$CONFIG{OUT_DIR}/$hostname/$cache_path/cache.pm\U$domain\E") {
 		my $file = "$CONFIG{OUT_DIR}/$hostname/$cache_path/cache.pm\U$domain\E";
 		do "$file";
-		print "$@<br>\n";
 	# No cache file, we need to compute stat from scratch
 	} else {
 		# Compute statistics for the given period
@@ -1149,7 +1232,6 @@ sub show_stats
 			&compute_top_auth();
 		}
 	}
-
 
 	if ($type eq 'messageflow') {
 		&summarize_messageflow($begin, $end, %period_stats);
@@ -1845,7 +1927,7 @@ sub summarize_messageflow
 	$messaging{outbound_bytes} = sprintf("%.2f", $messaging{outbound_bytes}/$SIZE_UNIT);
 	$messaging{local_outbound_bytes} = sprintf("%.2f", $messaging{local_outbound_bytes}/$SIZE_UNIT);
 	if (!exists $messaging{lbls}) {
-		if ($end ne '60') {
+		if ($end && ($end ne '60')) {
 			foreach my $b ("$begin" .. "$end") {
 				$messaging{lbls} .= "$b:";
 				$messaging{values} .= ($period_stat{flow}{"$b"}{inbound} || 0) . ':';
@@ -1853,7 +1935,7 @@ sub summarize_messageflow
 				$messaging{values_bytes} .= (sprintf("%.2f", $period_stat{flow}{"$b"}{inbound_bytes}/$SIZE_UNIT) || 0) . ':';
 				$messaging{values1_bytes} .= (sprintf("%.2f", $period_stat{flow}{"$b"}{outbound_bytes}/$SIZE_UNIT) || 0) . ':';
 			}
-		} else {
+		} elsif ($end) {
 			for (my $i = 5; $i <= 60; $i += 5) {
 				$messaging{lbls} .= sprintf("%02d", $i) . ":";
 				my $count = 0;
@@ -1872,6 +1954,14 @@ sub summarize_messageflow
 				$messaging{values1} .= ($count1 || 0) . ':';
 				$messaging{values_bytes} .= (sprintf("%.2f", $count_bytes/$SIZE_UNIT) || 0) . ':';
 				$messaging{values1_bytes} .= (sprintf("%.2f", $count1_bytes/$SIZE_UNIT) || 0) . ':';
+			}
+		} else {
+			foreach my $b (split(/:/, $begin)) {
+				$messaging{lbls} .= "$b:";
+				$messaging{values} .= ($period_stat{flow}{"$b"}{inbound} || 0) . ':';
+				$messaging{values1} .= ($period_stat{flow}{"$b"}{outbound} || 0) . ':';
+				$messaging{values_bytes} .= (sprintf("%.2f", $period_stat{flow}{"$b"}{inbound_bytes}/$SIZE_UNIT) || 0) . ':';
+				$messaging{values1_bytes} .= (sprintf("%.2f", $period_stat{flow}{"$b"}{outbound_bytes}/$SIZE_UNIT) || 0) . ':';
 			}
 		}
 	} else {
@@ -1983,12 +2073,12 @@ sub display_messageflow
 		delete $messaging{nbsender};
 		delete $messaging{nbrcpt};
 	} elsif ($messaging{nbsender} =~ /:/) {
-		$nbsender = &grafit(    labels => $messaging{lbls}, values => $messaging{nbsender},
-					values1 => $messaging{nbrcpt}, legend => $TRANSLATE{'Senders'},
-					legend1 => $TRANSLATE{'Recipients'}, title => $TRANSLATE{'Different senders/recipients'},
-					x_label => $x_label
-		);
-
+		foreach (split(/:/, $messaging{nbsender})) { 
+			$nbsender += $_;
+		}
+		foreach (split(/:/, $messaging{nbrcpt})) { 
+			$nbrcpt += $_;
+		}
 	} else {
 		$nbsender = $messaging{nbsender} || 0;
 		$nbrcpt = $messaging{nbrcpt} || 0;
@@ -2019,24 +2109,30 @@ sub display_messageflow
 	} else {
 		print "<table>\n";
 	}
-	if ($nbsender !~ /<img/) {
-		print qq{
+	print qq{
 <table class="counter">
-<tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Different senders/recipients'}</th></tr>
-<tr><td class="tdhead" colspan="2">$TRANSLATE{'Senders'}</td><td class="tdhead" colspan="2">$TRANSLATE{'Recipients'}</td></tr>
-<tr><td class="tdtopnc" colspan="2">$nbsender</td><td class="tdtopnc" colspan="2">$nbrcpt</td></tr>
+<tr><th colspan="2" class="thheadcounter">$TRANSLATE{'Different senders/recipients'}</th></tr>
+<tr><td class="tdhead">$TRANSLATE{'Senders'}</td><td class="tdhead">$TRANSLATE{'Recipients'}</td></tr>
+<tr><td class="tdtopnc">$nbsender</td><td class="tdtopnc">$nbrcpt</td></tr>
 <tr><td colspan="4" align="center">&nbsp;</td></tr>
 </table>
 };
-	} else {
+	if ($messaging{nbsender} =~ /:/) {
 		print qq{
-<table class="counter">
-<tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Different senders/recipients'}</th></tr>
-<tr><td colspan="4" align="center">$nbsender</td></tr>
-<tr><td colspan="4" align="center">&nbsp;</td></tr>
+<table>
+<tr><td align="center">
+};
+		print &grafit(labels => $messaging{lbls}, values => $messaging{nbsender},
+			values1 => $messaging{nbrcpt}, legend => $TRANSLATE{'Senders'},
+			legend1 => $TRANSLATE{'Recipients'}, title => $TRANSLATE{'Different senders/recipients'},
+			x_label => $x_label, divid => 'messagesenderrecipientflow'
+		);
+		print qq {
+</td></tr>
 </table>
 };
 	}
+
 	print "\n</td></tr></table>\n";
 
 }
@@ -2086,12 +2182,12 @@ sub summarize_spamflow
 	my ($begin, $end, %period_stat) = @_;
 
 	if (!exists $spam{lbls}) {
-		if ($end ne '60') {
+		if ($end && ($end ne '60')) {
 			foreach ("$begin" .. "$end") {
 				$spam{lbls} .= "$_:";
 				$spam{values} .= ($period_stat{spam}{"$_"} || 0) . ':';
 			}
-		} else {
+		} elsif ($end) {
 			for (my $i = 5; $i <= 60; $i += 5) {
 				$spam{lbls} .= sprintf("%02d", $i) . ":";
 				my $count = 0;
@@ -2101,6 +2197,11 @@ sub summarize_spamflow
 					}
 				}
 				$spam{values} .= ($count || 0) . ':';
+			}
+		} else {
+			foreach my $b (split(/:/, $begin)) {
+				$spam{lbls} .= "$b:";
+				$spam{values} .= ($period_stat{spam}{"$b"} || 0) . ':';
 			}
 		}
 	}
@@ -2264,12 +2365,12 @@ sub summarize_virusflow
 	$virus{local_outbound_bytes} = sprintf("%.2f", $virus{local_outbound_bytes}/$SIZE_UNIT);
 
 	if (!exists $virus{lbls}) {
-		if ($end ne '60') {
+		if ($end && ($end ne '60')) {
 			foreach ("$begin" .. "$end") {
 				$virus{lbls} .= "$_:";
 				$virus{values} .= ($period_stat{virus}{"$_"} || 0) . ':';
 			}
-		} else {
+		} elsif ($end) {
 			for (my $i = 5; $i <= 60; $i += 5) {
 				$virus{lbls} .= sprintf("%02d", $i) . ":";
 				my $count = 0;
@@ -2279,6 +2380,11 @@ sub summarize_virusflow
 					}
 				}
 				$virus{values} .= ($count || 0) . ':';
+			}
+		} else {
+			foreach my $b (split(/:/, $begin)) {
+				$virus{lbls} .= "$b:";
+				$virus{values} .= ($period_stat{virus}{"$b"} || 0) . ':';
 			}
 		}
 	}
@@ -2401,12 +2507,12 @@ sub summarize_dsnflow
 	$dsn{total_outbound} = $dsn{outbound} + $dsn{local_outbound};
 	$dsn{error} ||= 0;
 	if (!exists $dsn{lbls}) {
-		if ($end ne '60') {
+		if ($end && ($end ne '60')) {
 			foreach ("$begin" .. "$end") {
 				$dsn{lbls} .= "$_:";
 				$dsn{values} .= ($period_stat{dsn}{"$_"} || 0) . ':';
 			}
-		} else {
+		} elsif ($end) {
 			for (my $i = 5; $i <= 60; $i += 5) {
 				$dsn{lbls} .= sprintf("%02d", $i) . ":";
 				my $count = 0;
@@ -2416,6 +2522,11 @@ sub summarize_dsnflow
 					}
 				}
 				$dsn{values} .= ($count || 0) . ':';
+			}
+		} else {
+			foreach my $b (split(/:/, $begin)) {
+				$dsn{lbls} .= "$b:";
+				$dsn{values} .= ($period_stat{dsn}{"$b"} || 0) . ':';
 			}
 		}
 	}
@@ -2732,12 +2843,12 @@ sub summarize_authflow
 
 	foreach my $type (keys %{$period_stat{auth}}) {
 		if (!exists $auth{$type}{lbls}) {
-			if ($end ne '60') {
+			if ($end && ($end ne '60')) {
 				foreach ("$begin" .. "$end") {
 					$auth{$type}{lbls} .= "$_:";
 					$auth{$type}{values} .= ($period_stat{auth}{$type}{"$_"} || 0) . ':';
 				}
-			} else {
+			} elsif ($end) {
 				for (my $i = 5; $i <= 60; $i += 5) {
 					$auth{$type}{lbls} .= sprintf("%02d", $i) . ":";
 					my $count = 0;
@@ -2747,6 +2858,11 @@ sub summarize_authflow
 						}
 					}
 					$auth{$type}{values} .= ($count || 0) . ':';
+				}
+			} else {
+				foreach my $b (split(/:/, $begin)) {
+					$auth{$type}{lbls} .= "$b:";
+					$auth{$type}{values} .= ($period_stat{auth}{$type}{"$b"} || 0) . ':';
 				}
 			}
 		}
@@ -2819,7 +2935,7 @@ sub detail_link
 	my @files = ();
 	my $path = $CONFIG{OUT_DIR} . '/' . $hostname . '/' . $date;
 	$path =~ s/(\d{4})(\d{2})(\d{2})$/$1\/$2\/$3\//;
-	if ($date !~ /00$/) {
+	if (($date !~ /00$/) && !$WEEK) {
 		if (not opendir(DIR, "$path")) {
 			&logerror("Can't open directory $CONFIG{OUT_DIR}: $!\n");
 		} else {
@@ -4639,14 +4755,24 @@ sub grafit
 	my $data2 = '';
 	my @xdata = split(/:/, $params{labels});
 	my @ydata = split(/:/, $params{values});
+	my @wdays = ('Mo','Tu','We','Th','Fr','Sa','Su');
 	for (my $i = 0; $i <= $#xdata; $i++) {
-		$data1 .= "['$xdata[$i]',$ydata[$i]],";
+		if ($#xdata == 6) {
+			$data1 .= "[$i,$ydata[$i]],";
+			$wdays[$i] = "$wdays[$i]-$xdata[$i]";
+		} else {
+			$data1 .= "['$xdata[$i]',$ydata[$i]],";
+		}
 	}
 	$data1 =~ s/,$//;
 	if ($params{values1}) {
 		@ydata = split(/:/, $params{values1});
 		for (my $i = 0; $i <= $#xdata; $i++) {
-			$data2 .= "['$xdata[$i]',$ydata[$i]],";
+			if ($#xdata == 6) {
+				$data2 .= "[$i,$ydata[$i]],";
+			} else {
+				$data2 .= "['$xdata[$i]',$ydata[$i]],";
+			}
 		}
 		$data2 =~ s/,$//;
 	}
@@ -4654,22 +4780,36 @@ sub grafit
 	$data2 = "var d2 = [$data2];";
 
 	my $xlabel = '';
-	my $numticks = 0;
+	my $numticks = $#xdata + 1;
 	if ($#xdata == 11) {
-		$xlabel = qq{var months = [ "$TRANSLATE{'01'}", "$TRANSLATE{'02'}", "$TRANSLATE{'03'}", "$TRANSLATE{'04'}", "$TRANSLATE{'05'}", "$TRANSLATE{'06'}", "$TRANSLATE{'07'}", "$TRANSLATE{'08'}", "$TRANSLATE{'09'}", "$TRANSLATE{'10'}", "$TRANSLATE{'11'}", "$TRANSLATE{'12'}" ];
-		return months[(x -1) % 12];
+		$xlabel = qq{tickFormatter: function(x) {
+			var x = parseInt(x);
+			var months = [ "$TRANSLATE{'01'}", "$TRANSLATE{'02'}", "$TRANSLATE{'03'}", "$TRANSLATE{'04'}", "$TRANSLATE{'05'}", "$TRANSLATE{'06'}", "$TRANSLATE{'07'}", "$TRANSLATE{'08'}", "$TRANSLATE{'09'}", "$TRANSLATE{'10'}", "$TRANSLATE{'11'}", "$TRANSLATE{'12'}" ];
+			return months[(x -1) % 12];
+		},
 };
-		$numticks = 12;
 	} elsif ($#xdata == 30) {
-		$xlabel = qq{var days = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31'];
-		return days[(x - 1) % 31];
+		$xlabel = qq{tickFormatter: function(x) {
+			var x = parseInt(x);
+			var days = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31'];
+			return days[(x - 1) % 31];
+		},
 };
-		$numticks = 31;
+	} elsif ($#xdata <= 6) {
+		my $lbls = join("','", @wdays);
+		$xlabel = qq{tickFormatter: function(x) {
+			var x = parseInt(x);
+			var wdays = new Array('$lbls');
+			return wdays[x];
+		},
+};
 	} else  {
-		$xlabel = qq{var hours = ['00','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23'];
-		return hours[x % 24];
+		$xlabel = qq{tickFormatter: function(x) {
+			var x = parseInt(x);
+			var hours = ['00','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23'];
+			return hours[x % 24];
+		},
 };
-		$numticks = 24;
 	}
 	$params{width}  ||= 400;
 	$params{height} ||= 200;
@@ -4681,7 +4821,7 @@ sub grafit
      width : $params{width}px;
      height: $params{height}px;
      background:#F3F2ED;
-     border:6px double white;
+     border:10px double white;
      padding:0 10px;
      margin:30px 10px 30px 10px;
      border-radius:10px;
@@ -4725,10 +4865,7 @@ sub grafit
         xaxis: {
             mode: "normal",
             noTicks: $numticks,
-            tickFormatter: function(x) {
-                var x = parseInt(x);
-		$xlabel
-            },
+	    $xlabel
             title: "$params{x_label}",
         },
         title: "$params{title}",
@@ -4797,7 +4934,7 @@ sub grafit_pie
      width : $params{width}px;
      height: $params{height}px;
      background:#F3F2ED;
-     border:6px double white;
+     border:10px double white;
      padding:0 10px;
      margin:30px 10px 30px 10px;
      border-radius:10px;
