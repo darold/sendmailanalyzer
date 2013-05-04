@@ -2795,7 +2795,7 @@ foreach my $s (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STA
 		$piecount++;
 	}
 }
-my $other_percent = 100 - sprintf("%.2f", ($total_percent/$delivery_global_total) * 100);
+my $other_percent = sprintf("%.2f", ($total_percent/$delivery_global_total) * 100) - 100;
 $status{"Others"} = $other_percent;
 
 print qq{
