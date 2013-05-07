@@ -132,8 +132,9 @@ _EOF3_
 %{__install} -D -m 0644 doc/sa_cache.3 \
     %{buildroot}/%{_mandir}/man3/sa_cache.3
 %{__install} -D -m 0644 salogo.png \
-%{__install} -D -m 0644 salogo.png \
     %{buildroot}/%{webdir}/salogo.png
+%{__install} -D -m 0644 flotr2.js \
+    %{buildroot}/%{webdir}/flotr2.js
 %{__install} -Dpm 0755 start_scripts/sendmailanalyzer %{buildroot}%{_sysconfdir}/rc.d/init.d/sendmailanalyzer
 
 %clean
@@ -159,12 +160,14 @@ fi
 %attr(0644,root,root) %{_mandir}/man3/%{uname}.3.gz
 %attr(0644,root,root) %{_mandir}/man3/sa_cache.3.gz
 %attr(0644,root,root) %{webdir}/salogo.png
-%attr(0755,root,root) %{webdir}/grafit.cgi
 %attr(0755,root,root) %{webdir}/sa_report.cgi
+%attr(0644,root,root) %{webdir}/flotr2.js
 %attr(0644,root,root) %{webdir}/lang/ERROR_CODE
 %attr(0644,root,root) %{webdir}/lang/en_US
 %attr(0644,root,root) %{webdir}/lang/fr_FR
 %attr(0644,root,root) %{webdir}/lang/sp_SP
+%attr(0644,root,root) %{webdir}/lang/bg_BG
+%attr(0644,root,root) %{webdir}/lang/de_DE
 %attr(0755,root,root) %{_sysconfdir}/rc.d/init.d/sendmailanalyzer
 %config(noreplace) %{_sysconfdir}/%{uname}.conf
 %config(noreplace) %{_sysconfdir}/cron.d/%{uname}
@@ -174,7 +177,10 @@ fi
 %dir %{webdir}
 
 %changelog
-* Sun Jan 06n 2013 Gilles Darold
+* Tue May 07 2013 Gilles Darold
+- Upgrade for 9.0 changes
+
+* Sun Jan 06 2013 Gilles Darold
 - Add man page for sa_cache.
 
 * Mon Dec 31 2012 Igor Vuk
