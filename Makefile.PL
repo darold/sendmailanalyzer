@@ -297,7 +297,6 @@ fi
 install -m 755 sendmailanalyzer $DESTDIR$BINDIR/
 install -m 755 sa_cache $DESTDIR$BINDIR/
 install -m 755 cgi-bin/sa_report.cgi $DESTDIR$HTMLDIR/
-install -m 755 cgi-bin/grafit.cgi $DESTDIR$HTMLDIR/
 install -m 644 cgi-bin/lang/* $DESTDIR$HTMLDIR/lang/
 install -m 644 salogo.png $DESTDIR$HTMLDIR/
 install -m 644 flotr2.js $DESTDIR$HTMLDIR/
