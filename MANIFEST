@@ -11,7 +11,7 @@ cgi-bin/lang/en_US
 cgi-bin/lang/fr_FR
 cgi-bin/lang/sp_SP
 doc/sendmailanalyzer.pod
-doc/sendmailanalyzer.3
+doc/sa_cache.pod
 start_scripts/rc.sendmailanalyzer
 start_scripts/sendmailanalyzer
 LICENSE
