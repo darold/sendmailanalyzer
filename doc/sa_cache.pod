@@ -25,6 +25,15 @@ Using the --actual-day-only will compute statstics for the current day only
                           old and obsolete day_cache script. You still have to
                           run it often like each five minutes.
 
+Setup a cronjob to run sa_cache and restart SendmailAnalyzer daemon after the
+log file rotation as follow:
+
+     # SendmailAnalyzer log reporting daily cache
+     0 1 * * * /usr/local/sendmailanalyzer/sa_cache > /dev/null 2>&1
+     # On huge MTA you may want to have five minutes caching
+     #*/5 * * * * /usr/local/sendmailanalyzer/sa_cache -a > /dev/null 2>&1
+
+
 =head1 AUTHOR
 
 Gilles Darold <gilles @nospam@ darold.net>
