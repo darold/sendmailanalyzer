@@ -5,7 +5,6 @@ README
 sendmailanalyzer
 sa_cache
 salogo.png
-cgi-bin/grafit.cgi
 cgi-bin/sa_report.cgi
 cgi-bin/lang/ERROR_CODE
 cgi-bin/lang/en_US
