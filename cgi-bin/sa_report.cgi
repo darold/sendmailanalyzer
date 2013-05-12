@@ -1833,7 +1833,7 @@ sub set_direction
 
 	###### Now check for destination
 	# If the recipient relay is localhost, it should be distributed internally
-	if (grep(/^$STATS{$id}{rcpt_relay}[$i]$/, 'localhost', 'uucp')) {
+	if (grep(/^$STATS{$id}{rcpt_relay}[$i]$/, 'localhost')) {
 		$direction .= 'Int';
 	# If this host is a mail gateway and the recipient relay match one of
 	# our destination hub lets say it should be distributed internally
