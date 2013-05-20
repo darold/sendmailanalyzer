@@ -282,7 +282,6 @@ sub start_loop
 
 		while (my $l = <SA_FILE>) {
 			chomp($l);
-			$l =~ s/[\[\]\\]//g;
 			$l =~ s/ ID \d+ mail.\w//;
 			next if ($l =~ /policy-spf/);
 			$LAST_PARSED = $l;
@@ -339,7 +338,6 @@ sub start_loop
 	# Read each incoming line
 	while (my $l = <SA_PIPE>) {
 		chomp($l);
-		$l =~ s/[\[\]\\]//g;
 		$l =~ s/ ID \d+ mail.\w//;
 		next if ($l =~ /policy-spf/);
 		$LAST_PARSED = $l;
@@ -397,7 +395,7 @@ sub parse_common_fields
 			}
 		}
 	}
-	$type =~ s/\://;
+	$type =~ s/[\[\]\:]g//;
 
 	$host = $CONFIG{MERGING_HOST} if ($CONFIG{MERGING_HOST});
 
@@ -425,8 +423,7 @@ sub store_data
 	} elsif ($type =~ /^$CONFIG{SPAMD_NAME}/i) {
 		&parse_spamd($date,$time,$host,$other);
 	} else {
-		$type =~ s/(\d+)/\[$1\]/;
-		&dprint("Skipping unknown syslog report => $date $time $host $type $other");
+		&dprint("Skipping unknown syslog report => $date $time $host [$type]: $other");
 	}
 	 
 }
@@ -479,7 +476,7 @@ sub parse_sendmail
 	} elsif  ($str =~ /(connect to|setting up TLS connection to|Untrusted TLS connection established)/) {
 		return;
 	# POSTFIX dnsbl message ???
-	} elsif ($str =~ m#addr \d+\.\d+\.\d+\.\d+ listed#i) {
+	} elsif ($str =~ m#addr [a-fA-F0-9\.\:]+ listed#) {
 		return;
 	# POSTFIX  postscreen messages: COMMAND (PIPELINING|COUNT LIMIT|TIME LIMIT)???
 	} elsif ($str =~ m#^COMMAND #i) {
@@ -618,7 +615,7 @@ sub parse_sendmail
 	# POSTFIX client origin
 	} elsif ($str =~ m#^([^:\s]+): client=(.*)#) {
 		my $id = $1;
-		my $relay = $2;
+		my $relay = lc($2);
 		$MSGID{$id}{relay} = &clean_relay($relay);
 	# POSTFIX message id
 	} elsif ($str =~ m#^([^:\s]+): message-id=([^,]*)#) {
@@ -695,7 +692,7 @@ sub parse_sendmail
 	} elsif ($str =~ m#^([^:\s]+): to=([^,]+), relay=([^,]+),.*status=(.*)#) {
 		my $id = $1;
 		my $to = &edecode($2);
-		my $relay = &clean_relay($3);
+		my $relay = &clean_relay(lc($3));
 		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
 			return;
 		}
@@ -716,7 +713,7 @@ sub parse_sendmail
 	} elsif ($str =~ m#^([^:\s]+): to=([^,]+), orig_to=([^,]+), relay=([^,]+),.*status=(.*)#) {
 		my $id = $1;
 		my $to = &edecode($2);
-		my $relay = &clean_relay($4);
+		my $relay = &clean_relay(lc($4));
 		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
 			return;
 		}
@@ -784,7 +781,7 @@ sub parse_sendmail
 		my $id = $1;
 		my $to = &edecode($2);
 		my $ctladdr = &edecode($3);
-		my $relay = &clean_relay($4);
+		my $relay = &clean_relay(lc($4));
 		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
 			return;
 		}
@@ -1090,14 +1087,14 @@ sub parse_sendmail
 		push(@{$AUTH{$host}{$authid}{type}}, $1);
 		push(@{$AUTH{$host}{$authid}{mech}}, $4);
 		push(@{$AUTH{$host}{$authid}{date}}, $date . $time);
-		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay($2));
+		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay(lc($2)));
 	# Catch Anonymous TLS connections
-	} elsif ($str =~ m#Anonymous TLS connection established from ([^:])+: (.*) with cipher (.*)#) {
+	} elsif ($str =~ m#Anonymous TLS connection established from ([^:]+): (.*) with cipher (.*)#) {
 		my $authid = 'anonymous';
 		push(@{$AUTH{$host}{$authid}{type}}, $2);
 		push(@{$AUTH{$host}{$authid}{mech}}, $3);
 		push(@{$AUTH{$host}{$authid}{date}}, $date . $time);
-		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay($1));
+		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay(lc($1)));
 	# Catch server TLS connections
 	} elsif ($str =~ m#(STARTTLS=[^,]+), relay=([^,]+), version=([^,]+), (verify=[^,]+), cipher=([^,]+), bits=([^,\s]+)#) {
 		my $dt = $date . $time;
@@ -1149,7 +1146,7 @@ sub parse_mailscanner
 			$SPAMDETAIL{$host}{$id}{type} = 'spamassassin';
 			$SPAMDETAIL{$host}{$id}{spam} = $text;
 		}
-		if ($SPAM{$host}{$id}{from} =~ /(\d+\.\d+\.\d+\.\d+) \((.*)\)/) {
+		if ($SPAM{$host}{$id}{from} =~ /([a-fA-F0-9\.\:]+) \((.*)\)/) {
 			$SPAM{$host}{$id}{relay} = &clean_relay(lc($2));
 			$SPAM{$host}{$id}{from} = $1;
 		}
@@ -1179,7 +1176,7 @@ sub parse_mailscanner
 			$SPAMDETAIL{$host}{$id}{type} = 'dnsbl';
 			$SPAMDETAIL{$host}{$id}{spam} = $4;
 		}
-		if ($SPAM{$host}{$id}{from} =~ /(\d+\.\d+\.\d+\.\d+) \((.*)\)/) {
+		if ($SPAM{$host}{$id}{from} =~ /([a-fA-F0-9\.\:]+) \((.*)\)/) {
 			$SPAM{$host}{$id}{relay} = &clean_relay(lc($2));
 			$SPAM{$host}{$id}{from} = $1;
 		}
@@ -1210,7 +1207,7 @@ sub parse_amavis
 
 		my $pid = $1;
 		my $status = $2;
-		my $relay = $4;
+		my $relay = lc($4);
 		my $msgid = $7;
 		my $hits = $8;
 		my $size = $9;
@@ -1254,7 +1251,7 @@ sub parse_amavis
 
 		my $pid = $1;
 		my $status = $2;
-		my $relay = $3;
+		my $relay = lc($3);
 		my $id = $7;
 		my $queueid = $6;
 		my $sender = &edecode($4);
@@ -1294,7 +1291,7 @@ sub parse_amavis
 		}
 	} elsif ($str =~ /(Passed|Blocked) INFECTED \(([^\)]*)\), (.*) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*,(.*) Message-ID: [<]*([^,>]+)[>]*, /) {
 		my $virus = $2;
-		my $relay = $3;
+		my $relay = lc($3);
 		my $from = $4;
 		my $to = &edecode($5);
 		my $id = &edecode($7);
@@ -1504,16 +1501,16 @@ sub edecode
 sub clean_relay
 {
 	my ($relay) = @_;
-	
-	if ($relay =~ m#(\d+\.\d+\.\d+\.\d+) \(may be forged#i) {
+
+	if ($relay =~ m#\b([a-fA-F0-9\.\:]+) \(may be forged#) {
 		return $1;
 	} elsif ($relay =~ m#localhost|127\.0\.0\.1#) {
 		return 'localhost';
-	} elsif ($relay =~ s/(\d+\.\d+\.\d+\.\d+)//) {
+	} elsif ( $relay =~ s/\[([^\]]+)\]// ) {
 		my $fqdn = $relay;
 		my $ip = $1;
 		$fqdn =~ s#:.*##;
-		if (lc($fqdn) eq 'unknown') {
+		if ($fqdn eq 'unknown') {
 			return $ip;
 		} elsif ($fqdn =~ /[\s,]/) {
 			return $ip;
@@ -1524,10 +1521,9 @@ sub clean_relay
 	$relay =~ s#^\s+##;
 	$relay =~ s#\s+.*##;
 	$relay =~ s#\.$##;
-	$relay =~ s#:.*##;
-	$relay =~ s#\s.*##g;
+	$relay =~ s#\s.*##;
 
-	return lc($relay);
+	return $relay;
 }
 
 ####
@@ -1541,6 +1537,7 @@ sub format_time
 	$hour = sprintf("%02d", $hour);
 	$min  = sprintf("%02d", $min);
 	$sec  = sprintf("%02d", $sec);
+
 	return 1900+$year . sprintf("%02d", $mon+1) . sprintf("%02d", $mday) . "$hour$min$sec";
 }
 
