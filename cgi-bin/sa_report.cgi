@@ -518,7 +518,9 @@ sub read_config
 			}
 		}
 	}
-
+	if (!exists $CONFIG{URL_JSCRIPT}) {
+		$CONFIG{URL_JSCRIPT} = 'flotr2.js';
+	}
 }
 
 sub sa_header
@@ -2760,7 +2762,7 @@ sub display_statusflow
 <tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Messaging Status'}</th></tr>
 <tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Percentage'}</td></tr>
 };
-my $delivery_global_total = 1;
+my $delivery_global_total = 0;
 foreach (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
 	next if ( ($_ eq '') || /Command rejected/);
 	next if (/_bytes/ || /virus /);
@@ -2770,6 +2772,7 @@ foreach (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
 	}
 	$delivery_global_total += $GLOBAL_STATUS{$_};
 }
+$delivery_global_total ||= 1;
 my $delivery_total = $GLOBAL_STATUS{Sent} || 1;
 my $delivery_total_bytes = $GLOBAL_STATUS{Sent_bytes} || 1;
 my $total_percent = 0;

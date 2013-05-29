@@ -409,21 +409,20 @@ sub store_data
 {
 	my ($date,$time,$host,$type,$other) = @_;
 
-	if ($type =~ /^$CONFIG{MAILSCAN_NAME}|$CONFIG{CLAMD_NAME}/i) {
+	if (($CONFIG{MAILSCAN_NAME} || $CONFIG{CLAMD_NAME}) && ($type =~ /^$CONFIG{MAILSCAN_NAME}|$CONFIG{CLAMD_NAME}/i)) {
 		&parse_mailscanner($date,$time,$host,$other);
-	} elsif ($type =~ /^$CONFIG{AMAVIS_NAME}/i) {
+	} elsif ($CONFIG{AMAVIS_NAME} && ($type =~ /^$CONFIG{AMAVIS_NAME}/i)) {
 		&parse_amavis($date,$time,$host,$other);
-	# Allow multiple MTA name 
-	} elsif ($type =~ /^$CONFIG{MTA_NAME}/i) {
+	} elsif ($CONFIG{MTA_NAME} && ($type =~ /^$CONFIG{MTA_NAME}/i)) {
 		&parse_sendmail($date,$time,$host,$other);
-	} elsif ($type =~ /^$CONFIG{MD_NAME}/i) {
+	} elsif ($CONFIG{MD_NAME} && ($type =~ /^$CONFIG{MD_NAME}/i)) {
 		&parse_mimedefang($date,$time,$host,$other);
-	} elsif ($type =~ /^$CONFIG{POSTGREY_NAME}/i) {
+	} elsif ($CONFIG{POSTGREY_NAME} && ($type =~ /^$CONFIG{POSTGREY_NAME}/i)) {
 		&parse_postgrey($date,$time,$host,$other);
-	} elsif ($type =~ /^$CONFIG{SPAMD_NAME}/i) {
+	} elsif ($CONFIG{SPAMD_NAME} && ($type =~ /^$CONFIG{SPAMD_NAME}/i)) {
 		&parse_spamd($date,$time,$host,$other);
 	} else {
-		&dprint("Skipping unknown syslog report => $date $time $host [$type]: $other");
+		&dprint("Skipping unknown syslog report => $date $time $host [$type]: $other") if ($CONFIG{DEBUG} > 1);
 	}
 	 
 }
@@ -1041,22 +1040,44 @@ sub parse_sendmail
 		my $relay = &clean_relay(lc($2));
 		my $rule = 'milter-reject';
 		my $status = $3;
-		my $from = $4;
-		my $to = $5;
+		my $from = &edecode($4);
+		my $to = &edecode($5);
 		my $id = $1;
-		$REJECT{$host}{$id}{relay} = $relay;
-		$REJECT{$host}{$id}{date} = $date . $time;
-		$REJECT{$host}{$id}{arg1} = &edecode($from);
-		$REJECT{$host}{$id}{to} = $to;
-		$REJECT{$host}{$id}{rule} = $rule;
-		if ($status =~ /(Rejected due to SPF policy)/i) {
-			$REJECT{$host}{$id}{rule} = 'spf-milter';
-			$REJECT{$host}{$id}{status} = $1;
-		} elsif ($status =~ /(Rejected due to Sender-ID policy)/i) {
-			$REJECT{$host}{$id}{rule} = 'sid-milter';
-			$REJECT{$host}{$id}{status} = $1;
+		if ($status =~ /Virus detected .*\((.*)\)/) {
+			$VIRUS{$host}{$id}{file} = 'Inline';
+			$VIRUS{$host}{$id}{virus} = $1;
+			$VIRUS{$host}{$id}{relay} = $relay;
+			$VIRUS{$host}{$id}{from} = $from;
+			$VIRUS{$host}{$id}{to} = $to;
+			$VIRUS{$host}{$id}{date} = $date . $time;
+			if (!exists $FROM{$host}{$id}{date}) {
+				$FROM{$host}{$id}{date} = $date . $time;
+				$FROM{$host}{$id}{from} = $from;
+				$FROM{$host}{$id}{size} = 0;
+				$FROM{$host}{$id}{nrcpts} = 1;
+				$FROM{$host}{$id}{relay} = $relay;
+			}
+			if (!exists $TO{$host}{$id}{date}) {
+				push(@{$TO{$host}{$id}{date}}, $date . $time);
+				push(@{$TO{$host}{$id}{to}}, $to);
+				$status =~ s/ \(.*//;
+				#push(@{$TO{$host}{$id}{status}}, &clear_status($status));
+			}
 		} else {
-			$REJECT{$host}{$id}{status} = &clear_status($status);
+			$REJECT{$host}{$id}{relay} = $relay;
+			$REJECT{$host}{$id}{date} = $date . $time;
+			$REJECT{$host}{$id}{arg1} = &edecode($from);
+			$REJECT{$host}{$id}{to} = &edecode($to);
+			$REJECT{$host}{$id}{rule} = $rule;
+			if ($status =~ /(Rejected due to SPF policy)/i) {
+				$REJECT{$host}{$id}{rule} = 'spf-milter';
+				$REJECT{$host}{$id}{status} = $1;
+			} elsif ($status =~ /(Rejected due to Sender-ID policy)/i) {
+				$REJECT{$host}{$id}{rule} = 'sid-milter';
+				$REJECT{$host}{$id}{status} = $1;
+			} else {
+				$REJECT{$host}{$id}{status} = &clear_status($status);
+			}
 		}
 	# POSTFIX some error messages
 	} elsif ($str =~ m#^([^:\s]+): ([^=]+)\.\.\. (.*)#) {
@@ -1162,10 +1183,10 @@ sub parse_mailscanner
 					$SPAMDETAIL{$host}{$id}{spam} = $text;
 			}
 		}
-	} elsif ($str =~ /Message ([^\s]+) from (.*) to (.*) is (.*)/) {
+	} elsif ($str =~ /Message ([^\s]+) from (.*?) to (.*?) is (.*)/) {
 		my $id= $1;
 		next if ($SPAM{$host}{$id});
-		$SPAM{$host}{$id}{from} = $FROM{$host}{$id}{from} || $2;
+		$SPAM{$host}{$id}{from} = $FROM{$host}{$id}{from} || &edecode($2);
 		$SPAM{$host}{$id}{to} = $TO{$host}{$id}{queue_to}[0] || &edecode($3);
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
@@ -1188,11 +1209,6 @@ sub parse_mailscanner
 		$VIRUS{$host}{$1}{file} = 'message';
 		$VIRUS{$host}{$1}{virus} = $2;
 		$VIRUS{$host}{$1}{date} = $date . $time;
-# Revove this part as it is duplicating virus report
-#	} elsif ($str =~ /\/([^\/]+)\/([^\/]+): ([^\s]+) FOUND/) {
-#		$VIRUS{$host}{$q}{file} = $2;
-#		$VIRUS{$host}{$q}{virus} = $3;
-#		$VIRUS{$host}{$q}{date} = $date . $time;
 	}
 }
 
@@ -1567,6 +1583,7 @@ sub flush_data
 				delete $MSGID{$_} if ($MSGID{$_}{id} eq $id);
 			}
 			delete $SKIPMSG{$id};
+
 			next if ($FROM{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
 			# Key: year/month/day, Format: Hour:Id:Sender:Size:Nrcpts:Relay
 			$senders{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $FROM{$host}{$id}{from} . ':' . $FROM{$host}{$id}{size} . ':' . $FROM{$host}{$id}{nrcpts} . ':' . $FROM{$host}{$id}{relay} . "\n";
@@ -2049,6 +2066,8 @@ sub clear_status
 	} elsif ($status =~ s/collect: //) {
 		$status =~ s/ from.*//;
 		return $status;
+	} elsif ($status =~ /bounced.*/i) {
+		return 'Bounced';
 	} elsif ($status =~ /did not issue/) {
 		$status =~ s/.*did not issue/No/;
 		return $status;
