@@ -1429,7 +1429,7 @@ sub parse_spamd
 	my ($date,$time,$host,$str) = @_;
 
 	#### Store each relevant information per date and ids
-	if ($str =~ /result: Y ([^\s]+) - (.*) scantime=.*mid=<(.*)>,autolearn=(.*)/) {
+	if ($str =~ /result: Y ([^\s]+) - (.*) scantime=.*mid=<(.*)>,.*autolearn=(.*)/) {
 		my $id = &get_uniqueid();
 		if ($CONFIG{SPAM_DETAIL}) {
 			$SPAMDETAIL{$host}{$id}{type} = 'spamd';
