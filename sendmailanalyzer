@@ -287,7 +287,7 @@ sub start_loop
 			$LAST_PARSED = $l;
 			$l = '';
 			# Only catch relevant logs
-			if ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\d]+/) {
+			if ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\[]/) {
 				if ($OLD_LAST_PARSED) {
 					# Line already parsed ? If yes, go to retrieve next log line
 					next if (&incremental_check($LAST_PARSED, $OLD_LAST_PARSED) != 0);
@@ -343,7 +343,7 @@ sub start_loop
 		$LAST_PARSED = $l;
 		$l = '';
 		# Only catch relevant logs
-		if ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\d]+/) {
+		if ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\[]/) {
 			# Extract common fields and store data in memory
 			&store_data(&parse_common_fields(split(/\s+/, $LAST_PARSED)));
 		}
@@ -1446,6 +1446,7 @@ sub parse_spamd
 
 	#### Store each relevant information per date and ids
 	if ($str =~ /result: Y ([^\s]+) - (.*) scantime=.*mid=<(.*)>,.*autolearn=(.*)/) {
+
 		my $id = &get_uniqueid();
 		if ($CONFIG{SPAM_DETAIL}) {
 			$SPAMDETAIL{$host}{$id}{type} = 'spamd';
@@ -2038,7 +2039,7 @@ sub read_config
 	$CONFIG{FULL} ||= 0;
 	$CONFIG{BREAK} ||= 0;
 	$CONFIG{DELAY} ||= 5;
-	$CONFIG{MTA_NAME} ||= 'sendmail';
+	$CONFIG{MTA_NAME} ||= 'sendmail|sm-mta';
 	$CONFIG{MAILSCAN_NAME} ||= 'MailScanner';
 	$CONFIG{CLAMD_NAME} ||= 'clamd';
 	$CONFIG{MD_NAME} ||= 'mimedefang.pl';
@@ -2049,6 +2050,7 @@ sub read_config
 	$CONFIG{MTA_NAME} =~ s/[\s\t,;]+/\|/g;
 	$CONFIG{PID_DIR} ||= '/var/run';
 	$CONFIG{POSTGREY_NAME} ||= 'postgrey';
+	$CONFIG{SPAMD_NAME} ||= 'spamd';
 }
 
 ####
