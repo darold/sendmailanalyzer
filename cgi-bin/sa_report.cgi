@@ -2765,11 +2765,7 @@ sub display_statusflow
 my $delivery_global_total = 0;
 foreach (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
 	next if ( ($_ eq '') || /Command rejected/);
-	next if (/_bytes/ || /virus /);
-	if (/_Sent$/) {
-		$delivery_global_total -= $GLOBAL_STATUS{$_};
-		next;
-	}
+	next if (/_bytes/ || /virus / || /Spam/);
 	$delivery_global_total += $GLOBAL_STATUS{$_};
 }
 $delivery_global_total ||= 1;
@@ -2780,7 +2776,7 @@ my %status = ();
 my $piecount = 0;
 foreach my $s (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
 	next if ( ($s eq '') || ($s =~ /Command rejected/));
-	next if ( ($s =~ /_bytes/) || ($s =~ /virus /) );
+	next if ( ($s =~ /_bytes/) || ($s =~ /virus /) || ($s =~ /Spam/) );
 	my $percent = sprintf("%.2f", ($GLOBAL_STATUS{$s}/$delivery_global_total) * 100);
 	if ($s =~ /^(\d{3}) \d\.(\d\.\d)$/) {
 		if (exists $SMTP_ERROR_CODE{$1} || exists $ESMTP_ERROR_CODE{$2}) {
