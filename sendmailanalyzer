@@ -1449,7 +1449,7 @@ sub parse_spamd
 
 		my $id = &get_uniqueid();
 		if ($CONFIG{SPAM_DETAIL}) {
-			$SPAMDETAIL{$host}{$id}{type} = 'spamd';
+			$SPAMDETAIL{$host}{$id}{type} = 'spamdmilter';
 			$SPAMDETAIL{$host}{$id}{score} = $1;
 			$SPAMDETAIL{$host}{$id}{spam} = $2;
 			$SPAMDETAIL{$host}{$id}{date} = $date . $time;
@@ -1468,7 +1468,7 @@ sub parse_spamd
 				$SPAM{$host}{$mid}{mid}  = $mid;
 				delete $SPAM{$host}{$id};
 				if ($CONFIG{SPAM_DETAIL}) {
-					$SPAMDETAIL{$host}{$mid}{type} = 'spamd';
+					$SPAMDETAIL{$host}{$mid}{type} = 'spamdmilter';
 					$SPAMDETAIL{$host}{$mid}{score} = $SPAMDETAIL{$host}{$id}{score};
 					$SPAMDETAIL{$host}{$mid}{spam} = $SPAMDETAIL{$host}{$id}{spam};
 					$SPAMDETAIL{$host}{$mid}{date} = $SPAMDETAIL{$host}{$id}{date};
