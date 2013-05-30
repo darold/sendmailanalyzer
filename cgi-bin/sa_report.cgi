@@ -2765,7 +2765,7 @@ sub display_statusflow
 my $delivery_global_total = 0;
 foreach (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
 	next if ( ($_ eq '') || /Command rejected/);
-	next if (/_bytes/ || /virus / || /Spam/);
+	next if (/_bytes/i || /Virus/i || /Spam/i);
 	$delivery_global_total += $GLOBAL_STATUS{$_};
 }
 $delivery_global_total ||= 1;
@@ -2776,7 +2776,7 @@ my %status = ();
 my $piecount = 0;
 foreach my $s (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
 	next if ( ($s eq '') || ($s =~ /Command rejected/));
-	next if ( ($s =~ /_bytes/) || ($s =~ /virus /) || ($s =~ /Spam/) );
+	next if ( ($s =~ /_bytes/) || ($s =~ /Virus/i) || ($s =~ /Spam/i) );
 	my $percent = sprintf("%.2f", ($GLOBAL_STATUS{$s}/$delivery_global_total) * 100);
 	if ($s =~ /^(\d{3}) \d\.(\d\.\d)$/) {
 		if (exists $SMTP_ERROR_CODE{$1} || exists $ESMTP_ERROR_CODE{$2}) {
@@ -2795,7 +2795,7 @@ foreach my $s (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STA
 	}
 }
 my $other_percent = 100 - sprintf("%.2f", ($total_percent/$delivery_global_total) * 100);
-$status{"Others"} = $other_percent;
+$status{"Others"} = $other_percent if ($other_percent > 0);
 
 print qq{
 <tr><td colspan="4" align="center">&nbsp;</td></tr>
@@ -3000,7 +3000,7 @@ sub display_top_sender
 		$top++;
 	}
 	my $other_percent = 100 - sprintf("%.2f", ($percent_total*100)/$totalrelay);
-	$relays{"Others"} = $other_percent;
+	$relays{"Others"} = $other_percent if ($other_percent > 0);
 
 	delete $topsender{relay};
 	if (exists $CONFIG{REPLACE_HOST}) {

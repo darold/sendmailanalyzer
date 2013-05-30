@@ -283,7 +283,7 @@ sub start_loop
 		while (my $l = <SA_FILE>) {
 			chomp($l);
 			$l =~ s/ ID \d+ mail.\w//;
-			next if ($l =~ /policy-spf/);
+			next if ($l =~ /policy-spf|You are still greylisted/);
 			$LAST_PARSED = $l;
 			$l = '';
 			# Only catch relevant logs
@@ -339,7 +339,7 @@ sub start_loop
 	while (my $l = <SA_PIPE>) {
 		chomp($l);
 		$l =~ s/ ID \d+ mail.\w//;
-		next if ($l =~ /policy-spf/);
+		next if ($l =~ /policy-spf|You are still greylisted/);
 		$LAST_PARSED = $l;
 		$l = '';
 		# Only catch relevant logs
@@ -2139,6 +2139,10 @@ sub clear_status
 		return $1;
         } elsif ($status =~ /.*(Illegal address syntax).*( in .* command)/) {
 		return "$1$2";
+        } elsif ($status =~ /(improper command pipelining after HELO)/i) {
+		return $1;
+        } elsif ($status =~ /(You are still greylisted)/i) {
+		return $1;
 	} elsif ($status =~ /\d{3} \d\.\d\.\d <[^>]+>[:\s]*(.*)/) {
 		return $1;
 	} elsif ($status =~ /^\d\.\d\.\d (.*)/) {
