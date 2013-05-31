@@ -381,7 +381,7 @@ sub parse_common_fields
 		} else {
 			$current_year = (localtime(time))[5]+1900;
 		}
-		$date = $current_year . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day);
+		$date = $current_year . sprintf("%02d",$MONTH_TO_NUM{"$month"}) . sprintf("%02d",$day);
 		my @f = split(/:/, $time);
 		$f[0] = sprintf("%02d",$f[0]);
 		$f[1] = sprintf("%02d",$f[1]);
@@ -391,7 +391,7 @@ sub parse_common_fields
 		if ("$date$time" > $CURRENT_TIME) {
 			# If log timestamp is in the future, use the given one 
 			if (!$CONFIG{DEFAULT_YEAR}) {
-				$date = ($current_year - 1) . $MONTH_TO_NUM{"$month"} . sprintf("%02d",$day);
+				$date = ($current_year - 1) . sprintf("%02d",$MONTH_TO_NUM{"$month"}) . sprintf("%02d",$day);
 			}
 		}
 	}
@@ -399,7 +399,7 @@ sub parse_common_fields
 
 	$host = $CONFIG{MERGING_HOST} if ($CONFIG{MERGING_HOST});
 
-	return ($date,"$time",$host,$type,join(' ', @other));
+	return ("$date","$time",$host,$type,join(' ', @other));
 }
 
 ####
@@ -410,17 +410,17 @@ sub store_data
 	my ($date,$time,$host,$type,$other) = @_;
 
 	if (($CONFIG{MAILSCAN_NAME} || $CONFIG{CLAMD_NAME}) && ($type =~ /^$CONFIG{MAILSCAN_NAME}|$CONFIG{CLAMD_NAME}/i)) {
-		&parse_mailscanner($date,$time,$host,$other);
+		&parse_mailscanner("$date","$time",$host,$other);
 	} elsif ($CONFIG{AMAVIS_NAME} && ($type =~ /^$CONFIG{AMAVIS_NAME}/i)) {
-		&parse_amavis($date,$time,$host,$other);
+		&parse_amavis("$date","$time",$host,$other);
 	} elsif ($CONFIG{MTA_NAME} && ($type =~ /^$CONFIG{MTA_NAME}/i)) {
-		&parse_sendmail($date,$time,$host,$other);
+		&parse_sendmail("$date","$time",$host,$other);
 	} elsif ($CONFIG{MD_NAME} && ($type =~ /^$CONFIG{MD_NAME}/i)) {
-		&parse_mimedefang($date,$time,$host,$other);
+		&parse_mimedefang("$date","$time",$host,$other);
 	} elsif ($CONFIG{POSTGREY_NAME} && ($type =~ /^$CONFIG{POSTGREY_NAME}/i)) {
-		&parse_postgrey($date,$time,$host,$other);
+		&parse_postgrey("$date","$time",$host,$other);
 	} elsif ($CONFIG{SPAMD_NAME} && ($type =~ /^$CONFIG{SPAMD_NAME}/i)) {
-		&parse_spamd($date,$time,$host,$other);
+		&parse_spamd("$date","$time",$host,$other);
 	} else {
 		&dprint("Skipping unknown syslog report => $date $time $host [$type]: $other") if ($CONFIG{DEBUG} > 1);
 	}
@@ -434,6 +434,8 @@ sub parse_sendmail
 {
 	my ($date,$time,$host,$str) = @_;
 
+	my $time_st = "$date$time";
+
 	# Skip unwanted Postfix lines
 	if ($str =~ m#^([^:\s]+): .*#) {
 		next if (exists $SKIPMSG{$1});
@@ -443,7 +445,7 @@ sub parse_sendmail
 
 	# Parse MTA system error
 	if ($str =~ m#^([^:\s]+): SYSERR[^:]+: (.*)# ) {
-		$SYSERR{$host}{$1}{date} = $date . $time;
+		$SYSERR{$host}{$1}{date} =  $time_st;
 		$SYSERR{$host}{$1}{message} = &clear_status($2);
 	# Skip message related to MCI caching module
 	} elsif ($str =~ m#^([^:\s]+): MCI\@#) {
@@ -482,16 +484,16 @@ sub parse_sendmail
 		return;
 	# POSTFIX: error messages
 	} elsif ($str =~ m#^(lost connection|timeout|too many errors) after ([^\s]+)#) {
-		$SYSERR{$host}{"$date$time"}{date} = $date . $time;
+		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
 		$SYSERR{$host}{"$date$time"}{message} = $1 . ' after ' . $2;
 	} elsif ($str =~ m#^connect to [^:]+: (.*)#) {
-		$SYSERR{$host}{"$date$time"}{date} = $date . $time;
+		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
 		$SYSERR{$host}{"$date$time"}{message} = $1;
 	} elsif ($str =~ m#^(certificate verification failed for).*:( untrusted issuer| self-signed certificate).*#) {
-		$SYSERR{$host}{"$date$time"}{date} = $date . $time;
+		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
 		$SYSERR{$host}{"$date$time"}{message} = $1 . $2;
 	} elsif ($str =~ m#^(SSL_connect error).*#) {
-		$SYSERR{$host}{"$date$time"}{date} = $date . $time;
+		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
 		$SYSERR{$host}{"$date$time"}{message} = $1;
 	# POSTFIX remove message id
 	} elsif ($str =~ m#^([^:\s]+): removed$#) {
@@ -503,24 +505,24 @@ sub parse_sendmail
 		return;
 	# Parse protocole error
 	} elsif ($str =~ m#^([^:\s]+): ([^:\s]+): (.*protocol error:.*)#) {
-		$SYSERR{$host}{$1}{date} = $date . $time;
+		$SYSERR{$host}{$1}{date} =  $time_st;
 		$SYSERR{$host}{$1}{message} = $3;
 	# Parse virus found by clamav-milter
 	} elsif ($str =~ m#^([^:\s]+): Milter add: header: X-Virus-Status: Infected with (.*)#) {
 		$VIRUS{$host}{$1}{virus} = $2;
 		$VIRUS{$host}{$1}{file} = 'Inline';
-		$VIRUS{$host}{$1}{date} = $date . $time;
+		$VIRUS{$host}{$1}{date} =  $time_st;
 	} elsif ($str =~ m#^([^:\s]+): Milter [^:]+: header: X-Virus-Status: Infected \((.*)\)#) {
 		$VIRUS{$host}{$1}{virus} = $2;
 		$VIRUS{$host}{$1}{file} = 'Inline';
-		$VIRUS{$host}{$1}{date} = $date . $time;
+		$VIRUS{$host}{$1}{date} =  $time_st;
 	# Parse spam found by spamd-milter
 	} elsif ($str =~ m#^([^:\s]+): Milter (add|change): header: X-Spam-Status: Yes, score=([^\s]+) required=([^\s]+) tests=([^\s]+)#) {
 		my $id = $1;
 		$SPAM{$host}{$id}{spam} = 'spamdmilter';
-		$SPAM{$host}{$id}{date} = $date . $time;
+		$SPAM{$host}{$id}{date} =  $time_st;
 		if ($CONFIG{SPAM_DETAIL}) {
-			$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$id}{date} =  $time_st;
 			$SPAMDETAIL{$host}{$id}{type} = 'spamdmilter';
 			$SPAMDETAIL{$host}{$id}{spam} = $5;
 			$SPAMDETAIL{$host}{$id}{required} = $4;
@@ -537,21 +539,21 @@ sub parse_sendmail
 		$spam =~ s/ See .*//;
 		$spam =~ s/\/.*//;
 		$SPAM{$host}{$id}{spam} = 'dnsblmilter';
-		$SPAM{$host}{$id}{date} = $date . $time;
+		$SPAM{$host}{$id}{date} =  $time_st;
 		$SPAM{$host}{$id}{from} = &edecode($2);
 		if ($CONFIG{SPAM_DETAIL}) {
-			$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$id}{date} =  $time_st;
 			$SPAMDETAIL{$host}{$id}{type} = 'dnsblmilter';
 			$SPAMDETAIL{$host}{$id}{spam} = $spam;
 		}
 	# Parse spam found by jchkmail
 	} elsif ($str =~ m#^([^:\s]+): Milter (add|change): header: X-j-chkmail-Status: (Spam|Unsure)(.*)#) {
 		$SPAM{$host}{$1}{spam} = 'jchkmail';
-		$SPAM{$host}{$1}{date} = $date . $time;
+		$SPAM{$host}{$1}{date} =  $time_st;
 		if ($CONFIG{SPAM_DETAIL}) {
 			$SPAMDETAIL{$host}{$1}{type} = 'jchkmail';
 			$SPAMDETAIL{$host}{$1}{spam} = $3 . $4;
-			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$1}{date} =  $time_st;
 		}
 	} elsif ($str =~ m#^([^:\s]+): Milter (add|change): header: X-j-chkmail-Score: .*> S=(.*)#) {
 		if ($CONFIG{SPAM_DETAIL}) {
@@ -565,7 +567,7 @@ sub parse_sendmail
 		# Skip other milter header insertion notice
 		return;
 	} elsif ($str =~ m#^([^:\s]+): Milter: connect: .*, ([^,]*)#) {
-		$SYSERR{$host}{$1}{date} = $date . $time;
+		$SYSERR{$host}{$1}{date} =  $time_st;
 		$SYSERR{$host}{$1}{message} = &clear_status($2);
 	} elsif ($str =~ m#^([^:\s]+): Milter (delete|add|change) #) {
 		# Skip other milter modication notice
@@ -592,7 +594,7 @@ sub parse_sendmail
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
 		push(@{$TO{$host}{$id}{to}}, &edecode($to));
-		push(@{$TO{$host}{$id}{date}}, $date . $time);
+		push(@{$TO{$host}{$id}{date}},  $time_st);
 		push(@{$TO{$host}{$id}{status}}, $status);
 	# POSTFIX queue From clause
 	} elsif ($str =~ m#^([^:\s]+): from=([^,]*), size=(\d+), nrcpt=(\d+).*#) {
@@ -601,7 +603,7 @@ sub parse_sendmail
 		$from ||= 'empty';
 		my $size = $3;
 		my $nrcpts = $4;
-		$FROM{$host}{$id}{date} = $date . $time;
+		$FROM{$host}{$id}{date} =  $time_st;
 		$FROM{$host}{$id}{from} = &edecode($from);
 		$FROM{$host}{$id}{size} = $size;
 		$FROM{$host}{$id}{nrcpts} = $nrcpts;
@@ -647,7 +649,7 @@ sub parse_sendmail
 			my $authid = $2;
 			push(@{$AUTH{$host}{$authid}{type}}, 'SASL');
 			push(@{$AUTH{$host}{$authid}{mech}}, $1);
-			push(@{$AUTH{$host}{$authid}{date}}, $date . $time);
+			push(@{$AUTH{$host}{$authid}{date}},  $time_st);
 			push(@{$AUTH{$host}{$authid}{relay}}, $relay);
 		}
 	# From clause
@@ -660,7 +662,7 @@ sub parse_sendmail
 		my $msgid = $5;
 		my $relay = &clean_relay(lc($6));
 		$msgid =~ s/[<>]//g;
-		$FROM{$host}{$id}{date} = $date . $time;
+		$FROM{$host}{$id}{date} =  $time_st;
 		$FROM{$host}{$id}{from} = &edecode($from);
 		$FROM{$host}{$id}{size} = $size;
 		$FROM{$host}{$id}{nrcpts} = $nrcpts;
@@ -681,7 +683,7 @@ sub parse_sendmail
 			$REJECT{$host}{$id}{relay} = $relay;
 			return;
 		}
-		$FROM{$host}{$id}{date} = $date . $time;
+		$FROM{$host}{$id}{date} =  $time_st;
 		$FROM{$host}{$id}{from} = &edecode($from);
 		$FROM{$host}{$id}{size} = $size;
 		$FROM{$host}{$id}{nrcpts} = $nrcpts;
@@ -702,7 +704,7 @@ sub parse_sendmail
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
 			return if ($t eq 'more');
-			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{date}},  $time_st);
 			push(@{$TO{$host}{$id}{relay}}, $relay);
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
@@ -723,7 +725,7 @@ sub parse_sendmail
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
 			return if ($t eq 'more');
-			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{date}},  $time_st);
 			push(@{$TO{$host}{$id}{relay}}, $relay);
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
@@ -731,7 +733,7 @@ sub parse_sendmail
 	# To clause queued
 	} elsif ($str =~ m#^([^:\s]+): to=(.*), delay=.* stat=queued#) {
 		my $id = $1;
-		push(@{$TO{$host}{$id}{queue_date}}, $date . $time);
+		push(@{$TO{$host}{$id}{queue_date}},  $time_st);
 		push(@{$TO{$host}{$id}{queue_to}}, &edecode($2));
 	# To clause generated by a mailing list
 	} elsif ($str =~ m#^([^:\s]+): to=(.*), ctladdr=([^\s]+).*, mailer=prog,.*stat=(.*)#) {
@@ -744,7 +746,7 @@ sub parse_sendmail
 		return if ($prog =~ /(vacation|procmail)/);
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
-		push(@{$TO{$host}{$id}{date}}, $date . $time);
+		push(@{$TO{$host}{$id}{date}},  $time_st);
 		push(@{$TO{$host}{$id}{relay}}, 'localhost');
 		push(@{$TO{$host}{$id}{to}}, $ctladdr);
 		push(@{$TO{$host}{$id}{status}}, $status);
@@ -755,7 +757,7 @@ sub parse_sendmail
 		my $status = &clear_status($4);
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
-		push(@{$TO{$host}{$id}{date}}, $date . $time);
+		push(@{$TO{$host}{$id}{date}},  $time_st);
 		push(@{$TO{$host}{$id}{relay}}, 'localhost');
 		push(@{$TO{$host}{$id}{to}}, &edecode($ctladdr));
 		push(@{$TO{$host}{$id}{status}}, $status);
@@ -769,7 +771,7 @@ sub parse_sendmail
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
 			return if ($t eq 'more');
-			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{date}},  $time_st);
 			push(@{$TO{$host}{$id}{relay}}, 'localhost');
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
@@ -790,7 +792,7 @@ sub parse_sendmail
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
 			return if ($t eq 'more');
-			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{date}},  $time_st);
 			push(@{$TO{$host}{$id}{relay}}, 'localhost');
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
@@ -805,7 +807,7 @@ sub parse_sendmail
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
 			return if ($t eq 'more');
-			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{date}},  $time_st);
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
 		}
@@ -819,7 +821,7 @@ sub parse_sendmail
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
 			return if ($t eq 'more');
-			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{date}},  $time_st);
 			push(@{$TO{$host}{$id}{relay}}, 'localhost');
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
@@ -838,7 +840,7 @@ sub parse_sendmail
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
 			return if ($t eq 'more');
-			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{date}},  $time_st);
 			push(@{$TO{$host}{$id}{relay}}, $relay);
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
@@ -854,7 +856,7 @@ sub parse_sendmail
 		foreach my $t (split(/,/, $to)) {
 			$t = &edecode($t);
 			return if ($t eq 'more');
-			push(@{$TO{$host}{$id}{date}}, $date . $time);
+			push(@{$TO{$host}{$id}{date}},  $time_st);
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
 		}
@@ -872,10 +874,10 @@ sub parse_sendmail
 			$SPAM{$host}{$id}{relay} = $relay;
 			$SPAM{$host}{$id}{rule} = $rule;
 			$SPAM{$host}{$id}{spam} = 'DNSBL Spam blocked';
-			$SPAM{$host}{$id}{date} = $date . $time;
+			$SPAM{$host}{$id}{date} =  $time_st;
 			$SPAM{$host}{$id}{from} = $arg1;
 			if ($CONFIG{SPAM_DETAIL}) {
-				$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+				$SPAMDETAIL{$host}{$id}{date} =  $time_st;
 				$SPAMDETAIL{$host}{$id}{type} = 'dnsbl';
 				$reject =~ s/.*(Spam blocked see: )/$1/;
 				$reject =~ s/.*(Spam blocked .* found in .*)/$1/;
@@ -885,7 +887,7 @@ sub parse_sendmail
 			$REJECT{$host}{$id}{relay} = $relay;
 			$REJECT{$host}{$id}{rule} = $rule;
 			$REJECT{$host}{$id}{status} = &clear_status($reject);
-			$REJECT{$host}{$id}{date} = $date . $time;
+			$REJECT{$host}{$id}{date} =  $time_st;
 			$REJECT{$host}{$id}{arg1} = &edecode($arg1);
 		}
 
@@ -902,10 +904,10 @@ sub parse_sendmail
 			$SPAM{$host}{$id}{relay} = $relay;
 			$SPAM{$host}{$id}{rule} = $rule;
 			$SPAM{$host}{$id}{spam} = 'DNSBL Spam blocked';
-			$SPAM{$host}{$id}{date} = $date . $time;
+			$SPAM{$host}{$id}{date} =  $time_st;
 			$SPAM{$host}{$id}{from} = $arg1;
 			if ($CONFIG{SPAM_DETAIL}) {
-				$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+				$SPAMDETAIL{$host}{$id}{date} =  $time_st;
 				$SPAMDETAIL{$host}{$id}{type} = 'dnsbl';
 				$reject =~ s/.*(Spam blocked see: )/$1/;
 				$reject =~ s/.*(Spam blocked .* found in .*)/$1/;
@@ -915,7 +917,7 @@ sub parse_sendmail
 			$REJECT{$host}{$id}{relay} = $relay;
 			$REJECT{$host}{$id}{rule} = $rule;
 			$REJECT{$host}{$id}{status} = &clear_status($reject);
-			$REJECT{$host}{$id}{date} = $date . $time;
+			$REJECT{$host}{$id}{date} =  $time_st;
 			$REJECT{$host}{$id}{arg1} = &edecode($arg1);
 		}
 
@@ -928,7 +930,7 @@ sub parse_sendmail
 			$GREYLIST{$id} = &edecode($to);
 			return;
 		}
-		push(@{$TO{$host}{$id}{date}}, $date . $time);
+		push(@{$TO{$host}{$id}{date}},  $time_st);
 		push(@{$TO{$host}{$id}{to}}, &edecode($to));
 		push(@{$TO{$host}{$id}{status}}, &clear_status($status));
 
@@ -946,14 +948,14 @@ sub parse_sendmail
 		}
 		$REJECT{$host}{$id}{rule} = 'reject' if (!$REJECT{$host}{$id}{rule});
 		$REJECT{$host}{$id}{status} = &clear_status($reject);
-		$REJECT{$host}{$id}{date} = $date . $time;
+		$REJECT{$host}{$id}{date} =  $time_st;
 
 	# Parse virus quarantined by clamav-milter
 	} elsif ($str =~ m#^([^:\s]+): milter=clamav-milter, quarantine=quarantined by clamav-milter#) {
 		if (!exists $VIRUS{$host}{$1}{virus}) {
 			$VIRUS{$host}{$1}{virus} = 'Quarantined by clamav-milter';
 			$VIRUS{$host}{$1}{file} = 'Inline';
-			$VIRUS{$host}{$1}{date} = $date . $time;
+			$VIRUS{$host}{$1}{date} =  $time_st;
 		} else {
 			$VIRUS{$host}{$1}{virus} .= ' - Quarantined by clamav-milter';
 		}
@@ -965,7 +967,7 @@ sub parse_sendmail
 		$REJECT{$host}{$id}{rule} = $2;
 		$REJECT{$host}{$id}{action} = $3;
 		$REJECT{$host}{$id}{status} = &clear_status($reject);
-		$REJECT{$host}{$id}{date} = $date . $time;
+		$REJECT{$host}{$id}{date} =  $time_st;
 		if ($reject =~ /sender=(.*)\&ip=(.*)\&receiver=/) {
 			$REJECT{$host}{$id}{arg1} = &edecode($1);
 			$REJECT{$host}{$id}{relay} = $2;
@@ -980,9 +982,9 @@ sub parse_sendmail
 		$status =~ s/(.*)\.\.\. //;
 		$DSN{$host}{$id}{srcid} = $previd;
 		$DSN{$host}{$id}{status} = &clear_status($type . " " . $status);
-		$DSN{$host}{$id}{date} = $date . $time;
+		$DSN{$host}{$id}{date} =  $time_st;
 		$DSN{$host}{$id}{status} =~ s/ \((.*?)\)//g;
-		$FROM{$host}{$id}{date} = $date . $time;
+		$FROM{$host}{$id}{date} =  $time_st;
 		$FROM{$host}{$id}{from} = 'DSN@localhost';
 		$FROM{$host}{$id}{size} = 0;
 		$FROM{$host}{$id}{nrcpts} = 1;
@@ -1004,12 +1006,12 @@ sub parse_sendmail
 			$SPAM{$host}{$id}{relay} = $relay;
 			$SPAM{$host}{$id}{rule} = 'reject';
 			$SPAM{$host}{$id}{spam} = 'DNSBL Spam blocked';
-			$SPAM{$host}{$id}{date} = $date . $time;
+			$SPAM{$host}{$id}{date} =  $time_st;
 			$SPAM{$host}{$id}{from} = &edecode($from);
 			$SPAM{$host}{$id}{to} = &edecode($to);
 			$SPAM{$host}{$id}{status} = &clear_status($status);
 			if ($CONFIG{SPAM_DETAIL}) {
-				$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+				$SPAMDETAIL{$host}{$id}{date} =  $time_st;
 				$SPAMDETAIL{$host}{$id}{type} = 'dnsbl';
 				$SPAMDETAIL{$host}{$id}{spam} = &clear_status($spamdetail);
 			}
@@ -1017,12 +1019,12 @@ sub parse_sendmail
 			$SPAM{$host}{$id}{relay} = $relay;
 			$SPAM{$host}{$id}{rule} = 'reject';
 			$SPAM{$host}{$id}{spam} = 'Spam blocked';
-			$SPAM{$host}{$id}{date} = $date . $time;
+			$SPAM{$host}{$id}{date} =  $time_st;
 			$SPAM{$host}{$id}{from} = &edecode($from);
 			$SPAM{$host}{$id}{to} = &edecode($to);
 			$SPAM{$host}{$id}{status} = &clear_status($status);
 			if ($CONFIG{SPAM_DETAIL}) {
-				$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+				$SPAMDETAIL{$host}{$id}{date} =  $time_st;
 				$SPAMDETAIL{$host}{$id}{type} = 'dnsbl';
 				$SPAMDETAIL{$host}{$id}{spam} = &clear_status($status);
 			}
@@ -1030,7 +1032,7 @@ sub parse_sendmail
 			$REJECT{$host}{$id}{relay} = $relay;
 			$REJECT{$host}{$id}{rule} = 'reject';
 			$REJECT{$host}{$id}{status} = &clear_status($status);
-			$REJECT{$host}{$id}{date} = $date . $time;
+			$REJECT{$host}{$id}{date} =  $time_st;
 			$REJECT{$host}{$id}{arg1} = &edecode($from);
 			$REJECT{$host}{$id}{to} = $to;
 		}
@@ -1049,23 +1051,23 @@ sub parse_sendmail
 			$VIRUS{$host}{$id}{relay} = $relay;
 			$VIRUS{$host}{$id}{from} = $from;
 			$VIRUS{$host}{$id}{to} = $to;
-			$VIRUS{$host}{$id}{date} = $date . $time;
+			$VIRUS{$host}{$id}{date} =  $time_st;
 			if (!exists $FROM{$host}{$id}{date}) {
-				$FROM{$host}{$id}{date} = $date . $time;
+				$FROM{$host}{$id}{date} =  $time_st;
 				$FROM{$host}{$id}{from} = $from;
 				$FROM{$host}{$id}{size} = 0;
 				$FROM{$host}{$id}{nrcpts} = 1;
 				$FROM{$host}{$id}{relay} = $relay;
 			}
 			if (!exists $TO{$host}{$id}{date}) {
-				push(@{$TO{$host}{$id}{date}}, $date . $time);
+				push(@{$TO{$host}{$id}{date}},  $time_st);
 				push(@{$TO{$host}{$id}{to}}, $to);
 				$status =~ s/ \(.*//;
 				#push(@{$TO{$host}{$id}{status}}, &clear_status($status));
 			}
 		} else {
 			$REJECT{$host}{$id}{relay} = $relay;
-			$REJECT{$host}{$id}{date} = $date . $time;
+			$REJECT{$host}{$id}{date} =  $time_st;
 			$REJECT{$host}{$id}{arg1} = &edecode($from);
 			$REJECT{$host}{$id}{to} = &edecode($to);
 			$REJECT{$host}{$id}{rule} = $rule;
@@ -1084,7 +1086,7 @@ sub parse_sendmail
 		my $id = $1;
 		my $to = $2;
 		my $status = &clear_status($3);
-		$SYSERR{$host}{$id}{date} = $date . $time;
+		$SYSERR{$host}{$id}{date} =  $time_st;
 		$SYSERR{$host}{$id}{message} = $status . ': ' . $to;
 	# Skip lost connection after STARTTLS duplicate error
 	} elsif ($str =~ m#^SSL_accept error from#) {
@@ -1100,33 +1102,31 @@ sub parse_sendmail
 		return if (exists $SYSERR{$host}{$id} || exists $SPAM{$host}{$id} || exists $REJECT{$host}{$id} || exists $TO{$host}{$id}{status});
 		my $status = &clear_status($err);
 		return if ($status !~ /\s/); # on single word error abort
-		$SYSERR{$host}{$id}{date} = $date . $time;
+		$SYSERR{$host}{$id}{date} =  $time_st;
 		$SYSERR{$host}{$id}{message} = &clear_status($status);
 	# Catch SMTP AUTH
 	} elsif ($str =~ m#AUTH=([^,]+), relay=([^,]+), authid=([^,]+), mech=([^,]+), bits=#) {
 		my $authid = $3;
 		push(@{$AUTH{$host}{$authid}{type}}, $1);
 		push(@{$AUTH{$host}{$authid}{mech}}, $4);
-		push(@{$AUTH{$host}{$authid}{date}}, $date . $time);
+		push(@{$AUTH{$host}{$authid}{date}},  $time_st);
 		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay(lc($2)));
 	# Catch Anonymous TLS connections
 	} elsif ($str =~ m#Anonymous TLS connection established from ([^:]+): (.*) with cipher (.*)#) {
 		my $authid = 'anonymous';
 		push(@{$AUTH{$host}{$authid}{type}}, $2);
 		push(@{$AUTH{$host}{$authid}{mech}}, $3);
-		push(@{$AUTH{$host}{$authid}{date}}, $date . $time);
+		push(@{$AUTH{$host}{$authid}{date}},  $time_st);
 		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay(lc($1)));
 	# Catch server TLS connections
 	} elsif ($str =~ m#(STARTTLS=[^,]+), relay=([^,]+), version=([^,]+), (verify=[^,]+), cipher=([^,]+), bits=([^,\s]+)#) {
-		my $dt = $date . $time;
-		push(@{$OTHER{$host}{$dt}}, "$1, $4");
+		push(@{$OTHER{$host}{$time_st}}, "$1, $4");
 	} else {
-		my $dt = $date . $time;
 		if ($str =~ /(\d{3} \d\.\d\.\d .*)/) {
 			$str = $1;
 		}
 		$str =~ s/.*reject=//;
-		push(@{$OTHER{$host}{$dt}}, &clear_status($str));
+		push(@{$OTHER{$host}{$time_st}}, &clear_status($str));
 	}
 }
 
@@ -1139,16 +1139,18 @@ sub parse_mailscanner
 
 	return if ($str =~ /is too big for spam checks/);
 
+	my $time_st = "$date$time";
+
 	if ($str =~ /RBL checks: ([^\s]+) found in (.*)/) {
 		$SPAM{$host}{$1}{spam} = 'RBL checks';
 		$SPAM{$host}{$1}{from} = $FROM{$host}{$1}{from};
 		$SPAM{$host}{$1}{to} = $TO{$host}{$1}{queue_to}[0];
 		$SPAM{$host}{$1}{relay} = $FROM{$host}{$1}{relay};
-		$SPAM{$host}{$1}{date} = $date . $time;
+		$SPAM{$host}{$1}{date} =  $time_st;
 		delete $TO{$host}{$1}{queue_date};
 		delete $TO{$host}{$1}{queue_to};
 		if ($CONFIG{SPAM_DETAIL}) {
-			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$1}{date} =  $time_st;
 			$SPAMDETAIL{$host}{$1}{type} = 'dnsbl';
 			$SPAMDETAIL{$host}{$1}{spam} = $2;
 		}
@@ -1160,10 +1162,10 @@ sub parse_mailscanner
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
 		$SPAM{$host}{$id}{spam} = 'SpamAssassin';
-		$SPAM{$host}{$id}{date} = $date . $time;
+		$SPAM{$host}{$id}{date} =  $time_st;
 		my $text = $5 || '';
 		if ($CONFIG{SPAM_DETAIL}) {
-			$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$id}{date} =  $time_st;
 			$SPAMDETAIL{$host}{$id}{type} = 'spamassassin';
 			$SPAMDETAIL{$host}{$id}{spam} = $text;
 		}
@@ -1191,9 +1193,9 @@ sub parse_mailscanner
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
 		$SPAM{$host}{$id}{spam} = 'RBL checks';
-		$SPAM{$host}{$id}{date} = $date . $time;
+		$SPAM{$host}{$id}{date} =  $time_st;
 		if ($CONFIG{SPAM_DETAIL}) {
-			$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$id}{date} =  $time_st;
 			$SPAMDETAIL{$host}{$id}{type} = 'dnsbl';
 			$SPAMDETAIL{$host}{$id}{spam} = $4;
 		}
@@ -1204,11 +1206,11 @@ sub parse_mailscanner
 		$SPAM{$host}{$id}{from} = &edecode($SPAM{$host}{$id}{from});
 	} elsif ($str =~ /Infected message ([^\s]+) from (.*)/) {
 		$VIRUS{$host}{$1}{from} = $2;
-		$VIRUS{$host}{$1}{date} = $date . $time;
+		$VIRUS{$host}{$1}{date} =  $time_st;
 	} elsif ($str =~ /\.\/([^\.]+)\.message: ([^\s]+) FOUND/) {
 		$VIRUS{$host}{$1}{file} = 'message';
 		$VIRUS{$host}{$1}{virus} = $2;
-		$VIRUS{$host}{$1}{date} = $date . $time;
+		$VIRUS{$host}{$1}{date} =  $time_st;
 	}
 }
 
@@ -1217,62 +1219,71 @@ sub parse_mailscanner
 ####
 sub parse_amavis
 {
-	my ($date,$time,$host,$str) = @_;
+	my ($date, $time ,$host,$str) = @_;
 
-	if ($str =~ /\(([^\)]+)\) (Passed|Blocked) SPAM(.*), ([^\s]+) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*, Message-ID: [<]*([^\s>]*)[>]*,.*, Hits: ([^,]+), size: (\d+), queued_as: ([^,]+), (\d+) ms/) {
+	my $timest = "$date$time";
 
+	my $id = '';
+	if ($str =~ /\(([^\)]+)\) (Passed|Blocked) SPAM(.*?), ([^\s]+) [<]*([^\s>]*)[>]* -> ([^\s]+).*, Message-ID: [<]*([^\s>]*)[>]*,.*, Hits: ([^,]+), size: (\d+), queued_as: ([^,]+), (\d+) ms/) {
 		my $pid = $1;
 		my $status = $2;
 		my $relay = lc($4);
 		my $msgid = $7;
 		my $hits = $8;
 		my $size = $9;
-		my $id = $10;
+		$id = $10;
 		my $time = $11;
 		my $sender = &edecode($5);
 		my $to = &edecode($6);
+
 		if (exists $MSGID{$msgid}) {
 			$id = $MSGID{$msgid}{id};
-			$SPAM{$host}{$id}{from} = $sender;
-			$SPAM{$host}{$id}{to} = $to;
-			$SPAM{$host}{$id}{spam} = "Amavis $status Spam";
-			$SPAM{$host}{$id}{date} = $date . $time;
-			if (!exists $FROM{$host}{$id}{from}) {
-				$FROM{$host}{$id}{from} = $sender;
-				$FROM{$host}{$id}{date} = $date . $time;
-				$FROM{$host}{$id}{size} = $size;
-				$FROM{$host}{$id}{nrcpts} = 1;
-			}
-			if (!exists $FROM{$host}{$id}{relay}) {
-				$FROM{$host}{$id}{relay} = &clean_relay($relay);
-				$FROM{$host}{$id}{relay} ||= $MSGID{$msgid}{relay}
-			}
-
-			if (!exists $TO{$host}{$id}{queue_to}) {
-				push(@{$TO{$host}{$id}{queue_date}}, $date . $time);
-				push(@{$TO{$host}{$id}{queue_to}}, $to);
-			}
-			if ($CONFIG{SPAM_DETAIL}) {
-				if (exists $SPAMDETAIL{$host}{$id}) {
-					foreach (keys %{$SPAM{$host}{$id}}) {
-						$SPAMDETAIL{$host}{$id}{$_} = $SPAM{$host}{$id}{$_} if ($_ ne "spam");
-					}
-				}
-				$SPAMDETAIL{$host}{$id}{type} = 'amavis';
-				$SPAMDETAIL{$host}{$id}{score} = $hits;
-			}
+			$relay ||= $MSGID{$msgid}{relay};
 			delete $MSGID{$msgid};
 		}
-	} elsif ($str =~ /\(([^\)]+)\) (Passed|Blocked) SPAM(.*) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*,(.*) Message-ID: [<]*([^,>]+)[>]*, /) {
+		$SPAM{$host}{$id}{from} = $sender;
+		$SPAM{$host}{$id}{to} = $to;
+		$SPAM{$host}{$id}{spam} = "Amavis $status Spam";
+		$SPAM{$host}{$id}{date} = $timest;
+		if (!exists $FROM{$host}{$id}{from}) {
+			$FROM{$host}{$id}{from} = $sender;
+			$FROM{$host}{$id}{date} = $timest;
+			$FROM{$host}{$id}{size} = $size;
+			$FROM{$host}{$id}{nrcpts} = 1;
+		}
+		if (!exists $FROM{$host}{$id}{relay}) {
+			$FROM{$host}{$id}{relay} = &clean_relay($relay);
+		}
+
+		if (!exists $TO{$host}{$id}{queue_to}) {
+			push(@{$TO{$host}{$id}{queue_date}}, $timest);
+			push(@{$TO{$host}{$id}{queue_to}}, $to);
+		}
+		if ($CONFIG{SPAM_DETAIL}) {
+			if (!exists $SPAMDETAIL{$host}{$id}) {
+				foreach (keys %{$SPAM{$host}{$id}}) {
+					$SPAMDETAIL{$host}{$id}{$_} = $SPAM{$host}{$id}{$_} if ($_ ne "spam");
+				}
+			}
+			$SPAMDETAIL{$host}{$id}{type} = 'amavis';
+			$SPAMDETAIL{$host}{$id}{score} = $hits;
+			$SPAMDETAIL{$host}{$id}{date} = $timest;
+			$SPAMDETAIL{$host}{$id}{spam} = $SPAM{$host}{$id}{spam};
+		}
+
+	} elsif ($str =~ /\(([^\)]+)\) (Passed|Blocked) SPAM(.*?) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*,(.*) Message-ID: [<]*([^,>]+)[>]*, (.*)/) {
 
 		my $pid = $1;
 		my $status = $2;
 		my $relay = lc($3);
-		my $id = $7;
+		$id = $7;
 		my $queueid = $6;
 		my $sender = &edecode($4);
 		my $to = &edecode($5);
+		my $other = $8;
 		if ($queueid =~ /Queue-ID: ([^,]+)/) {
+			$id = $1;
+		} elsif ($other =~ /queued_as: ([^,]+)/) {
 			$id = $1;
 		} elsif ($str =~ /mail_id: ([^,]+)/) {
 			# Quarantine id
@@ -1281,10 +1292,10 @@ sub parse_amavis
 		$SPAM{$host}{$id}{from} = $sender;
 		$SPAM{$host}{$id}{to} = $to;
 		$SPAM{$host}{$id}{spam} = "Amavis $status Spam";
-		$SPAM{$host}{$id}{date} = $date . $time;
+		$SPAM{$host}{$id}{date} = $timest;
 		if (!exists $FROM{$host}{$id}{from}) {
 			$FROM{$host}{$id}{from} = $sender;
-			$FROM{$host}{$id}{date} = $date . $time;
+			$FROM{$host}{$id}{date} = $timest;
 			if ($str =~ /size: (\d+)/) {
 				$FROM{$host}{$id}{size} = $1;
 			}
@@ -1294,23 +1305,25 @@ sub parse_amavis
 			$FROM{$host}{$id}{relay} = &clean_relay($relay);
 		}
 		if (!exists $TO{$host}{$id}{queue_to}) {
-			push(@{$TO{$host}{$id}{queue_date}}, $date . $time);
+			push(@{$TO{$host}{$id}{queue_date}}, $timest);
 			push(@{$TO{$host}{$id}{queue_to}}, $to);
 		}
 		if ($CONFIG{SPAM_DETAIL}) {
-			if (exists $SPAMDETAIL{$host}{$pid}) {
+			if (!exists $SPAMDETAIL{$host}{$pid}) {
 				foreach (keys %{$SPAM{$host}{$id}}) {
 					$SPAMDETAIL{$host}{$pid}{$_} = $SPAM{$host}{$id}{$_} if ($_ ne "spam");
 				}
-				$SPAMDETAIL{$host}{$id}{type} = 'amavis';
 			}
+			$SPAMDETAIL{$host}{$id}{type} = 'amavis';
+			$SPAMDETAIL{$host}{$id}{date} = $timest;
+			$SPAMDETAIL{$host}{$id}{spam} = $SPAM{$host}{$id}{spam};
 		}
 	} elsif ($str =~ /(Passed|Blocked) INFECTED \(([^\)]*)\), (.*) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*,(.*) Message-ID: [<]*([^,>]+)[>]*, /) {
 		my $virus = $2;
 		my $relay = lc($3);
 		my $from = $4;
 		my $to = &edecode($5);
-		my $id = &edecode($7);
+		$id = &edecode($7);
 		my $queue_id = $6;
 		if ($queue_id =~ /Queue-ID: ([^,]+),/) {
 			$id = $1;
@@ -1319,10 +1332,10 @@ sub parse_amavis
 		$VIRUS{$host}{$id}{virus} = $virus;
 		$VIRUS{$host}{$id}{from} = $from;
 		$VIRUS{$host}{$id}{to} = $to;
-		$VIRUS{$host}{$id}{date} = $date . $time;
+		$VIRUS{$host}{$id}{date} = $timest;
 		if (!exists $FROM{$host}{$id}{from}) {
 			$FROM{$host}{$id}{from} = $from;
-			$FROM{$host}{$id}{date} = $date . $time;
+			$FROM{$host}{$id}{date} = $timest;
 			if ($str =~ /size: (\d+)/) {
 				$FROM{$host}{$id}{size} = $1;
 			}
@@ -1332,7 +1345,7 @@ sub parse_amavis
 			$FROM{$host}{$id}{relay} = &clean_relay($relay);
 		}
 		if (!exists $TO{$host}{$id}{queue_to}) {
-			push(@{$TO{$host}{$id}{queue_date}}, $date . $time);
+			push(@{$TO{$host}{$id}{queue_date}}, $timest);
 			push(@{$TO{$host}{$id}{queue_to}}, $to);
 		}
 	}
@@ -1340,40 +1353,44 @@ sub parse_amavis
 	if ($CONFIG{SPAM_DETAIL}) {
 
 		if ($str =~ /\(([^\)]+)\) SPAM, (.*), Yes, score=([^\s]+) .* tests=(.*) autolearn=([^,]+)/) {
-			my $id = $1;
+			my $oid = $1;
 			my $from_to = $2;
 			my $score = $3;
 			my $spam = $4;
 			my $autolearn = $5;
 			if ($str =~ /autolearn=spam, quarantine ([^\s,]+)/) {
-				$id = $1;
+				$id ||= $1;
 			}
-			$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+			$id ||= $oid;
+			$SPAMDETAIL{$host}{$id}{date} = $timest;
 			$SPAMDETAIL{$host}{$id}{type} = 'amavis';
 			$SPAMDETAIL{$host}{$id}{score} = $score;
 			$SPAMDETAIL{$host}{$id}{spam} = $spam;
 			$SPAMDETAIL{$host}{$id}{autolearn} = $autolearn;
 			($SPAMDETAIL{$host}{$id}{from}, $SPAMDETAIL{$host}{$id}{to}) = split(/ -> /, $from_to);
 		} elsif ($str =~ /\(([^\)]+)\) SPAM, (.*), Yes, score=([^\s]+).* tests=(.*)/) {
+			$id ||= $1;
 			my $from_to = $2;
-			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
-			$SPAMDETAIL{$host}{$1}{type} = 'amavis';
-			$SPAMDETAIL{$host}{$1}{score} = $3;
-			$SPAMDETAIL{$host}{$1}{spam} = $4;
-			($SPAMDETAIL{$host}{$1}{from}, $SPAMDETAIL{$host}{$1}{to}) = split(/ -> /, $from_to);
+			$SPAMDETAIL{$host}{$id}{date} = $timest;
+			$SPAMDETAIL{$host}{$id}{type} = 'amavis';
+			$SPAMDETAIL{$host}{$id}{score} = $3;
+			$SPAMDETAIL{$host}{$id}{spam} = $4;
+			($SPAMDETAIL{$host}{$id}{from}, $SPAMDETAIL{$host}{$id}{to}) = split(/ -> /, $from_to);
 		} elsif ($str =~ /\(([^\)]+)\) spam_scan: score=([^\s]+) autolearn=([^\s]+) tests=(.*),/) {
-			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
-			$SPAMDETAIL{$host}{$1}{type} = 'amavis';
-			$SPAMDETAIL{$host}{$1}{score} = $2;
-			$SPAMDETAIL{$host}{$1}{autolearn} = $3;
-			$SPAMDETAIL{$host}{$1}{spam} = $4;
+			$id ||= $1;
+			$SPAMDETAIL{$host}{$id}{date} = $timest;
+			$SPAMDETAIL{$host}{$id}{type} = 'amavis';
+			$SPAMDETAIL{$host}{$id}{score} = $2;
+			$SPAMDETAIL{$host}{$id}{autolearn} = $3;
+			$SPAMDETAIL{$host}{$id}{spam} = $4;
 		} elsif ($str =~ /\(([^\)]+)\) SPAM, (.*), Yes, hits=([^\s]+) .*tests=(.*), quarantine/) {
+			$id ||= $1;
 			my $from_to = $2;
-			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
-			$SPAMDETAIL{$host}{$1}{type} = 'amavis';
-			$SPAMDETAIL{$host}{$1}{score} = $3;
-			$SPAMDETAIL{$host}{$1}{spam} = $4;
-			($SPAMDETAIL{$host}{$1}{from}, $SPAMDETAIL{$host}{$1}{to}) = split(/ -> /, $from_to);
+			$SPAMDETAIL{$host}{$id}{date} = $timest;
+			$SPAMDETAIL{$host}{$id}{type} = 'amavis';
+			$SPAMDETAIL{$host}{$id}{score} = $3;
+			$SPAMDETAIL{$host}{$id}{spam} = $4;
+			($SPAMDETAIL{$host}{$id}{from}, $SPAMDETAIL{$host}{$id}{to}) = split(/ -> /, $from_to);
 		}
 	}
 }
@@ -1386,6 +1403,8 @@ sub parse_mimedefang
 {
 	my ($date,$time,$host,$str) = @_;
 
+	my $time_st = "$date$time";
+
 	#### Store each relevant information per date and ids
 	#MDLOG,sendmail_queue_id,spam,score,relay,<from@sender>,<to@sdest>,subject
 	#MDLOG,sendmail_queue_id,virus,virus_name,relay,<from@sender>,<to@sdest>,subject
@@ -1394,10 +1413,10 @@ sub parse_mimedefang
 			$SPAMDETAIL{$host}{$1}{type} = 'mimedefang';
 			$SPAMDETAIL{$host}{$1}{score} = $2;
 			$SPAMDETAIL{$host}{$1}{spam} = $6;
-			$SPAMDETAIL{$host}{$1}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$1}{date} =  $time_st;
 		}
 		$SPAM{$host}{$1}{spam} = 'mimedefang';
-		$SPAM{$host}{$1}{date} = $date . $time;
+		$SPAM{$host}{$1}{date} =  $time_st;
 		$SPAM{$host}{$1}{relay} = &clean_relay(lc($3));
 		$SPAM{$host}{$1}{from} = $FROM{$host}{$1}{from} || &edecode($4);
 		$SPAM{$host}{$1}{to} = $TO{$host}{$1}{queue_to}[0] || &edecode($5);
@@ -1406,7 +1425,7 @@ sub parse_mimedefang
 	} elsif ($str =~ /MDLOG,([^,]+),virus,([^,]+),([^,]+),/) {
 		$VIRUS{$host}{$1}{virus} = $2;
 		$VIRUS{$host}{$1}{file} = 'Inline';
-		$VIRUS{$host}{$1}{date} = $date . $time;
+		$VIRUS{$host}{$1}{date} =  $time_st;
 		$VIRUS{$host}{$1}{relay} = &clean_relay(lc($3));
 	}
 }
@@ -1417,6 +1436,8 @@ sub parse_mimedefang
 sub parse_postgrey
 {
 	my ($date,$time,$host,$str) = @_;
+
+	my $time_st = "$date$time";
 
 	if ($str =~ /action=([^,]+), reason=([^,]+), client_name=([^,]+), client_address=([^,]+), sender=([^,]+), recipient=(.*)/) {
 		my $action = $1;
@@ -1432,7 +1453,7 @@ sub parse_postgrey
 		$POSTGREY{$host}{$id}{from} = &edecode($sender);
 		$POSTGREY{$host}{$id}{to} = &edecode($to);
 		$POSTGREY{$host}{$id}{status} = $status;
-		$POSTGREY{$host}{$id}{date} = $date . $time;
+		$POSTGREY{$host}{$id}{date} =  $time_st;
 	}
 	
 }
@@ -1444,6 +1465,8 @@ sub parse_spamd
 {
 	my ($date,$time,$host,$str) = @_;
 
+	my $time_st = "$date$time";
+
 	#### Store each relevant information per date and ids
 	if ($str =~ /result: Y ([^\s]+) - (.*) scantime=.*mid=<(.*)>,.*autolearn=(.*)/) {
 
@@ -1452,13 +1475,13 @@ sub parse_spamd
 			$SPAMDETAIL{$host}{$id}{type} = 'spamdmilter';
 			$SPAMDETAIL{$host}{$id}{score} = $1;
 			$SPAMDETAIL{$host}{$id}{spam} = $2;
-			$SPAMDETAIL{$host}{$id}{date} = $date . $time;
+			$SPAMDETAIL{$host}{$id}{date} =  $time_st;
 			$SPAMDETAIL{$host}{$id}{mid} = $3;
 			$SPAMDETAIL{$host}{$id}{autolearn} = $4;
 		}
 
 		$SPAM{$host}{$id}{spam} = 'spamd';
-		$SPAM{$host}{$id}{date} = $date . $time;
+		$SPAM{$host}{$id}{date} =  $time_st;
 		$SPAM{$host}{$id}{mid} = $3;
 		foreach my $mid (keys %{$FROM{$host}}) {
 			if ($FROM{$host}{$mid}{msgid} eq $SPAM{$host}{$id}{mid}) {
@@ -1481,8 +1504,6 @@ sub parse_spamd
 		}
 	}
 }
-
-
 
 ####
 # Decode email address and keep only email part
@@ -1597,24 +1618,24 @@ sub flush_data
 
 			# Find real sendmail id for Amavis virus message
 			my $msgid = $FROM{$host}{$id}{msgid} || '';
-			if ($msgid && exists($VIRUS{$host}{"$msgid"})) {
-				foreach my $k (keys %{$VIRUS{$host}{"$msgid"}}) {
-					$VIRUS{$host}{$id}{$k} = $VIRUS{$host}{"$msgid"}{$k};
+			if ($msgid && exists($VIRUS{$host}{$msgid})) {
+				foreach my $k (keys %{$VIRUS{$host}{$msgid}}) {
+					$VIRUS{$host}{$id}{$k} = $VIRUS{$host}{$msgid}{$k};
 				}
-				delete $VIRUS{$host}{"$msgid"};
+				delete $VIRUS{$host}{$msgid};
 			}
 			# Find real sendmail id for Amavis spam message
-			if ($msgid && exists($SPAM{$host}{"$msgid"})) {
-				foreach my $k (keys %{$SPAM{$host}{"$msgid"}}) {
-					$SPAM{$host}{$id}{$k} = $SPAM{$host}{"$msgid"}{$k};
+			if ($msgid && exists($SPAM{$host}{$msgid})) {
+				foreach my $k (keys %{$SPAM{$host}{$msgid}}) {
+					$SPAM{$host}{$id}{$k} = $SPAM{$host}{$msgid}{$k};
 				}
-				delete $SPAM{$host}{"$msgid"};
+				delete $SPAM{$host}{$msgid};
 			}
-			if ($msgid && exists($SPAMDETAIL{$host}{"$msgid"})) {
-				foreach my $k (keys %{$SPAMDETAIL{$host}{"$msgid"}}) {
-					$SPAMDETAIL{$host}{$id}{$k} = $SPAMDETAIL{$host}{"$msgid"}{$k};
+			if ($msgid && exists($SPAMDETAIL{$host}{$msgid})) {
+				foreach my $k (keys %{$SPAMDETAIL{$host}{$msgid}}) {
+					$SPAMDETAIL{$host}{$id}{$k} = $SPAMDETAIL{$host}{$msgid}{$k};
 				}
-				delete $SPAMDETAIL{$host}{"$msgid"};
+				delete $SPAMDETAIL{$host}{$msgid};
 			}
 		}
 		delete $FROM{$host};
