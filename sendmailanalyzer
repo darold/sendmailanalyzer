@@ -82,6 +82,7 @@ my $KID = '';
 my %POSTGREY = ();
 my %MSGID = ();
 my %SKIPMSG = ();
+my %POSTFIX_PLUGIN_TEMP_DELIVERY = ();
 
 # Collect command line arguments
 GetOptions (
@@ -353,6 +354,9 @@ sub start_loop
 			$CURRENT_TIME = $check_time;
 			&dprint("Flushing data to disk ($check_time > $CURRENT_TIME+$CONFIG{DELAY})...");
 			&flush_data();
+			foreach my $id (keys %POSTFIX_PLUGIN_TEMP_DELIVERY) {
+				delete $POSTFIX_PLUGIN_TEMP_DELIVERY{$id};
+			}
 		}
 	}
 	&dprint("Flushing last data to disk...");
@@ -697,7 +701,7 @@ sub parse_sendmail
 		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
 			return;
 		}
-		my $status = &clear_status($4);
+		my $status = &clear_status($4, $id);
 		$status = 'Sent' if ($status eq 'sent'); 
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
@@ -718,7 +722,7 @@ sub parse_sendmail
 		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
 			return;
 		}
-		my $status = &clear_status($5);
+		my $status = &clear_status($5, $id);
 		$status = 'Sent' if ($status eq 'sent'); 
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
@@ -1605,6 +1609,10 @@ sub flush_data
 				delete $MSGID{$_} if ($MSGID{$_}{id} eq $id);
 			}
 			delete $SKIPMSG{$id};
+			if (exists $POSTFIX_PLUGIN_TEMP_DELIVERY{$id}) {
+				delete $FROM{$host}{$id};
+				next;
+			}
 
 			next if ($FROM{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
 			# Key: year/month/day, Format: Hour:Id:Sender:Size:Nrcpts:Relay
@@ -1723,6 +1731,11 @@ sub flush_data
 	foreach my $host (keys %TO) {
 		my %rcpts = ();
 		foreach my $id (keys %{$TO{$host}}) {
+			if (exists $POSTFIX_PLUGIN_TEMP_DELIVERY{$id}) {
+				delete $TO{$host}{$id};
+				delete $POSTFIX_PLUGIN_TEMP_DELIVERY{$id};
+				next;
+			}
 			for (my $i = 0; $i <= $#{$TO{$host}{$id}{date}}; $i++) { 
 				# Key: year/month/day, Format: Hour:Id:Rcpt:Relay:Status
 				next if ($TO{$host}{$id}{date}[$i] !~ /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
@@ -2080,7 +2093,13 @@ sub read_config
 ####
 sub clear_status
 {
-	my $status = shift;
+	my ($status, $id) = @_;
+
+	# Try to avoid doublon when postfix send the message to a plugin
+	# and then the plugin will use postfix again to send the message.
+	if ($status =~  /sent \(250 OK, sent [^\s]+ ([0-9A-F]{11})\)/) {
+		$POSTFIX_PLUGIN_TEMP_DELIVERY{$1} = $id;
+	}
 
 	if ($status =~ /^Sent.*/i) {
 		return 'Sent';
