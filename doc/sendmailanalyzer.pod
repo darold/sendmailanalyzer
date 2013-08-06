@@ -868,14 +868,19 @@ Default is mimedefang.pl.
 
 Syslog name of Clamd. When using Mailscanner with clamd if you want virus
 report you must configure clamd to log with syslog and use LOG_MAIL. Default
-value is 'clamd' (... clamd[1234] ...)
-Can be overwritten with --clamd or -n
+value is 'clamd' (... clamd[1234] ...). Can be overwritten with --clamd or -n.
 
 =item POSTGREY_NAME
 
 Syslog name of Postgrey. Syslog write it to maillog with the pid as follow:
 ... postgrey[1234] ... This is required to only parse relevant logged lines
-Can be overwritten with --postgrey or -g. Default is postgrey
+Can be overwritten with --postgrey or -g. Default is postgrey.
+
+=item SPAMD_NAME
+
+Syslog name of Spamd. Syslog write it to maillog with the pid as follow:
+... spamd[1234] ... This is required to only parse relevant logged lines
+Can be overwritten with --spamd. Default is spamd.
 
 =item LOCAL_DOMAIN
 
