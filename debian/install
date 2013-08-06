@@ -1,0 +1,10 @@
+sendmailanalyzer              usr/bin
+sa_cache                      usr/bin
+flotr2.js                     usr/share/sendmailanalyzer
+salogo.png                    usr/share/sendmailanalyzer
+cgi-bin/lang                  usr/share/sendmailanalyzer
+cgi-bin/sa_report.cgi         usr/share/sendmailanalyzer
+debian/sendmailanalyzer.conf         etc
+debian/sendmailanalyzer.apache.conf  etc/apache2/conf.d
+changelog                     usr/share/doc/sendmailanalyzer
+README                        usr/share/doc/sendmailanalyzer

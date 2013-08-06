@@ -1,0 +1,19 @@
+Source: sendmailanalyzer
+Section: mail
+Priority: optional
+Maintainer: Dominique Fournier <dominique@fournier38.fr>
+Build-Depends: debhelper (>= 4.0.0)
+Standards-Version: 3.9.4
+
+Package: sendmailanalyzer
+Priority: optional
+Homepage: http://sareport.darold.net/
+Architecture: all
+Pre-Depends: perl
+Depends: apache2, ${perl:Depends}, ${misc:Depends}
+Description: Perl Sendmail/Postfix log analyser
+ SendmailAnalyzer continuously read your mail log file to generate
+ periodical HTML and graph reports. All reports are shown through
+ a CGI web interface.
+ It reports all you ever wanted to know about email trafic on your network.
+ You can also use it in ISP environment with per domain report.
