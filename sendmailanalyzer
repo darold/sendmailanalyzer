@@ -218,7 +218,7 @@ sendmailanalyzer v$VERSION usage:
 -i | --interactive     : run in interactive mode useful if you want day to day
                        : report. Default is daemon mode, real time statistics.
 -l | --log file        : path to maillog file. Default is /var/log/maillog.
--m | --mailscanner name: syslog MailScanner program name. Default Mailscanner.
+-m | --mailscanner name: syslog MailScanner program name. Default: Mailscanner.
 -o | --output dir      : path to the output directory where data file will be
                          written. Default /var/www/htdocs.
 -p | --piddir dir      : path where pid file will be stored. Default /var/run/.
@@ -232,6 +232,7 @@ sendmailanalyzer v$VERSION usage:
 			 appear in the future.
 -z | --zcat zcat_prog  : path to the zcat command for compressed maillog.
                          Default /usr/bin/zcat.
+     --spamd  name     : syslog Spamd program name. Default: spamd.
 };
 	exit 0;
 }
