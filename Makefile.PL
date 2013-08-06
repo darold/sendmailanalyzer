@@ -260,6 +260,11 @@ POSTGREY_NAME	postgrey
 # relay=dovecot will instruct sendmailanalyzer to skip those messages.
 SKIP_RCPT_RELAY	dovecot
 
+# Syslog name of Spamd. Syslog write it to maillog with the pid as follow:
+# ... spamd[1234] ... This is required to only parse relevant logged lines
+# Can be overwritten with --spamd
+SPAMD_NAME	spamd
+
 };
 close(OUTCFG);
 
