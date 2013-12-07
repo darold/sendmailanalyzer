@@ -618,6 +618,13 @@ sub parse_sendmail
 				last;
 			}
 		}
+	# Catch POSTFIX SASL AUTH method
+	} elsif ($str =~ m#^([^:\s]+): client=([^,]+), sasl_method=([^,]+), sasl_username=(.*)#) {
+		my $authid = $4;
+		push(@{$AUTH{$host}{$authid}{type}}, 'SASL');
+		push(@{$AUTH{$host}{$authid}{mech}}, $3);
+		push(@{$AUTH{$host}{$authid}{date}},  $time_st);
+		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay(lc($2)));
 	# POSTFIX client origin
 	} elsif ($str =~ m#^([^:\s]+): client=(.*)#) {
 		my $id = $1;
