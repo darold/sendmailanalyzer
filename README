@@ -724,7 +724,7 @@ CONFIGURATION
         logged lines Can be overwritten with --spamd. Default is spamd.
 
     LOCAL_DOMAIN
-        Coma separated list of internal domain to be used when
+        Comma separated list of internal domain to be used when
         SendmailAnalyzer is running on a mail host which received message
         from any side. SA can't know what message are internal or external
         in this case, so the only way to know if a mail come from Internet
@@ -747,13 +747,13 @@ CONFIGURATION
                 LOCAL_HOST_DOMAIN   sysloghost2        domain3.com,domain4.com
 
     MAIL_HUB
-        FQDN coma separated list of internal mail hubs, aka: where email are
+        FQDN comma separated list of internal mail hubs, aka: where email are
         redirected if the host is a gateway. For example: mailhost.mydom.dom
         This directive is very important to help SendmailAnalyzer to find
         the direction of incoming and outgoing message.
 
     MAIL_GW
-        FQDN coma separated list of MTA gateways where external mail comes
+        FQDN comma separated list of MTA gateways where external mail comes
         from. This directive is very important to help SendmailAnalyzer to
         find the direction of incoming and outgoing message.
 
@@ -803,14 +803,14 @@ CONFIGURATION
         disable this feature.
 
     ADMIN
-        List of admins username separated by coma that must have full access
+        List of admins username separated by comma that must have full access
         to all report. The username is checked again the http REMOTE_USER
         environment variable. Default is every one can access, in this case
         you may want to add a .htaccess.
 
     DOMAIN_USER
         List of per user domain access control. The first field is the
-        username and the second field (separated by tabulation) is a coma
+        username and the second field (separated by tabulation) is a comma
         separated list of domain name to be allowed to this user. You could
         add as many lines of DOMAIN_USER as you want in the configuration
         file.
