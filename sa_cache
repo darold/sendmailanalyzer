@@ -48,13 +48,15 @@ my $PID_FILE    = 'sa_cache.pid';
 $SIG{'INT'} = $SIG{'QUIT'} = $SIG{'TERM'} = 'terminate';
 
 our %ANTISPAM_NAME = (
-        'spamdmilter' => 'Spamd-Milter',
-        'jchkmail' => 'J-ChkMail',
-        'dnsbl' => 'RBL Check',
-        'spamassassin' => 'SpamAssassin',
-        'amavis' => 'Amavis',
-        'mimedefang' => 'MIMEDefang',
+	'spamdmilter' => 'Spamd-Milter',
+	'jchkmail' => 'J-ChkMail',
+	'dnsbl' => 'RBL Check',
+	'spamassassin' => 'SpamAssassin',
+	'amavis' => 'Amavis',
+	'mimedefang' => 'MIMEDefang',
+	'dnsblmilter' => 'DNSBL-Milter',
 	'spamd' => 'Spamd',
+	'policydweight' => 'Policyd-weight',
 );
 
 # Collect command line arguments

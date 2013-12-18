@@ -660,7 +660,7 @@ CONFIGURATION
         view. You may want to custom this list to just show menu link on
         available reports. Default list is:
 
-                spamdmilter,jchkmail,dnsbl,spamassassin,amavis,mimedefang,dnsblmilter,spamd
+                spamdmilter,jchkmail,dnsbl,spamassassin,amavis,mimedefang,dnsblmilter,spamd,policydweight
 
         Feel free to remove those you're not using to not see link to empty
         report in the menu.
@@ -747,10 +747,11 @@ CONFIGURATION
                 LOCAL_HOST_DOMAIN   sysloghost2        domain3.com,domain4.com
 
     MAIL_HUB
-        FQDN comma separated list of internal mail hubs, aka: where email are
-        redirected if the host is a gateway. For example: mailhost.mydom.dom
-        This directive is very important to help SendmailAnalyzer to find
-        the direction of incoming and outgoing message.
+        FQDN comma separated list of internal mail hubs, aka: where email
+        are redirected if the host is a gateway. For example:
+        mailhost.mydom.dom This directive is very important to help
+        SendmailAnalyzer to find the direction of incoming and outgoing
+        message.
 
     MAIL_GW
         FQDN comma separated list of MTA gateways where external mail comes
@@ -803,10 +804,10 @@ CONFIGURATION
         disable this feature.
 
     ADMIN
-        List of admins username separated by comma that must have full access
-        to all report. The username is checked again the http REMOTE_USER
-        environment variable. Default is every one can access, in this case
-        you may want to add a .htaccess.
+        List of admins username separated by comma that must have full
+        access to all report. The username is checked again the http
+        REMOTE_USER environment variable. Default is every one can access,
+        in this case you may want to add a .htaccess.
 
     DOMAIN_USER
         List of per user domain access control. The first field is the

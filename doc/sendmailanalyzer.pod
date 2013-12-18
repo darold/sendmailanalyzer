@@ -808,7 +808,7 @@ List of antispam name separated by a comma used for Spam details view. You may
 want to custom this list to just show menu link on available reports. Default
 list is:
 
-	spamdmilter,jchkmail,dnsbl,spamassassin,amavis,mimedefang,dnsblmilter,spamd
+	spamdmilter,jchkmail,dnsbl,spamassassin,amavis,mimedefang,dnsblmilter,spamd,policydweight
 
 Feel free to remove those you're not using to not see link to empty report in
 the menu.

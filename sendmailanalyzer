@@ -537,6 +537,34 @@ sub parse_sendmail
 			}
 			$SPAMDETAIL{$host}{$id}{spam} =~ s/,nt//g;
 		}
+	# Parse spam found by postfix/policyd-weight
+	} elsif ($str =~ m#decided action=DUNNO\s+(.*); rate: ([^;]+); <client=([^>]+)> <helo=([^>]+)> <from=([^>]+)> <to=([^>]+)>; delay.*#) {
+		my $id = &get_uniqueid();
+		$SPAM{$host}{$id}{spam} = 'policydweight';
+		$SPAM{$host}{$id}{date} =  $time_st;
+		$SPAM{$host}{$id}{relay} = &clean_relay($3);
+		$SPAM{$host}{$id}{from} = &edecode($5);
+		$SPAM{$host}{$id}{to} = &edecode($6);
+		if ($CONFIG{SPAM_DETAIL}) {
+			$SPAMDETAIL{$host}{$id}{date} =  $time_st;
+			$SPAMDETAIL{$host}{$id}{type} = 'policydweight';
+			$SPAMDETAIL{$host}{$id}{spam} = $1;
+			$SPAMDETAIL{$host}{$id}{score} = $2;
+		}
+	# Parse spam found in cache by postfix/policyd-weight
+	} elsif ($str =~ m#decided action=DUNNO\s+(.*); rate: ([^;]+); <client=([^>]+)> <helo=([^>]+)> <from=([^>]+)> <to=([^>]+)>; delay.*#) {
+		my $id = &get_uniqueid();
+		$SPAM{$host}{$id}{spam} = 'policydweight';
+		$SPAM{$host}{$id}{date} =  $time_st;
+		$SPAM{$host}{$id}{relay} = &clean_relay($3);
+		$SPAM{$host}{$id}{from} = &edecode($5);
+		$SPAM{$host}{$id}{to} = &edecode($6);
+		if ($CONFIG{SPAM_DETAIL}) {
+			$SPAMDETAIL{$host}{$id}{date} =  $time_st;
+			$SPAMDETAIL{$host}{$id}{type} = 'policydweight';
+			$SPAMDETAIL{$host}{$id}{spam} = $1;
+			$SPAMDETAIL{$host}{$id}{score} = $2;
+		}
 	# Parse spam found by dnsbl-milter
 	} elsif ($str =~ m#^([^:\s]+): Milter: from=([^,]+), reject=(.*)#) {
 		my $id = $1;

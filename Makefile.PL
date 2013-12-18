@@ -224,8 +224,8 @@ POSTGREY_VIEW   1
 
 # List of antispam name separated by a comma used for Spam details view. You may
 # want to custom this list to just show menu link on available reports. Default
-# list is: spamdmilter,jchkmail,dnsbl,spamassassin,amavis,mimedefang,dnsblmilter,spamd
-SPAM_TOOLS	spamdmilter,jchkmail,dnsbl,spamassassin,amavis,mimedefang,dnsblmilter,spamd
+# list is: spamdmilter,jchkmail,dnsbl,spamassassin,amavis,mimedefang,dnsblmilter,spamd,policydweight
+SPAM_TOOLS	spamdmilter,jchkmail,dnsbl,spamassassin,amavis,mimedefang,dnsblmilter,spamd,policydweight
 
 # Enable/Disable messaging/spam/virus/dsn direction statistics. Default is show.
 # On some mailhost this could show wrong information if the direction could
