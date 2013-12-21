@@ -341,12 +341,12 @@ USAGE
     To know all possible command line arguments, run 'sendmailanalyzer
     --help'
 
-    Important: if you experience high memory usage with SendmailAnalyzer use
-    the -w (--write-delay) command line option to reduce the time where in
-    memory data are flushed to disk. Default is 60 secondes, this is good in
-    most configuration but in huge servers you may set it as low as 5
-    secondes. You must test it to find a compromise between speed and memory
-    usage.
+    Important: the default time interval for flushing the memory data to disk
+    is set to 5 seconds. You can change it by changing the value of -w
+    (--write-delay) parameter or the DELAY parameter in the config file. You
+    can increase this value if you so choose, but make sure you choose a value
+    that is a good compromise between speed and memory usage. Setting this
+    parameter to a high value can cause high memory usage.
 
   Standalone
     To run SendmailAnalyzer in standalone mode you have to setup a cron
