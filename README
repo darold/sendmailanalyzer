@@ -560,9 +560,9 @@ CONFIGURATION
         --debug or -d in sendmailanalyzer args. Default is 0, disable.
 
     DELAY
-        Delay in second to flush collected data to disk. Can be overwritten
+        Delay in seconds to flush collected data to disk. Can be overwritten
         with --write-delay or -w in sendmailanalyzer args. Default is 5
-        seconds. During this time data are kept in memory to limit disk I/O
+        seconds. During this time data is kept in memory to limit disk I/O
         and gain speed.
 
   Reporting/display options
