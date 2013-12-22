@@ -226,7 +226,7 @@ sendmailanalyzer v$VERSION usage:
 -t | --tail tail_prog  : path to the tail system command. Default /usr/bin/tail.
 -v | --version         : show version and exit
 -w | --write-delay sec : memory storage delay in second before saving data
-                         to disk. Default: 60 secondes.
+                         to disk. Default: 5 seconds.
 -y | --year 2001       : force the years date part of the log to given value.
 			 Default is current year or previous year if log lines
 			 appear in the future.
