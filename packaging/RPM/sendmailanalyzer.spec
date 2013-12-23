@@ -190,7 +190,7 @@ fi
 * Mon Dec 31 2012 Igor Vuk
 - Fix the .sample file install in doc folder.
 
-* Wed Dec 24 2012 Gilles Darold
+* Mon Dec 24 2012 Gilles Darold
 - Copy sendmailanalyzer.conf in _sysconfdir and sendmailanalyzer.conf.sample
   in _docdir
 
