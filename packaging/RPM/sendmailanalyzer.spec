@@ -118,7 +118,7 @@ _EOF3_
 
 # Make distrib files
 %{__make} install \
-	DESTDIR=%{buildroot}
+    DESTDIR=%{buildroot}
 
 # Remove empty perl directory
 %{__rm} -rf %{buildroot}/usr/lib
@@ -168,6 +168,7 @@ fi
 %attr(0644,root,root) %{webdir}/lang/sp_SP
 %attr(0644,root,root) %{webdir}/lang/bg_BG
 %attr(0644,root,root) %{webdir}/lang/de_DE
+%attr(0644,root,root) %{webdir}/lang/pt_BR
 %attr(0755,root,root) %{_sysconfdir}/rc.d/init.d/sendmailanalyzer
 %config(noreplace) %{_sysconfdir}/%{uname}.conf
 %config(noreplace) %{_sysconfdir}/cron.d/%{uname}
@@ -177,6 +178,9 @@ fi
 %dir %{webdir}
 
 %changelog
+* Mon Dec 23 2013 Igor Vuk
+- Remove a rogue tab character, add pt_BR translation
+
 * Tue May 07 2013 Gilles Darold
 - Upgrade for 9.0 changes
 
@@ -186,7 +190,7 @@ fi
 * Mon Dec 31 2012 Igor Vuk
 - Fix the .sample file install in doc folder.
 
-* Wed Dec 24 2012 Gilles Darold
+* Mon Dec 24 2012 Gilles Darold
 - Copy sendmailanalyzer.conf in _sysconfdir and sendmailanalyzer.conf.sample
   in _docdir
 
