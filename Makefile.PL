@@ -171,7 +171,7 @@ URL_JSCRIPT	flotr2.js
 
 # Syslog name of Amavis. Syslog write it to maillog with the pid as follow:
 # ... amavis[1234] ... This is required to only parse relevant logged lines
-AMAVIS_NAME	amavis
+AMAVIS_NAME	amavis|maiad
 
 # Path to SMTP error code file (relative to the CGI directory)
 # Default: lang/ERROR_CODE
