@@ -83,6 +83,7 @@ my %POSTGREY = ();
 my %MSGID = ();
 my %SKIPMSG = ();
 my %POSTFIX_PLUGIN_TEMP_DELIVERY = ();
+my %AMAVIS_ID = ();
 
 # Collect command line arguments
 GetOptions (
@@ -355,9 +356,9 @@ sub start_loop
 			$CURRENT_TIME = $check_time;
 			&dprint("Flushing data to disk ($check_time > $CURRENT_TIME+$CONFIG{DELAY})...");
 			&flush_data();
-			foreach my $id (keys %POSTFIX_PLUGIN_TEMP_DELIVERY) {
-				delete $POSTFIX_PLUGIN_TEMP_DELIVERY{$id};
-			}
+			# Avoid memory leak
+			%POSTFIX_PLUGIN_TEMP_DELIVERY = ();
+			%AMAVIS_ID = ();
 		}
 	}
 	&dprint("Flushing last data to disk...");
@@ -1358,6 +1359,38 @@ sub parse_amavis
 			$SPAMDETAIL{$host}{$id}{date} = $timest;
 			$SPAMDETAIL{$host}{$id}{spam} = $SPAM{$host}{$id}{spam};
 		}
+
+	} elsif ($str =~ /\(([^\)]+)\) (Passed|Blocked) SPAM(.*?) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*, Hits: ([^,]+), (.*)/) {
+
+		my $id = $1;
+		my $status = $2;
+		my $relay = lc($3);
+		my $sender = &edecode($4);
+		my $to = &edecode($5);
+		my $score = $6;
+		my $other = $7;
+		if (exists $AMAVIS_ID{$id}) {
+			$id = $AMAVIS_ID{$id};
+			delete $AMAVIS_ID{$id};
+		}
+		$SPAM{$host}{$id}{from} = $sender;
+			delete $AMAVIS_ID{$id};
+		$SPAM{$host}{$id}{to} = $to;
+		$SPAM{$host}{$id}{spam} = "Amavis $status Spam";
+		$SPAM{$host}{$id}{date} = $timest;
+		if (exists $FROM{$host}{$id}{from}) {
+			$SPAM{$host}{$id}{from} = $FROM{$host}{$id}{from};
+			$SPAM{$host}{$id}{relay} = $FROM{$host}{$id}{relay};
+			$SPAM{$host}{$id}{size} = $FROM{$host}{$id}{size};
+		}
+		if ($CONFIG{SPAM_DETAIL}) {
+			$SPAMDETAIL{$host}{$id}{type} = 'amavis';
+			$SPAMDETAIL{$host}{$id}{date} = $timest;
+			$SPAMDETAIL{$host}{$id}{spam} = $SPAM{$host}{$id}{spam};
+			$SPAMDETAIL{$host}{$id}{score}= $score if ($score ne '-');
+		}
+
+
 	} elsif ($str =~ /(Passed|Blocked) INFECTED \(([^\)]*)\), (.*) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*,(.*) Message-ID: [<]*([^,>]+)[>]*, /) {
 		my $virus = $2;
 		my $relay = lc($3);
@@ -2135,6 +2168,11 @@ sub clear_status
 	# and then the plugin will use postfix again to send the message.
 	if ($status =~  /sent \(250 OK, sent [^\s]+ ([0-9A-F]{11})\)/) {
 		$POSTFIX_PLUGIN_TEMP_DELIVERY{$1} = $id;
+	}
+
+	# Try to detect Amavis id from messages status
+	if ($status =~  /^[^\s]+ \(.*, id=(\d+\-\d+) - (.*)\)/) {
+		$AMAVIS_ID{$1} = $id;
 	}
 
 	if ($status =~ /^Sent.*/i) {
