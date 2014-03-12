@@ -265,6 +265,12 @@ SKIP_RCPT_RELAY	dovecot
 # Can be overwritten with --spamd
 SPAMD_NAME	spamd
 
+# Pipe separated list of destination email address that should be excluded
+# from the report. They will not be reported into data files too. The value
+# should be a valid regex, the addresses will be search in all destination
+# adresses like \$TO =~ /^\$EXCLUDE_TO\$/
+EXCLUDE_TO	bcc-addr1\@domain1.com|bcc-addr2\@domain2.com
+
 };
 close(OUTCFG);
 

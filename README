@@ -341,12 +341,12 @@ USAGE
     To know all possible command line arguments, run 'sendmailanalyzer
     --help'
 
-    Important: the default time interval for flushing the memory data to disk
-    is set to 5 seconds. You can change it by changing the value of -w
-    (--write-delay) parameter or the DELAY parameter in the config file. You
-    can increase this value if you so choose, but make sure you choose a value
-    that is a good compromise between speed and memory usage. Setting this
-    parameter to a high value can cause high memory usage.
+    Important: if you experience high memory usage with SendmailAnalyzer use
+    the -w (--write-delay) command line option to reduce the time where in
+    memory data are flushed to disk. Default is 60 secondes, this is good in
+    most configuration but in huge servers you may set it as low as 5
+    secondes. You must test it to find a compromise between speed and memory
+    usage.
 
   Standalone
     To run SendmailAnalyzer in standalone mode you have to setup a cron
@@ -560,10 +560,12 @@ CONFIGURATION
         --debug or -d in sendmailanalyzer args. Default is 0, disable.
 
     DELAY
-        Delay in seconds to flush collected data to disk. Can be overwritten
-        with --write-delay or -w in sendmailanalyzer args. Default is 5
-        seconds. During this time data is kept in memory to limit disk I/O
-        and gain speed.
+        Delay in second to flush collected data to disk. Can be overwritten
+        with --write-delay or -w in sendmailanalyzer args. Default is 60
+        seconds. During this time data are kept in memory to limit disk I/O
+        and gain speed. If you experience an out of memory on huge mail
+        server adjust this value to something smaller depending of your
+        hardware configuration.
 
   Reporting/display options
     ERROR_CODE
@@ -790,6 +792,18 @@ CONFIGURATION
         configuraed to have local delivery via dovecot service. Default:
         dovecot, that mean that recipient log lines with relay=dovecot will
         instruct sendmailanalyzer to skip those messages.
+
+    EXCLUDE_TO
+        Use this directive to set a pipe separated list of destination email
+        address that should be excluded from the report. They will not be
+        reported into data files too. The value should be a valid regex, the
+        addresses will be search in all destination adresses with $TO =~
+        /^$EXCLUDE_TO$/. For example:
+
+                EXCLUDE_TO      bcc-addr1\@domain1.com|bcc-addr2\@domain2.com
+
+        will exclude from report all recipient statistics sent to
+        bcc-addr1@domain1.com and bcc-addr2@domain2.com
 
   Domain / user views options
     LOW_LIMIT, MEDIUM_LIMIT, HIGH_LIMIT (NO MORE USED)

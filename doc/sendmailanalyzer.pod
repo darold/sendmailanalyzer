@@ -957,6 +957,18 @@ This is especially right when with postfix configuraed to have local delivery
 via dovecot service. Default: dovecot, that mean that recipient log lines with
 relay=dovecot will instruct sendmailanalyzer to skip those messages.
 
+=item EXCLUDE_TO
+
+Use this directive to set a pipe separated list of destination email address
+that should be excluded from the report. They will not be reported into data
+files too. The value should be a valid regex, the addresses will be search
+in all destination adresses with $TO =~ /^$EXCLUDE_TO$/. For example:
+
+	EXCLUDE_TO      bcc-addr1\@domain1.com|bcc-addr2\@domain2.com
+
+will exclude from report all recipient statistics sent to bcc-addr1@domain1.com
+and bcc-addr2@domain2.com
+
 =back
 
 =head2 Domain / user views options
