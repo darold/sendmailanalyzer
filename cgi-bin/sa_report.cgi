@@ -5020,7 +5020,13 @@ sub grafit
 
 	my $xlabel = '';
 	my $numticks = $#xdata + 1;
-	if ($#xdata == 11) {
+	if ($HOUR) {
+		$xlabel = qq{tickFormatter: function(x) {
+			var x = parseInt(x);
+			return x;
+		},
+};
+	} elsif ($#xdata == 11) {
 		$xlabel = qq{tickFormatter: function(x) {
 			var x = parseInt(x);
 			var months = [ "$TRANSLATE{'01'}", "$TRANSLATE{'02'}", "$TRANSLATE{'03'}", "$TRANSLATE{'04'}", "$TRANSLATE{'05'}", "$TRANSLATE{'06'}", "$TRANSLATE{'07'}", "$TRANSLATE{'08'}", "$TRANSLATE{'09'}", "$TRANSLATE{'10'}", "$TRANSLATE{'11'}", "$TRANSLATE{'12'}" ];
