@@ -289,6 +289,11 @@ if (!$HOST) {
 <li><a href="$ENV{SCRIPT_NAME}?view=authflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'SMTP Auth'}</a></li>
 };
 	}
+	if ($CONFIG{POSTGREY_VIEW}) {
+		print qq{
+<li><a href="$ENV{SCRIPT_NAME}?view=postgreyflow&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Postgrey'}</a></li>
+};
+	}
 	print qq{
 </ul>
 <a href="$ENV{SCRIPT_NAME}?view=empty&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&week=$WEEK" target="info">$TRANSLATE{'Top Statistics'}</a>
@@ -307,16 +312,17 @@ if (!$HOST) {
 	print qq{
 <li><a href="$ENV{SCRIPT_NAME}?view=topreject&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Rejection SysErr'}</a></li>
 };
-if ($CURDATE !~ /00$/) {
-	print qq{<li><a href="$ENV{SCRIPT_NAME}?view=toplimit&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Limits'}</a></li>};
-}
-# SMTP Auth can not be shown by domain
-if (!$DOMAIN && $CONFIG{SMTP_AUTH}) {
+	if ($CURDATE !~ /00$/) {
+		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=toplimit&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Limits'}</a></li>};
+	}
+	# SMTP Auth can not be shown by domain
+	if (!$DOMAIN && $CONFIG{SMTP_AUTH}) {
+		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=topauth&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'SMTP Auth'}</a></li>};
+	}
+	if ($CONFIG{POSTGREY_VIEW}) {
+		print qq{<li><a href="$ENV{SCRIPT_NAME}?view=toppostgrey&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'Postgrey'}</a></li>};
+	}
 	print qq{
-<li><a href="$ENV{SCRIPT_NAME}?view=topauth&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK" target="info">$TRANSLATE{'SMTP Auth'}</a></li>
-};
-}
-print qq{
 </ul>
 };
 	if ($CONFIG{SPAM_DETAIL}) {
@@ -399,6 +405,7 @@ our %dsn = ();
 our %topspamdetail = ();
 our %auth = ();
 our %topauth = ();
+our %postgrey = ();
 our %toppostgrey = ();
 
 ####
@@ -1151,6 +1158,9 @@ sub show_stats
 			} elsif ($type eq 'authflow') {
 				# Get auth statistics
 				&get_auth_stat($hostname,$year,$m,$d,$mon,$mday,$hour);
+			} elsif ($type eq 'postgreyflow') {
+				# Get postgrey statistics
+				&get_postgrey_stat($hostname,$year,$m,$d,$mon,$mday,$hour);
 			} elsif ($type eq 'topsender') {
 				# Get sender statistics
 				&get_sender_stat($hostname,$year,$m,$d,$mon,$mday,$hour);
@@ -1215,6 +1225,8 @@ sub show_stats
 			&compute_statusflow();
 		} elsif ($type eq 'authflow') {
 			%period_stats = &compute_authflow();
+		} elsif ($type eq 'postgreyflow') {
+			%period_stats = &compute_postgreyflow($hostname);
 		} elsif ($type eq 'topsender') {
 			&compute_top_sender();
 		} elsif ($type eq 'toprecipient') {
@@ -1233,6 +1245,8 @@ sub show_stats
 			&compute_top_spamdetail($type);
 		} elsif ($type eq 'topauth') {
 			&compute_top_auth();
+		} elsif ($type eq 'toppostgrey') {
+			&compute_top_postgrey();
 		}
 	}
 
@@ -1256,6 +1270,9 @@ sub show_stats
 	} elsif ($type eq 'authflow') {
 		&summarize_authflow($begin, $end, %period_stats);
 		&display_authflow($x_label);
+	} elsif ($type eq 'postgreyflow') {
+		&summarize_postgreyflow($begin, $end, %period_stats);
+		&display_postgreyflow($x_label);
 	} elsif ($type eq 'topsender') {
 		&display_top_sender($hostname, $date, $hour);
 	} elsif ($type eq 'toprecipient') {
@@ -1274,6 +1291,8 @@ sub show_stats
 		&display_top_spamdetail($hostname, $date, $type, $hour);
 	} elsif ($type eq 'topauth') {
 		&display_top_auth($hostname, $date, $hour);
+        } elsif ($type eq 'toppostgrey') {
+                &display_top_postgrey($hostname, $date, $hour);
 	}
 }
 
@@ -1758,25 +1777,16 @@ sub get_postgrey_stat
 	open(IN, $file) || return;
 	while (my $l = <IN>) { 
 		chomp($l);
-		# Format: Hour:Id:Rule:Relay:Arg1:Status
+		# Format: Hour:Id:Relay:From:To:Action:Reason
 		my @data = split(/:/, $l);
 		$data[0] =~ /^(\d{2})/;
 		next if (($hour ne '') && ($1 != $hour));
-		$STATS{$data[1]}{rule} = $data[2];
-		$STATS{$data[1]}{sender_relay} = $data[3] if (!$STATS{$data[1]}{sender_relay});
-		if ($#data > 4) {
-			if ($data[2] eq 'check_relay') {
-				$STATS{$data[1]}{sender_relay} = $data[4];
-			} elsif ($data[2] eq 'check_rcpt') {
-				push(@{$STATS{$data[1]}{chck_rcpt}}, $data[4]);
-			} else {
-				# $data[2] eq 'check_mail' or POSTFIX
-				$STATS{$data[1]}{sender} = $data[4];
-			}
-			push(@{$STATS{$data[1]}{chck_status}}, $data[5]);
-		} else {
-			push(@{$STATS{$data[1]}{chck_status}}, $data[4]);
-		}
+		$STATS{$data[1]}{sender_relay} = $data[2] || '';
+		$STATS{$data[1]}{sender} = $data[3] || '';
+		push(@{$STATS{$data[1]}{rcpt}}, $data[4]) if ($data[4]);
+		$STATS{$data[1]}{action} = $data[5] || '';
+		$STATS{$data[1]}{reason} = $data[6] || '';
+
 		my $idx = $month;
 		if ($hour ne '') {
 			$data[0] =~ /(\d{2})\d{2}$/;
@@ -1787,7 +1797,7 @@ sub get_postgrey_stat
 		} elsif ($mon ne '00') {
 			$idx = $day;
 		}
-		$STATS{$data[1]}{idx_reject} = "$idx";
+		$STATS{$data[1]}{idx_postgrey} = "$idx";
 	}
 	close(IN);
 }
@@ -2922,6 +2932,76 @@ sub display_authflow
 
 }
 
+sub compute_postgreyflow
+{
+	my ($hostname) = @_;
+
+	my %period_stat = ();
+	foreach my $id (keys %STATS) {
+		next if ($DOMAIN && ($STATS{$id}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS{$id}{rcpt}}));
+		if (exists $STATS{$id}{reason}) {
+			$period_stat{postgrey}{$STATS{$id}{reason}}{$STATS{$id}{idx_postgrey}}++;
+			$postgrey{reason}{$STATS{$id}{reason}}++;
+		}
+	}
+	%STATS = ();
+	return %period_stat;
+}
+
+sub summarize_postgreyflow
+{
+	my ($begin, $end, %period_stat) = @_;
+
+	foreach my $k (keys %{$postgrey{reason}}) {
+		$postgrey{total_reason} += $postgrey{reason}{$k};
+	}
+}
+
+sub display_postgreyflow
+{
+	my ($x_label) = @_;
+
+	if (scalar keys %{$postgrey{reason}} == 0) {
+		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		return;
+	}
+
+	print qq {
+<table width="80%"><td valign="top">
+<table align="center">
+<tr><th colspan="3" class="thhead">$TRANSLATE{'Postgrey Status'}</th></tr>
+<tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Percentage'}</td></tr>
+};
+	my $piecount = 0;
+	my %graph_data = ();
+	foreach my $k (sort { $postgrey{reason}{$b} <=> $postgrey{reason}{$a} } keys %{$postgrey{reason}}) {
+		next if ($k eq '');
+		my $percent = sprintf("%.2f", ($postgrey{reason}{$k}/$postgrey{total_reason}) * 100);
+		print "<tr><td class=\"tdtopn\">$k</td><td class=\"tdtopnr\">$postgrey{reason}{$k}</td><td class=\"tdtopnr\">$percent %</td></tr>\n";
+		if ( ($piecount < $MAXPIECOUNT) && ($percent > 2)) {
+			$graph_data{$k} = $percent;
+			$piecount++;
+		}
+	}
+	print qq{
+<tr><td colspan="3" align="center">&nbsp;</td></tr>
+</table>
+<table align="center">
+<tr><td colspan="3" align="center">
+};
+        print &grafit_pie(      values => \%graph_data, title => $TRANSLATE{'Postgrey Status'},
+                                divid => 'postgreyflow'
+        );
+
+	print qq{
+</td></tr>
+</table>
+</td></tr>
+</table>
+};
+
+}
+
 sub detail_link
 {
 	my ($hostname, $date, $type, $peri, $name, $hour) = @_;
@@ -3808,6 +3888,110 @@ sub display_top_auth
 
 }
 
+sub compute_top_postgrey
+{
+	foreach my $id (keys %STATS) {
+		next if ($DOMAIN && ($STATS{$id}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS{$id}{rcpt}}));
+		if (exists $STATS{$id}{reason}) {
+			$toppostgrey{sender}{$STATS{$id}{sender}}++;
+			$STATS{$id}{sender} =~ s/^.*\@//;
+			$STATS{$id}{sender} ||= 'Unknown';
+			$toppostgrey{domain}{$STATS{$id}{sender}}++;
+			$toppostgrey{sender_relay}{$STATS{$id}{sender_relay}}++;
+			for (my $i = 0; $i <= $#{$STATS{$id}{rcpt}}; $i++) {
+				$toppostgrey{rcpt}{$STATS{$id}{rcpt}[$i]}++;
+			}
+			$toppostgrey{reason}{$STATS{$id}{reason}}++;
+		}
+	}
+	%STATS = ();
+} 
+
+sub display_top_postgrey
+{
+	my ($hostname, $date, $hour) = @_;
+
+	print qq{<table align="center"><tr><td valign="center" align="center">};
+
+	# Top postgrey statistics
+	my $topreason = '';
+	my $top = 0;
+	foreach my $d (sort { $toppostgrey{reason}{$b} <=> $toppostgrey{reason}{$a} } keys %{$toppostgrey{reason}}) {
+		last if ($top == $CONFIG{TOP});
+		$topreason .= &detail_link($hostname,$date,'postgrey','reason',$d,$hour) . " ($toppostgrey{reason}{$d})<br>";
+		$top++;
+	}
+	delete $toppostgrey{reason};
+	my $topdomain = '';
+	$top = 0;
+	foreach my $d (sort { $toppostgrey{domain}{$b} <=> $toppostgrey{domain}{$a} } keys %{$toppostgrey{domain}}) {
+		last if ($top == $CONFIG{TOP});
+		if ($d ne '<>') {
+			$topdomain .= &detail_link($hostname,$date,'postgrey','domain',$d,$hour) . " ($toppostgrey{domain}{$d})<br>";
+		} else {
+			$topdomain .= "$d ($toppostgrey{domain}{$d})<br>";
+		}
+		$top++;
+	}
+	delete $toppostgrey{domain};
+	my $topemail = '';
+	$top = 0;
+	if (!$CONFIG{ANONYMIZE}) {
+		foreach my $d (sort { $toppostgrey{sender}{$b} <=> $toppostgrey{sender}{$a} } keys %{$toppostgrey{sender}}) {
+			last if ($top == $CONFIG{TOP});
+			$topemail .= &detail_link($hostname,$date,'postgrey','address',$d,$hour) . " ($toppostgrey{sender}{$d})<br>";
+			$top++;
+		}
+	}
+	my $toprelay = '';
+	$top = 0;
+	foreach my $d (sort { $toppostgrey{sender_relay}{$b} <=> $toppostgrey{sender_relay}{$a} } keys %{$toppostgrey{sender_relay}}) {
+		last if ($top == $CONFIG{TOP});
+		$toprelay .= &detail_link($hostname,$date,'postgrey','relay',$d,$hour) . " ($toppostgrey{sender_relay}{$d})<br>";
+		$top++;
+	}
+	delete $toppostgrey{sender_relay};
+	if (exists $CONFIG{REPLACE_HOST}) {
+		foreach my $pat (keys %{$CONFIG{REPLACE_HOST}}) {
+			$toprelay =~ s/$pat/$CONFIG{REPLACE_HOST}{$pat}/g;
+		}
+	}
+	my $topdest = '';
+	$top = 0;
+	if (!$CONFIG{ANONYMIZE}) {
+		foreach my $d (sort { $toppostgrey{rcpt}{$b} <=> $toppostgrey{rcpt}{$a} } keys %{$toppostgrey{rcpt}}) {
+			last if ($top == $CONFIG{TOP});
+			next if (($d eq '') || ($d eq '<>'));
+			$topdest .= &detail_link($hostname,$date,'postgrey','recipient',$d,$hour) . " ($toppostgrey{rcpt}{$d})<br>";
+			$top++;
+		}
+	}
+	%toppostgrey = ();
+
+	if (!$topreason) {
+		print qq{<table align="center"><tr><th colspan="2" class="thhead">$TRANSLATE{'No dataset'}</th></tr></table>};
+		return;
+	}
+	if ($topreason) {
+		print qq {
+<table>
+<tr><th colspan="2" class="thhead">$TRANSLATE{'Postgrey Statistics'} (top $CONFIG{TOP})</th></tr>
+<tr><td class="tdhead">$TRANSLATE{'Top Reasons'}</td><td class="tdtopn">$topreason</td></tr>
+<tr><td class="tdhead">$TRANSLATE{'Top Domains'}</td><td class="tdtopn">$topdomain</td></tr>
+<tr><td class="tdhead">$TRANSLATE{'Top Relays'}</td><td class="tdtopn">$toprelay</td></tr>
+};
+		if (!$CONFIG{ANONYMIZE}) {
+			print qq {
+<tr><td class="tdhead">$TRANSLATE{'Top Senders'}</td><td class="tdtopn">$topemail</td></tr>
+};
+		}
+		print qq{
+<tr><td class="tdhead">$TRANSLATE{'Top Recipients Address'}</td><td class="tdtopn">$topdest</td></tr>
+} if ($topdest);
+		print "</table>\n<p>&nbsp;</p>";
+	}
+}
+
 sub show_detail
 {
 	my ($hostname, $date, $hour, $type, $peri, $search) = @_;
@@ -3832,6 +4016,8 @@ sub show_detail
 		%lstat = &get_dsn_detail($path, $peri, $search, $hour);
 	} elsif ($type eq 'dsnsrc') {
 		%lstat = &get_dsnsrc_detail($path, $peri, $search, $hour);
+	} elsif ($type eq 'postgrey') {
+		%lstat = &get_postgrey_detail($path, $peri, $search, $hour);
 	} else {
 		print "BAD DETAIL TYPE\n";
 	}
@@ -3841,16 +4027,16 @@ sub show_detail
 		print qq{<th>$TRANSLATE{'Original Id'}</th><th>$TRANSLATE{'Original Recipient'}</th>};
 	}
 	print qq{<th>$TRANSLATE{'Sender'}</th>};
-	print qq{<th>$TRANSLATE{'Size'}</th>} if ($type ne 'dsn');
+	print qq{<th>$TRANSLATE{'Size'}</th>} if (($type ne 'dsn') && ($type ne 'postgrey'));
 	print qq{<th>$TRANSLATE{'Sender Relay'}</th>};
 	print qq{<th>$TRANSLATE{'Recipients'}</th>\n};
-	if ($type !~ /spam|reject/) {
+	if ($type !~ /spam|reject|postgrey/) {
 		print qq{<th>$TRANSLATE{'Recipient Relay'}</th>\n};
 	}
 	if ($type !~ /spam/) {
 		print qq{<th>$TRANSLATE{'Status'}</th>\n};
 	}
-	if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient')) {
+	if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient', 'postgrey')) {
 		if ($type eq 'spam') {
 			print qq{<th nowrap="1">$TRANSLATE{'Spam'}</th>\n};
 		} elsif ($type =~ /spam_/) {
@@ -3880,12 +4066,12 @@ sub show_detail
 		$lstat{$id}{size} ||= '&nbsp;';
 		$lstat{$id}{sender_relay} ||= '&nbsp;';
 		print qq{<tr valign="top"><td class="tdtopn">$line</td><td class="tdtopn">$lstat{$id}{hour}</td><td class="tdtopn">$id</td>};
-		if ($type eq 'dsn') {
+		if (($type eq 'dsn') && ($type ne 'postgrey')) {
 			$lstat{$id}{srcid} = &detail_link($hostname,$date,'sender','id',$lstat{$id}{srcid}, $hour);
 			print qq{<td class="tdtopn" nowrap="1">$lstat{$id}{srcid}</td><td class="tdtopn" nowrap="1">$lstat{$id}{orig_rcpt}</td>};
 		}
 		print qq{<td class="tdtopn" nowrap="1">$lstat{$id}{sender}</td>};
-		print qq{<td class="tdtopn">$lstat{$id}{size}</td>} if ($type ne 'dsn');
+		print qq{<td class="tdtopn">$lstat{$id}{size}</td>} if (($type ne 'dsn') && ($type ne 'postgrey'));
 		print qq{<td class="tdtopn">$lstat{$id}{sender_relay}</td>};
 		print "<td class=\"tdtopn\" nowrap=\"1\">";
 		if (defined $lstat{$id}{chck_rcpt}) {
@@ -3928,7 +4114,7 @@ sub show_detail
 			print "&nbsp;"
 		}
 		print "</td>";
-		if ($type !~ /spam|reject/) {
+		if ($type !~ /spam|reject|postgrey/) {
 			print "<td class=\"tdtopn\">";
 			if (defined $lstat{$id}{rcpt_relay} && ($#{$lstat{$id}{rcpt_relay}} >= 0)) {
 				if (exists $CONFIG{REPLACE_HOST}) {
@@ -3975,12 +4161,14 @@ sub show_detail
 				} else {
 					print $lstat{$id}{status}[0];
 				}
+			} elsif (defined $lstat{$id}{reason}) {
+					print $lstat{$id}{reason};
 			} else {
 				print "&nbsp;"
 			}
 			print "</td>";
 		}
-		if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient')) {
+		if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient', 'postgrey')) {
 			if ($type eq 'spam') {
 				$lstat{$id}{spam} ||= '&nbsp;';
 				print qq{<td class="tdtopn">$lstat{$id}{spam}</td>};
@@ -4657,6 +4845,43 @@ sub get_dsn_detail
 	%sourceid = ();
 	foreach my $k (keys %local_stat) {
 		delete $local_stat{$k} if (!exists $local_stat{$k}{dsnstatus});
+	}
+	return %local_stat;
+}
+
+sub get_postgrey_detail
+{
+	my ($path, $peri, $search, $hour) = @_;
+
+	my %local_stat = ();
+
+	my $file = "$path/postgrey.dat";
+	if (open(IN, $file)) {
+		while (my $l = <IN>) {
+			chomp($l);
+			# Format: Hour:Id:Relay:From:To:Action:Reason
+			my @data = split(/:/, $l);
+			$data[0] =~ /^(\d{2})/;
+			next if (($hour ne '') && ($1 != $hour));
+			if ($peri eq 'relay') {
+				next if ($data[2] !~ /$search/);
+			} elsif ($peri eq 'address') {
+				next if ($data[3] ne $search);
+			} elsif ($peri eq 'recipient') {
+				next if ($data[4] !~ /$search/);
+			} elsif ($peri eq 'reason') {
+				next if ($data[-1] !~ /$search/);
+			} elsif ($peri eq 'domain') {
+				next if ($data[3] !~ /$search/);
+			}
+			$local_stat{$data[1]}{hour} = $data[0];
+			$local_stat{$data[1]}{sender_relay} = $data[2];
+			$local_stat{$data[1]}{sender} = $data[3];
+			push(@{$local_stat{$data[1]}{rcpt}}, $data[4]);
+			$local_stat{$data[1]}{action} = $data[5];
+			$local_stat{$data[1]}{reason} = $data[6];
+		}
+		close(IN);
 	}
 	return %local_stat;
 }

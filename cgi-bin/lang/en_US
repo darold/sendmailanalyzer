@@ -174,10 +174,8 @@
 	'Top Relay' => 'Top Relay',
 	'Top Authid' => 'Top Authid',
 	'Original Recipient' => 'Original Recipient',
-	'Postgrey flows' => 'Postgrey flows',
-	'Postgrey usage' => 'Postgrey usage',
-	'Postgrey Statistics' => 'Postgrey Statistics',
-	'Postgrey status' => 'Postgrey status',
+	'Postgrey' => 'Postgrey',
 	'Postgrey Status' => 'Postgrey Status',
+	'Postgrey Statistics' => 'Postgrey Statistics',
 	'Top Reasons' => 'Top Status',
 );

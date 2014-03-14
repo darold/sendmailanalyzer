@@ -174,10 +174,8 @@
 	'Top Relay' => 'Топ релей',
 	'Top Authid' => 'Топ авт. id',
 	'Original Recipient' => 'Получател (истинен)',
-	'Postgrey flows' => 'Postgrey потоци',
-	'Postgrey usage' => 'Postgrey използване',
+	'Postgrey' => 'Postgrey',
 	'Postgrey Statistics' => 'Postgrey статистика',
-	'Postgrey status' => 'Postgrey статус',
 	'Postgrey Status' => 'Postgrey статус',
 	'Top Reasons' => 'Топ причина',
 );
