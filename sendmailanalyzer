@@ -290,7 +290,7 @@ sub start_loop
 			$LAST_PARSED = $l;
 			$l = '';
 			# Only catch relevant logs
-			if ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\[]/) {
+			if ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\[:]/) {
 				if ($OLD_LAST_PARSED) {
 					# Line already parsed ? If yes, go to retrieve next log line
 					next if (&incremental_check($LAST_PARSED, $OLD_LAST_PARSED) != 0);
@@ -401,7 +401,7 @@ sub parse_common_fields
 			}
 		}
 	}
-	$type =~ s/[\[\]\:]g//;
+	$type =~ s/\[.*\]\://;
 
 	$host = $CONFIG{MERGING_HOST} if ($CONFIG{MERGING_HOST});
 
@@ -1529,6 +1529,7 @@ sub parse_postgrey
 	my $time_st = "$date$time";
 
 	if ($str =~ /action=([^,]+), reason=([^,]+), client_name=([^,]+), client_address=([^,]+), sender=([^,]+), recipient=(.*)/) {
+
 		my $action = $1;
 		my $status = $2;
 		my $relay_name = $3;
@@ -1543,8 +1544,88 @@ sub parse_postgrey
 		$POSTGREY{$host}{$id}{to} = &edecode($to);
 		$POSTGREY{$host}{$id}{status} = $status;
 		$POSTGREY{$host}{$id}{date} =  $time_st;
+
+	} elsif ($str =~ s/^grey:\s+//) {
+
+		&parse_sqlgrey($date,$time_st,$host,$str);
+
+	} elsif ($str =~ s/^spam:\s+//) {
+
+		&parse_sqlgrey_spam($date,$time_st,$host,$str);
 	}
 	
+
+}
+
+####
+# Parse sqlgrey spam syslog output
+####
+sub parse_sqlgrey_spam
+{
+	my ($date,$time_st,$host,$str) = @_;
+
+	if ($str =~ /^(.*): (.*) -> ([^\s]+) /) {
+		my $relay = lc($1);
+		my $sender = &edecode($2);
+		my $to = &edecode($3);
+		my $id = &get_uniqueid();
+		$SPAM{$host}{$id}{relay} = $relay;
+		$SPAM{$host}{$id}{from} = $sender;
+		$SPAM{$host}{$id}{to} = $to;
+		$SPAM{$host}{$id}{spam} = "sqlgrey spam";
+		$SPAM{$host}{$id}{date} = $time_st;
+
+		$FROM{$host}{$id}{from} = $sender;
+		$FROM{$host}{$id}{date} = $time_st;
+		$FROM{$host}{$id}{nrcpts} = 1;
+		$FROM{$host}{$id}{relay} = $relay;
+	}
+
+}
+
+####
+# Parse sqlgrey syslog output
+####
+sub parse_sqlgrey
+{
+	my ($date,$time_st,$host,$str) = @_;
+
+
+	my $id = &get_uniqueid();
+	if ($str =~ /^domain awl match: updating ([^,]+), (.*)/) {
+		$POSTGREY{$host}{$id}{status} = 'passed domain awl match';
+		$POSTGREY{$host}{$id}{action} = 'passed';
+		$POSTGREY{$host}{$id}{relay} = &clean_relay($1);
+		$POSTGREY{$host}{$id}{from} = 'unset@'. &edecode($2);
+		$POSTGREY{$host}{$id}{date} =  $time_st;
+	} elsif ($str =~ /^from awl match: updating ([^,]+), ([^\(]+)/) {
+		$POSTGREY{$host}{$id}{status} = 'passed from awl match';
+		$POSTGREY{$host}{$id}{action} = 'passed';
+		$POSTGREY{$host}{$id}{relay} = $1;
+		$POSTGREY{$host}{$id}{from} = &edecode($2);
+		$POSTGREY{$host}{$id}{date} =  $time_st;
+	} elsif ($str =~ /^early reconnect: ([^,]+), (.*) -> (.*)/) {
+		$POSTGREY{$host}{$id}{status} = 'early reconnect';
+		$POSTGREY{$host}{$id}{action} = 'early';
+		$POSTGREY{$host}{$id}{relay} = $1;
+		$POSTGREY{$host}{$id}{from} = &edecode($2);
+		$POSTGREY{$host}{$id}{to} = &edecode($3);
+		$POSTGREY{$host}{$id}{date} =  $time_st;
+	} elsif ($str =~ /^reconnect ok: ([^,]+), (.*) -> (.*) \((.*)\)/) {
+		$POSTGREY{$host}{$id}{status} = 'passed reconnect ok';
+		$POSTGREY{$host}{$id}{action} = 'passed';
+		$POSTGREY{$host}{$id}{relay} = $1;
+		$POSTGREY{$host}{$id}{from} = &edecode($2);
+		$POSTGREY{$host}{$id}{to} = &edecode($3);
+		$POSTGREY{$host}{$id}{date} =  $time_st;
+	} elsif ($str =~ /^new: ([^,]+), (.*) -> (.*)/) {
+		$POSTGREY{$host}{$id}{status} = 'new delayed';
+		$POSTGREY{$host}{$id}{action} = 'delayed';
+		$POSTGREY{$host}{$id}{relay} = $1;
+		$POSTGREY{$host}{$id}{from} = &edecode($2);
+		$POSTGREY{$host}{$id}{to} = &edecode($3);
+		$POSTGREY{$host}{$id}{date} =  $time_st;
+	}
 }
 
 ####
@@ -1644,6 +1725,8 @@ sub clean_relay
 		} else {
 			return $fqdn;
 		}
+	} elsif ( $relay =~ s/\(([a-fA-F0-9\.\:]+)\)// ) {
+		return $1;
 	}
 	$relay =~ s#^\s+##;
 	$relay =~ s#\s+.*##;
@@ -2170,7 +2253,7 @@ sub read_config
 	}
 	$CONFIG{MTA_NAME} =~ s/[\s\t,;]+/\|/g;
 	$CONFIG{PID_DIR} ||= '/var/run';
-	$CONFIG{POSTGREY_NAME} ||= 'postgrey';
+	$CONFIG{POSTGREY_NAME} ||= 'postgrey|sqlgrey';
 	$CONFIG{SPAMD_NAME} ||= 'spamd';
 }
 

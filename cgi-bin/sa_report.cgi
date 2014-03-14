@@ -2990,7 +2990,7 @@ sub display_postgreyflow
 <tr><td colspan="3" align="center">
 };
         print &grafit_pie(      values => \%graph_data, title => $TRANSLATE{'Postgrey Status'},
-                                divid => 'postgreyflow'
+                                divid => 'postgreyflow', width => 600, height => 250
         );
 
 	print qq{

@@ -713,10 +713,11 @@ CONFIGURATION
         overwritten with --clamd or -n.
 
     POSTGREY_NAME
-        Syslog name of Postgrey. Syslog write it to maillog with the pid as
-        follow: ... postgrey[1234] ... This is required to only parse
-        relevant logged lines Can be overwritten with --postgrey or -g.
-        Default is postgrey.
+        Syslog name of Postgrey or sqlgrey. Syslog write Postgrey to maillog
+        with the pid as follow: ... postgrey[1234] ... and sqlgrey as
+        follow: ... sqlgrey: ... This is required to only parse relevant
+        logged lines. Can be overwritten with --postgrey or -g. Default is
+        set to postgrey|sqlgrey
 
     SPAMD_NAME
         Syslog name of Spamd. Syslog write it to maillog with the pid as

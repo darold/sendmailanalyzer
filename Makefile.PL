@@ -247,7 +247,7 @@ CLAMD_NAME	clamd
 # Syslog name of Postgrey. Syslog write it to maillog with the pid as follow:
 # ... postgrey[1234] ... This is required to only parse relevant logged lines
 # Can be overwritten with --postgrey or -g
-POSTGREY_NAME	postgrey
+POSTGREY_NAME	postgrey|sqlgrey
 
 # HTML charset to use. Default is iso-8859-1, but with cyrillics you may want
 # to use utf-8 instead.
