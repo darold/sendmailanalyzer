@@ -405,7 +405,10 @@ sub parse_common_fields
 
 	$host = $CONFIG{MERGING_HOST} if ($CONFIG{MERGING_HOST});
 
-	return ("$date","$time",$host,$type,join(' ', @other));
+	my $line = join(' ', @other);
+	$line =~ s/^\[ID.*\] //;
+
+	return ("$date","$time",$host,$type, $line);
 }
 
 ####
