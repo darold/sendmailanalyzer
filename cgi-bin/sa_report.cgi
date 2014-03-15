@@ -69,6 +69,7 @@ my $LANG    = $CGI->param('lang') || '';
 my $WEEK    = $CGI->param('week') || '';
 
 my $MAXPIECOUNT = 10;
+my $MIN_SHOW_PIE = 2;
 my $DEFAULT_CHARSET='iso-8859-1';
 
 # Read configuration file
@@ -2799,7 +2800,7 @@ foreach my $s (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STA
 		print "<tr><td class=\"tdtopn\">$s</td>";
 	}
 	print "<td class=\"tdtopnr\">$GLOBAL_STATUS{$s}</td><td class=\"tdtopnr\">", sprintf("%.2f", $GLOBAL_STATUS{$s . '_bytes'}/$SIZE_UNIT), "</td><td class=\"tdtopnr\">$percent %</td></tr>\n";
-	if ( ($piecount < $MAXPIECOUNT) && ($percent > 2)) {
+	if ( ($piecount < $MAXPIECOUNT) && ($percent > $MIN_SHOW_PIE)) {
 		$status{"$s"} = $percent;
 		$total_percent += $GLOBAL_STATUS{$s};
 		$piecount++;
@@ -2978,7 +2979,7 @@ sub display_postgreyflow
 		next if ($k eq '');
 		my $percent = sprintf("%.2f", ($postgrey{reason}{$k}/$postgrey{total_reason}) * 100);
 		print "<tr><td class=\"tdtopn\">$k</td><td class=\"tdtopnr\">$postgrey{reason}{$k}</td><td class=\"tdtopnr\">$percent %</td></tr>\n";
-		if ( ($piecount < $MAXPIECOUNT) && ($percent > 2)) {
+		if ( ($piecount < $MAXPIECOUNT) && ($percent > $MIN_SHOW_PIE)) {
 			$graph_data{$k} = $percent;
 			$piecount++;
 		}
@@ -3073,7 +3074,7 @@ sub display_top_sender
 		last if ($top == $CONFIG{TOP});
 		my $percent = sprintf("%.2f", ($topsender{relay}{$d}*100)/$totalrelay);
 		$toprelay .= &detail_link($hostname,$date,'sender','relay',$d,$hour) . " ($topsender{relay}{$d})<br>";
-		if ( ($piecount < $MAXPIECOUNT) && ($percent > 2)) {
+		if ( ($piecount < $MAXPIECOUNT) && ($percent > $MIN_SHOW_PIE)) {
 			$relays{"$d"} = $percent;
 			$percent_total += $topsender{relay}{$d};
 			$piecount++;
@@ -3193,7 +3194,7 @@ sub display_top_recipient
 		last if ($top == $CONFIG{TOP});
 		my $percent = sprintf("%.2f", ($toprcpt{relay}{$d}*100)/$totalrelay);
 		$toprelay .= &detail_link($hostname,$date,'recipient','relay',$d,$hour) . " ($toprcpt{relay}{$d})<br>";
-		if ( ($piecount < $MAXPIECOUNT) && ($percent > 1)) {
+		if ( ($piecount < $MAXPIECOUNT) && ($percent > $MIN_SHOW_PIE)) {
 			$relays{"$d ($percent %)"} = $percent;
 			$piecount++;
 		}
@@ -5128,31 +5129,16 @@ sub grafit
     function drawGraph(opts) {
         var o = Flotr._.extend(Flotr._.clone(options), opts );
         return Flotr.draw(
-        	container,
-        	[
-        		lines1,
-        		lines2
-    		],
-    		o
-    	);
+                container,
+                [
+			lines1,
+			lines2
+                ],
+                o
+        );
     }
 
     var graph = drawGraph();
-    Flotr.EventAdapter.observe(container, "flotr:select", function(area) {
-        f = drawGraph({
-            xaxis: {
-                min: area.x1,
-                max: area.x2
-            },
-            yaxis: {
-                min: area.y1,
-                max: area.y2
-            }
-        });
-    });
-    Flotr.EventAdapter.observe(container, "flotr:click", function() {
-        drawGraph();
-    });
 
 })(document.getElementById("$params{divid}"));
 </script>
