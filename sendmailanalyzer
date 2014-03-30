@@ -958,7 +958,7 @@ sub parse_sendmail
 		$arg1 =~ s/[<>]+//g;
 		my $id = &get_uniqueid();
 		# Test Sendmail DNSBL spam scan
-		if ($reject =~ /553 5\.3\.0/i) {
+		if ($reject =~ /(553 5\.3\.0|550 5\.7\.1)/i) {
 			$SPAM{$host}{$id}{relay} = $relay;
 			$SPAM{$host}{$id}{rule} = $rule;
 			$SPAM{$host}{$id}{spam} = 'DNSBL Spam blocked';
