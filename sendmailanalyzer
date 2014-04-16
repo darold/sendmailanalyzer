@@ -298,10 +298,9 @@ sub start_loop
 					# to not go back to this block again
 					$OLD_LAST_PARSED = ''; 
 				}
-				# Extract common fields and store data in memory
-				&store_data(&parse_common_fields(split(/\s+/, $LAST_PARSED)));
+				# Extract common fields, store data in memory and retrieve current time
+				my $check_time = &store_data(&parse_common_fields(split(/\s+/, $LAST_PARSED)));
 				# Flush data to disk each kind of 5 seconds at least by default
-				my $check_time = &format_time(localtime(time));
 				if ($check_time > $CURRENT_TIME+$CONFIG{DELAY}) {
 					$CURRENT_TIME = $check_time;
 					&dprint("Flushing data to disk...");
@@ -346,12 +345,14 @@ sub start_loop
 		$LAST_PARSED = $l;
 		$l = '';
 		# Only catch relevant logs
+		my $check_time = '';
 		if ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\[]/) {
 			# Extract common fields and store data in memory
-			&store_data(&parse_common_fields(split(/\s+/, $LAST_PARSED)));
+			$check_time = &store_data(&parse_common_fields(split(/\s+/, $LAST_PARSED)));
+		} else {
+			$check_time = &format_time(localtime(time));
 		}
 		# Flush data to disk if write delay is over
-		my $check_time = &format_time(localtime(time));
 		if ($check_time > $CURRENT_TIME+$CONFIG{DELAY}) {
 			$CURRENT_TIME = $check_time;
 			&dprint("Flushing data to disk ($check_time > $CURRENT_TIME+$CONFIG{DELAY})...");
@@ -371,7 +372,10 @@ sub start_loop
 sub parse_common_fields
 {
 	my ($month,$day,$time,$host,$type,@other) = @_;
-	
+
+	# Get current system time	
+	my $ctime = &format_time(localtime(time));
+
 	my $date = '';
 	if ($month =~ /(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)/) {
 		$date = "$1$2$3";
@@ -394,7 +398,7 @@ sub parse_common_fields
 		$f[2] = sprintf("%02d",$f[2]);
 		$time = "$f[0]$f[1]$f[2]";
 
-		if ("$date$time" > $CURRENT_TIME) {
+		if ("$date$time" > $ctime) {
 			# If log timestamp is in the future, use the given one 
 			if (!$CONFIG{DEFAULT_YEAR}) {
 				$date = ($current_year - 1) . sprintf("%02d",$MONTH_TO_NUM{"$month"}) . sprintf("%02d",$day);
@@ -408,7 +412,7 @@ sub parse_common_fields
 	my $line = join(' ', @other);
 	$line =~ s/^\[ID.*\] //;
 
-	return ("$date","$time",$host,$type, $line);
+	return ("$date","$time",$host,$type, $line, $ctime);
 }
 
 ####
@@ -416,7 +420,7 @@ sub parse_common_fields
 ####
 sub store_data
 {
-	my ($date,$time,$host,$type,$other) = @_;
+	my ($date,$time,$host,$type,$other, $ctime) = @_;
 
 	if (($CONFIG{MAILSCAN_NAME} || $CONFIG{CLAMD_NAME}) && ($type =~ /^$CONFIG{MAILSCAN_NAME}|$CONFIG{CLAMD_NAME}/i)) {
 		&parse_mailscanner("$date","$time",$host,$other);
@@ -433,7 +437,8 @@ sub store_data
 	} else {
 		&dprint("Skipping unknown syslog report => $date $time $host [$type]: $other") if ($CONFIG{DEBUG} > 1);
 	}
-	 
+
+	return $ctime;	 
 }
 
 ####
