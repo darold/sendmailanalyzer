@@ -286,7 +286,21 @@ INSTALLATION
             }
 
     If you are using rsyslog the file is named /etc/logrotate.d/rsyslog,
-    things must be written differently, but not so much.
+    things must be written differently, but not so much. For example:
+
+            postrotate
+                reload rsyslog >/dev/null 2>&1 || true
+                /bin/kill -HUP `cat /var/run/sendmailanalyzer.pid`  2>/dev/null || true
+            endscript
+
+    And if you have an operating system that use systemd, you can set the
+    following in the service file:
+
+            ExecStop=/usr/bin/pkill -TERM sendmailanalyzer
+
+    and in /etc/logrotate.d/syslog adding this to postrotate section:
+
+            /usr/bin/systemctl restart sendmailanalyzer.service > /dev/null 2>&1 || true
 
   Package install
     In the packaging/ directory you will find all scripts and file to
@@ -374,7 +388,7 @@ USAGE
 
             /bin/kill -HUP `cat /var/run/sendmailanalyzer.pid`
     or
-            /bin/kill -HUP sendmailanalyzer
+            /usr/bin/pkill -HUP sendmailanalyzer
 
     This will force sendmailanalyzer to reread his configuration file and
     reopen a pipe to the tail command on you mail log file. The originals
@@ -394,6 +408,10 @@ USAGE
 
             /etc/init.d/sendmailanalyzer restart /dev/null 2>&1 || true
 
+    or with systemd:
+
+            /usr/bin/systemctl restart sendmailanalyzer.service > /dev/null 2>&1 || true
+
     this must be in the postrotate section.
 
   Stopping SendmailAnalyzer
@@ -402,7 +420,7 @@ USAGE
 
             kill -TERM `cat /var/run/sendmailanalyzer.pid`'
     or
-            kill -TERM sendmailanalyzer
+            pkill -TERM sendmailanalyzer
 
     use the starter script. This will kill the current sendmailanalyzer
     process and the pipe to the tail command.
