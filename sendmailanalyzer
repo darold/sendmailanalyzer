@@ -452,7 +452,7 @@ sub parse_sendmail
 
 	# Skip unwanted Postfix lines
 	if ($str =~ m#^([^:\s]+): .*#) {
-		next if (exists $SKIPMSG{$1});
+		return if (exists $SKIPMSG{$1});
 	}
 
 	#### Store each relevant information per host and id
@@ -665,10 +665,13 @@ sub parse_sendmail
 		push(@{$AUTH{$host}{$authid}{date}},  $time_st);
 		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay(lc($2)));
 	# POSTFIX client origin
-	} elsif ($str =~ m#^([^:\s]+): client=(.*)#) {
+	} elsif ($str =~ m#^([^:\s]+): client=([^,]*)#) {
 		my $id = $1;
-		my $relay = lc($2);
-		$MSGID{$id}{relay} = &clean_relay($relay);
+		$MSGID{$id}{relay} = &clean_relay(lc($2));
+		# Get real origin when available
+		if ($str =~ m#^[^:\s]+: client=.*, orig_client=([^,]*)#) {
+			$MSGID{$id}{relay} = &clean_relay(lc($1));
+		}
 	# POSTFIX message id
 	} elsif ($str =~ m#^([^:\s]+): message-id=([^,]*)#) {
 		my $id = $1;
@@ -1099,6 +1102,34 @@ sub parse_sendmail
 			$REJECT{$host}{$id}{date} =  $time_st;
 			$REJECT{$host}{$id}{arg1} = &edecode($from);
 			$REJECT{$host}{$id}{to} = $to;
+		}
+
+	# POSTFIX spampd reject
+	} elsif ($str =~ m#^([^:\s]+): reject: header X-Spam-Flag: YES from ([^;]+); from=<([^>]+)> to=<([^>]+)> [^:]+: (.*)#) {
+		my $id = $1;
+		my $relay = &clean_relay(lc($2));
+		my $rule = 'spampd';
+		my $from = &edecode($3);
+		my $to = &edecode($4);
+		my $status = &clear_status($5);
+		return if ($CONFIG{EXCLUDE_TO} && ($to =~ /^$CONFIG{EXCLUDE_TO}$/));
+		$SPAM{$host}{$id}{relay} = $relay;
+		$SPAM{$host}{$id}{rule} = 'reject';
+		$SPAM{$host}{$id}{spam} = $status;
+		$SPAM{$host}{$id}{date} =  $time_st;
+		$SPAM{$host}{$id}{from} = $from;
+		$SPAM{$host}{$id}{to} = $to;
+		$SPAM{$host}{$id}{status} = $status;
+		if (!exists $FROM{$host}{$id}{date}) {
+			$FROM{$host}{$id}{date} =  $time_st;
+			$FROM{$host}{$id}{from} = $from;
+			$FROM{$host}{$id}{size} = 0;
+			$FROM{$host}{$id}{nrcpts} = 1;
+			$FROM{$host}{$id}{relay} = $relay;
+		}
+		if (!exists $TO{$host}{$id}{date}) {
+			push(@{$TO{$host}{$id}{date}},  $time_st);
+			push(@{$TO{$host}{$id}{to}}, $to);
 		}
 
 	# POSTFIX milter reject message
