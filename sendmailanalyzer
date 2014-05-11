@@ -509,6 +509,11 @@ sub parse_sendmail
 	} elsif ($str =~ m#^(SSL_connect error).*#) {
 		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
 		$SYSERR{$host}{"$date$time"}{message} = $1;
+	} elsif ($str =~ m#^warning: (.*)#) {
+		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
+		$SYSERR{$host}{"$date$time"}{message} = $1;
+		$SYSERR{$host}{"$date$time"}{message} =~ s/(address not listed for hostname) .*/$1/;
+		$SYSERR{$host}{"$date$time"}{message} =~ s/.*: ([^:]+)$/warning: $1/;
 	# POSTFIX remove message id
 	} elsif ($str =~ m#^([^:\s]+): removed$#) {
 		my $id = $1;
