@@ -1646,6 +1646,9 @@ sub free_space
 		my @found = `find $path -name "*.dat"`;
 		if ($#found >= 0) {
 			`tar czf $path/history.tar.gz \`find $path -name "*.dat"\` 2>/dev/null`;
+			if ($? != 0) {
+				 print STDERR "ERROR: can't create archive $path/history.tar.gz, reason: $!\n";
+			}
 		}
 	}
 	if (-e "$path/history.tar.gz" || (lc($CONFIG{FREE_SPACE}) eq 'delete')) {
