@@ -2320,6 +2320,9 @@ sub clear_status
 		$AMAVIS_ID{$1} = $id;
 	}
 
+	# Anonymize ip addresse in status message
+        $status =~ s/\[[a-fA-F0-9\.\:]+\]/.../g;
+
 	if ($status =~ /^Sent.*/i) {
 		return 'Sent';
 	} elsif ($status =~ /Deferred.*/i) {
@@ -2371,7 +2374,7 @@ sub clear_status
 		return $1;
         } elsif ($status =~ /(config error: mail loops back to me)/) {
 		return $1;
-        } elsif ($status =~ /(Authentication-Warning:).*\d+\.\d+\.\d+\.\d+(.*)/) {
+        } elsif ($status =~ /(Authentication-Warning:).*[a-fA-F0-9\.\:]+(.*)/) {
 		return "$1 $2";
         } elsif ($status =~ /(Authentication-Warning: [^:]+: [^\s]+ set sender) to .*(using -f)/) {
 		return "$1 $2";
@@ -2406,6 +2409,8 @@ sub clear_status
 		return $1;
 	} elsif ($status =~ /^\d\.\d\.\d (.*)/) {
 		return $1;
+	} elsif ($status =~ s/(IP name possibly forged).*/$1/) {
+		return $status;
 	}
 	$status =~ s/\.\.\..*//;
 	$status =~ s/ with .*//;
