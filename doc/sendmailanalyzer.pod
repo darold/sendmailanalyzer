@@ -632,7 +632,11 @@ the command line giving the year/month to proceed, for example:
 
 	sa_cache -s 'mailhost' -d "2008/06"
 
-repeat this command for each month.
+repeat this command for each month. 
+
+On huge MTA freeing space each month may not be enough. The WEEKLY_FREE_SPACE
+configuration directive will force sa_cache to free space each week when eanbled.
+By default it is disabled.
 
 =head1 CONFIGURATION
 

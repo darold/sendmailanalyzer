@@ -122,12 +122,15 @@ MAX_RCPT	25
 # Max size per message to report sender in byte
 MAX_SIZE	10000000
 
-# Select the freeing space method:
+# Select sa_cache freeing space method:
 # - delete: remove all daily data files before the current month
 # - archive: make a gzipped tarbal of all data files before the current month
 # - none: don't do anything. Need lot of space disk.
 # Default is delete.
 FREE_SPACE	archive
+
+# Force sa_cache to free space each week instead of monthly by default.
+WEEKLY_FREE_SPACE	0
 
 # Compute statistics and cache for a list of domain and display a link in the
 # front page for a per domain access. See DOMAIN_USER if you want to grant
