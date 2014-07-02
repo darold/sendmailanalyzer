@@ -212,6 +212,7 @@ sub read_config
 	if (!exists $CONFIG{SPAM_DETAIL}) {
 		$CONFIG{SPAM_DETAIL} = 1;
 	}
+	$CONFIG{WEEKLY_FREE_SPACE} ||= 0;
 
 }
 
@@ -1638,12 +1639,13 @@ sub compute_global_stats
 sub free_space
 {
 	my $path = shift;
+	my @days = @_;
 
 	return if ( !$CONFIG{FREE_SPACE} || (lc($CONFIG{FREE_SPACE}) eq 'none') );
 
 	if ( (lc($CONFIG{FREE_SPACE}) eq 'archive') && !-e "$path/history.tar.gz") {
-		print "Backuping data file into $path/history.tar.gz\n" if ($CONFIG{DEBUG});
-		my @found = `find $path -name "*.dat"`;
+		print "Backuping monthly data files into $path/history.tar.gz\n" if ($CONFIG{DEBUG});
+		my @found = `find $path -name "*.dat" 2>/dev/null`;
 		if ($#found >= 0) {
 			`tar czf $path/history.tar.gz \`find $path -name "*.dat"\` 2>/dev/null`;
 			if ($? != 0) {
@@ -1658,12 +1660,45 @@ sub free_space
 		foreach my $d (@ddirs) {
 			my @files = `ls $path/$d/*.dat 2>/dev/null`;
 			if ($#files >= 0) {
-				print "Removing data file $path/$d/*.dat\n" if ($CONFIG{DEBUG});
+				print "Removing monthly data file $path/$d/*.dat\n" if ($CONFIG{DEBUG});
 				`rm -f $path/$d/*.dat`;
 			}
 		}
 	}	
 }
+
+sub free_space_week
+{
+	my ($path, @days) = @_;
+
+	return if ( !$CONFIG{FREE_SPACE} || (lc($CONFIG{FREE_SPACE}) eq 'none') );
+
+	if ( (lc($CONFIG{FREE_SPACE}) eq 'archive') && !-e "$path/history.tar.gz") {
+		print "Backuping weekly data files into $path/history.tar.gz\n" if ($CONFIG{DEBUG});
+		my @found = ();
+		foreach my $d (@days) {
+			push(@found, `find $d -name "*.dat" 2>/dev/null`);
+		}
+		if ($#found >= 0) {
+			chomp(@found);
+			my $files = join(" ", @found);
+			`tar czf $path/history.tar.gz $files 2>/dev/null`;
+			if ($? != 0) {
+				 print STDERR "ERROR: can't create archive $path/history.tar.gz, reason: $!\n";
+			}
+		}
+	}
+	if (-e "$path/history.tar.gz" || (lc($CONFIG{FREE_SPACE}) eq 'delete')) {
+		foreach my $d (@days) {
+			my @files = `ls $d/*.dat 2>/dev/null`;
+			if ($#files >= 0) {
+				print "Removing weekly data files $d/*.dat\n" if ($CONFIG{DEBUG});
+				`rm -f $d/*.dat`;
+			}
+		}
+	}
+}
+
 
 ####
 # Day cache statistics
@@ -2466,8 +2501,10 @@ sub do_month_cache
 
 	if (!$DOMAIN && -e "$CONFIG{OUT_DIR}/$hostname/$year/$month/cache.pm" && ("$year$month" < $curmonth)) {
 		# reduce disk space storage by deleting or archiving data file
-		&free_space("$CONFIG{OUT_DIR}/$hostname/$year/$month");
-		return;
+		if (!$CONFIG{WEEKLY_FREE_SPACE}) {
+			&free_space("$CONFIG{OUT_DIR}/$hostname/$year/$month");
+			return;
+		}
 	}
 	if (-e "$CONFIG{OUT_DIR}/$hostname/$year/$month/cache.pm\U$DOMAIN\E" && ("$year$month" < $curmonth)) {
 		return;
@@ -4156,6 +4193,16 @@ sub clear_postfix
 sub do_week_cache
 {
 	my ($hostname, $DOMAIN, $year, $curyear, $week, $curweek) = @_;
+
+	if (!$DOMAIN && -e "$CONFIG{OUT_DIR}/$hostname/$year/weeks/$week/cache.pm" && ("$year$week" < "$curyear$curweek")) {
+		if ($CONFIG{WEEKLY_FREE_SPACE}) {
+			my @days = &get_week_boundaries($year, $week);
+			map { s/^/$CONFIG{OUT_DIR}\/$hostname\//; } @days;
+			# reduce disk space storage by deleting or archiving data file
+			&free_space_week("$CONFIG{OUT_DIR}/$hostname/$year/weeks/$week", @days);
+			return;
+		}
+	}
 
 	# This cache have been already build
 	if (-e "$CONFIG{OUT_DIR}/$hostname/$year/weeks/$week/cache.pm\U$DOMAIN\E" && ("$year$week" < "$curyear$curweek")) {
