@@ -252,6 +252,7 @@ sub dprint
 # Start reading maillog file
 ####
 my $OLD_LAST_PARSED = '';
+my $OLD_OFFSET      = 0;
 sub start_loop
 {
 	if ($CONFIG{FULL}) {
@@ -259,7 +260,9 @@ sub start_loop
 			if ( not open(IN, "$CONFIG{OUT_DIR}/$LAST_PARSE_FILE")) {
 				&logerror("Can't read file $CONFIG{OUT_DIR}/$LAST_PARSE_FILE: $!");
 			} else {
-				$OLD_LAST_PARSED = <IN>;
+				my $tmp = <IN>;
+				chomp($tmp);
+				($OLD_LAST_PARSED,$OLD_OFFSET) = split(/[\t]/, $tmp);
 				close(IN);
 			}
 		}
@@ -282,7 +285,18 @@ sub start_loop
 			print OUT "$KID $$";
 			close(OUT);
 		}
-
+		# Move to the last position
+		if ($OLD_OFFSET && ($CONFIG{LOG_FILE} !~ /\.gz/)) {
+			&dprint("Jumping to last log offset ($OLD_OFFSET).") if ($CONFIG{DEBUG} > 0);
+			my $ret = seek(SA_FILE, $OLD_OFFSET, 0);
+			if (!$ret) {
+				&dprint("Wrong offset reread from start of the log file.") if ($CONFIG{DEBUG} > 0);
+				seek(SA_FILE, 0, 0);
+				$OLD_OFFSET = 0;
+			}
+		} else {
+			$OLD_OFFSET = 0;
+		}
 		while (my $l = <SA_FILE>) {
 			chomp($l);
 			$l =~ s/ ID \d+ mail.\w//;
@@ -291,12 +305,26 @@ sub start_loop
 			$l = '';
 			# Only catch relevant logs
 			if ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\[:]/) {
+				my $tmpos = tell(SA_FILE);
 				if ($OLD_LAST_PARSED) {
+					# Store the last position in the log
 					# Line already parsed ? If yes, go to retrieve next log line
-					next if (&incremental_check($LAST_PARSED, $OLD_LAST_PARSED) != 0);
+					if (&incremental_check($LAST_PARSED, $OLD_LAST_PARSED, $OLD_OFFSET) != 0) {
+						# Search if this is really the same log file
+						if ($OLD_OFFSET && ($tmpos > $OLD_OFFSET)) {
+							&dprint("Data are more recent than the one at old offset, maybe the file has changed. Rereading from start of the log file.") if ($CONFIG{DEBUG} > 0);
+							seek(SA_FILE, 0, 0);
+							$OLD_OFFSET = 0;
+							$OLD_LAST_PARSED = ''; 
+						}
+						next;
+					}
 					# The line have not already been parsed so erase last date
 					# to not go back to this block again
 					$OLD_LAST_PARSED = ''; 
+				}
+				if ($CONFIG{LOG_FILE} !~ /\.gz/) {
+					$OLD_OFFSET = $tmpos;
 				}
 				# Extract common fields, store data in memory and retrieve current time
 				my $check_time = &store_data(&parse_common_fields(split(/\s+/, $LAST_PARSED)));
@@ -2207,8 +2235,8 @@ sub flush_data
 	if (not open(OUT, ">$CONFIG{OUT_DIR}/$LAST_PARSE_FILE") ) {
 		&logerror("Can't write to file $CONFIG{OUT_DIR}/$LAST_PARSE_FILE: $!");
 	} else {
-		&dprint("Writing last parsed line...");
-		print OUT $LAST_PARSED;
+		&dprint("Writing last parsed line and last log file reading offset...");
+		print OUT "$LAST_PARSED\t$OLD_OFFSET";
 		close(OUT);
 	}
 }
