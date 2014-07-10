@@ -523,7 +523,7 @@ USAGE
 
     On huge MTA freeing space each month may not be enough. The
     WEEKLY_FREE_SPACE configuration directive will force sa_cache to free
-    space each week when eanbled. By default it is disabled.
+    space each week when enabled. By default it is disabled.
 
 CONFIGURATION
     The default path to configuration file is /etc/sendmailanalyzer.conf If
