@@ -287,12 +287,17 @@ sub start_loop
 		}
 		# Move to the last position
 		if ($OLD_OFFSET && ($CONFIG{LOG_FILE} !~ /\.gz/)) {
-			&dprint("Jumping to last log offset ($OLD_OFFSET).") if ($CONFIG{DEBUG} > 0);
-			my $ret = seek(SA_FILE, $OLD_OFFSET, 0);
-			if (!$ret) {
-				&dprint("Wrong offset reread from start of the log file.") if ($CONFIG{DEBUG} > 0);
-				seek(SA_FILE, 0, 0);
+			if ((lstat($CONFIG{LOG_FILE}))[7] < $OLD_OFFSET) {
+				&dprint("Log file may have changed, rereading from start of the log file.") if ($CONFIG{DEBUG} > 0);
 				$OLD_OFFSET = 0;
+			} else {
+				&dprint("Jumping to last log offset ($OLD_OFFSET).") if ($CONFIG{DEBUG} > 0);
+				my $ret = seek(SA_FILE, $OLD_OFFSET, 0);
+				if (!$ret) {
+					&dprint("Wrong offset reread from start of the log file.") if ($CONFIG{DEBUG} > 0);
+					seek(SA_FILE, 0, 0);
+					$OLD_OFFSET = 0;
+				}
 			}
 		} else {
 			$OLD_OFFSET = 0;
