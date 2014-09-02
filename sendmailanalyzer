@@ -550,6 +550,9 @@ sub parse_sendmail
 		$SYSERR{$host}{"$date$time"}{message} = $1;
 		$SYSERR{$host}{"$date$time"}{message} =~ s/(address not listed for hostname) .*/$1/;
 		$SYSERR{$host}{"$date$time"}{message} =~ s/.*: ([^:]+)$/warning: $1/;
+	# Sendmail authid single message
+	} elsif ($str =~ m#^([^:\s]+): authid=#) {
+		return;
 	# POSTFIX remove message id
 	} elsif ($str =~ m#^([^:\s]+): removed$#) {
 		my $id = $1;
