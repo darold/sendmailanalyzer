@@ -24,6 +24,7 @@ use Getopt::Long;
 use POSIX qw(:sys_wait_h :errno_h :fcntl_h :signal_h);
 use MIME::Base64;
 use MIME::QuotedPrint;
+use IO::File;
 
 
 $VERSION     = '9.0';
@@ -63,6 +64,7 @@ my $INTERACTIVE = 0;
 my $HELP        = 0;
 my $LAST_PARSE_FILE = 'LAST_PARSED';
 my $PID_FILE    = 'sendmailanalyzer.pid';
+my $SA_PIPE     = new IO::File;
 
 # Global variable to store temporary parsed data
 my %SYSERR = ();
@@ -142,17 +144,15 @@ if ($SHOW_VER || $CONFIG{DEBUG}) {
 # Die cleanly on signal
 sub terminate
 {
-	close(SA_PIPE);
-	&dprint("Received terminating signal.");
+	close($SA_PIPE) if ($SA_PIPE >= 0);
 	&flush_data();
-	unlink("$CONFIG{PID_DIR}/$PID_FILE");
-	exit 0;
+	&dprint("Received terminating signal.", 1);
 }
 
 # Restart on signal
 sub restart_sa
 {
-	close(SA_PIPE);
+	close($SA_PIPE) if ($SA_PIPE >= 0);
 	&dprint("Received SIGHUP signal: reloading configuration file and reopening log file.");
 	&flush_data();
 	exec($^X, $PROGRAM, @ARGS) or die "FATAL: Couldn't restart: $!\n";
@@ -168,10 +168,16 @@ my $sigset_term = POSIX::SigSet->new();
 my $action_term = POSIX::SigAction->new('terminate', $sigset_term, &POSIX::SA_NODEFER);
 POSIX::sigaction(&POSIX::SIGTERM, $action_term);
 
-# Terminate on kill -2
+# Terminate on kill -9
 my $sigset_int = POSIX::SigSet->new();
 my $action_int = POSIX::SigAction->new('terminate', $sigset_int, &POSIX::SA_NODEFER);
-POSIX::sigaction(&POSIX::SIGTERM, $action_int);
+POSIX::sigaction(&POSIX::SIGKILL, $action_int);
+
+# Handle signals to die cleanly
+#$SIG{'HUP'} = \&restart_sa;
+#$SIG{'INT'} = \&terminate;
+#$SIG{'TERM'} = \&terminate;
+#$SIG{'CHLD'} = 'DEFAULT';
 
 my $CURRENT_TIME = &format_time(localtime(time));
 
@@ -243,9 +249,14 @@ sendmailanalyzer v$VERSION usage:
 ####
 sub dprint
 {
-    my $msg = shift;
+	my $msg = shift;
+	my $exit = shift;
 
-    print STDERR "DEBUG: $msg\n" if ($CONFIG{DEBUG});
+	print STDERR "DEBUG: $msg\n" if ($exit || $CONFIG{DEBUG});
+	if ($exit) {
+		unlink("$CONFIG{PID_DIR}/$PID_FILE");
+		exit 1;
+	}
 }
 
 ####
@@ -269,20 +280,18 @@ sub start_loop
 		&dprint("Parsing full $CONFIG{LOG_FILE}");
 		if ($CONFIG{LOG_FILE} !~ /\.gz/) {
 			if (!($KID = open(SA_FILE, "$CONFIG{LOG_FILE}"))) {
-				unlink("$CONFIG{PID_DIR}/$PID_FILE");
-				die "$0: cannot read $CONFIG{LOG_FILE}: $!\n";
+				&dprint("$0: cannot read $CONFIG{LOG_FILE}: $!", 1);
 			}
 		} else {
 			# Open a pipe to zcat program for compressed log
 			if (!($KID = open(SA_FILE, "$CONFIG{ZCAT_PROG} $CONFIG{LOG_FILE}|"))) {
-				unlink("$CONFIG{PID_DIR}/$PID_FILE");
-				die "$0: cannot read from pipe to \"$CONFIG{ZCAT_PROG} $CONFIG{LOG_FILE}\": $!\n";
+				&dprint("$0: cannot read from pipe to \"$CONFIG{ZCAT_PROG} $CONFIG{LOG_FILE}\": $!", 1);
 			}
 		}
 
 		# Write pid file
 		if (open(OUT, ">$CONFIG{PID_DIR}/$PID_FILE")) {
-			print OUT "$KID $$";
+			print OUT "$$";
 			close(OUT);
 		}
 		# Move to the last position
@@ -351,27 +360,26 @@ sub start_loop
 
 	# Daemon mode is not possible with compressed log file
 	if ($CONFIG{LOG_FILE} =~ /\.gz/) {
-		&dprint("Daemon mode is not possible with compressed log file");
-		unlink("$CONFIG{PID_DIR}/$PID_FILE");
-		exit 0;
+		&dprint("Daemon mode is not possible with compressed log file", 1);
 	}
 
 	&dprint("Opening pipe to $CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}");
 
 	# Open a pipe to the tail program
-	if ( !($KID = open(SA_PIPE, "$CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}|"))) {
-		unlink("$CONFIG{PID_DIR}/$PID_FILE");
-		die "$0: cannot read from pipe to \"$CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}\": $!\n";
+	if ( !($KID = $SA_PIPE->open("$CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}|"))) {
+		&dprint("$0: cannot read from pipe to \"$CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}\": $!");
 	}
 
 	# Write pid file
 	if (open(OUT, ">$CONFIG{PID_DIR}/$PID_FILE")) {
-		print OUT "$KID $$";
+		print OUT "$$";
 		close(OUT);
 	}
 
-	# Read each incoming line
-	while (my $l = <SA_PIPE>) {
+	# We'll need a non blocking read to be able to intercept signal
+	# when there's no new entry in the log file. But for now
+	# SIGTERM should be use to interrupt the blocking read.
+	while (my $l = <$SA_PIPE>) {
 		chomp($l);
 		$l =~ s/ ID \d+ mail.\w//;
 		next if ($l =~ /policy-spf|You are still greylisted/);
@@ -395,6 +403,7 @@ sub start_loop
 			%AMAVIS_ID = ();
 		}
 	}
+
 	&dprint("Flushing last data to disk...");
 	&flush_data();
 }
