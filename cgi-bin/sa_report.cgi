@@ -4023,9 +4023,11 @@ sub show_detail
 		print "BAD DETAIL TYPE\n";
 	}
 
-	print qq{<form><table align="center"><tr><td class="smalltitle">$search</td></tr></table><table>\n<tr><th>&nbsp;</th><th>$TRANSLATE{'Hour'}</th><th>Id</th>};
+	print qq{<form><table align="center"><tr><td class="smalltitle">$search</td></tr></table><table>\n<tr><th>&nbsp;</th><th>$TRANSLATE{'Hour'}</th>};
 	if ($type eq 'dsn') {
-		print qq{<th>$TRANSLATE{'Original Id'}</th><th>$TRANSLATE{'Original Recipient'}</th>};
+		print qq{<th>$TRANSLATE{'Original Id'}</th><th>Id</th>};
+	} else {
+		print qq{<th>Id</th>};
 	}
 	print qq{<th>$TRANSLATE{'Sender'}</th>};
 	print qq{<th>$TRANSLATE{'Size'}</th>} if (($type ne 'dsn') && ($type ne 'postgrey'));
@@ -4069,7 +4071,7 @@ sub show_detail
 		print qq{<tr valign="top"><td class="tdtopn">$line</td><td class="tdtopn">$lstat{$id}{hour}</td><td class="tdtopn">$id</td>};
 		if (($type eq 'dsn') && ($type ne 'postgrey')) {
 			$lstat{$id}{srcid} = &detail_link($hostname,$date,'sender','id',$lstat{$id}{srcid}, $hour);
-			print qq{<td class="tdtopn" nowrap="1">$lstat{$id}{srcid}</td><td class="tdtopn" nowrap="1">$lstat{$id}{orig_rcpt}</td>};
+			print qq{<td class="tdtopn" nowrap="1">$lstat{$id}{srcid}</td>};
 		}
 		print qq{<td class="tdtopn" nowrap="1">$lstat{$id}{sender}</td>};
 		print qq{<td class="tdtopn">$lstat{$id}{size}</td>} if (($type ne 'dsn') && ($type ne 'postgrey'));
@@ -4784,7 +4786,6 @@ sub get_dsn_detail
 	my ($path, $peri, $search, $hour) = @_;
 
 	my %local_stat = ();
-	my %sourceid = ();
 	my $file = "$path/dsn.dat";
 	if (open(IN, $file)) {
 		while (my $l = <IN>) {
@@ -4796,10 +4797,9 @@ sub get_dsn_detail
 			if ($peri eq 'dsnstatus') {
 				next if ($data[3] !~ /$search/);
 			}
-			$local_stat{$data[1]}{hour} = $data[0] if (!exists $local_stat{$data[1]}{hour});
-			push(@{$local_stat{$data[1]}{dsnstatus}}, $data[3]);
-			$local_stat{$data[1]}{srcid} = $data[2];
-			$sourceid{$data[2]} = $data[1];
+			$local_stat{$data[2]}{hour} = $data[0] if (!exists $local_stat{$data[2]}{hour});
+			push(@{$local_stat{$data[2]}{dsnstatus}}, $data[3]);
+			$local_stat{$data[2]}{srcid} = $data[1];
 		}
 		close(IN);
 	}
@@ -4833,17 +4833,13 @@ sub get_dsn_detail
 			$data[0] =~ /^(\d{2})/;
 			next if (($hour ne '') && ($1 != $hour));
 			next if ($data[4] =~ /Queued/);
-			if (exists $local_stat{$data[1]}) {
-				push(@{$local_stat{$data[1]}{rcpt}}, $data[2]);
-				push(@{$local_stat{$data[1]}{rcpt_relay}}, $data[3]);
-				push(@{$local_stat{$data[1]}{status}}, $data[4]);
-			} elsif (exists $sourceid{$data[1]}) {
-				$local_stat{$sourceid{$data[1]}}{orig_rcpt} = $data[2];
-			}
+			next if (!exists $local_stat{$data[1]});
+			push(@{$local_stat{$data[1]}{rcpt}}, $data[2]);
+			push(@{$local_stat{$data[1]}{rcpt_relay}}, $data[3]);
+			push(@{$local_stat{$data[1]}{status}}, $data[4]);
 		}
 		close(IN);
 	}
-	%sourceid = ();
 	foreach my $k (keys %local_stat) {
 		delete $local_stat{$k} if (!exists $local_stat{$k}{dsnstatus});
 	}
