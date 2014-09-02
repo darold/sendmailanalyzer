@@ -1041,10 +1041,13 @@ sub parse_sendmail
 			$GREYLIST{$id} = $to;
 			return;
 		}
+		$status = &clear_status($status);
 		push(@{$TO{$host}{$id}{date}},  $time_st);
 		push(@{$TO{$host}{$id}{to}}, $to);
-		push(@{$TO{$host}{$id}{status}}, &clear_status($status));
-
+		push(@{$TO{$host}{$id}{status}}, $status);
+		$REJECT{$host}{$id}{rule} = 'reject';
+		$REJECT{$host}{$id}{status} = $status;
+		$REJECT{$host}{$id}{date} =  $time_st;
 	# Add support to milter sender rejection
 	} elsif ($str =~ m#^([^:\s]+): Milter: from=(.*), reject=(\d+ \d+\.\d+\.\d+\s+.*)#) {
 		my $id = $1;
@@ -2450,6 +2453,10 @@ sub clear_status
         } elsif ($status =~ /(You are still greylisted)/i) {
 		return $1;
 	} elsif ($status =~ /\d{3} \d\.\d\.\d <[^>]+>[:\s]*(.*)/) {
+		return $1;
+	} elsif ($status =~ /^\d{3} \d\.\d\.\d (.*?) (has exceeded .*)/) {
+		return $2;
+	} elsif ($status =~ /^\d{3} \d\.\d\.\d (.*)/) {
 		return $1;
 	} elsif ($status =~ /^\d\.\d\.\d (.*)/) {
 		return $1;
