@@ -4469,7 +4469,7 @@ sub get_reject_detail
 		while (my $l = <IN>) {
 			chomp($l);
 			# Format: Hour:Id:Rule:Relay:Arg1:Status
-			my @data = split(/:/, $l);
+			my @data = split(/:/, $l, 6);
 			$data[0] =~ /^(\d{2})/;
 			next if (($hour ne '') && ($1 != $hour));
 			if ($peri eq 'rule') {

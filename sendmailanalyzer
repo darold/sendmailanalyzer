@@ -2454,7 +2454,6 @@ sub clear_status
 		return $1;
 	} elsif ($status =~ /\d{3} \d\.\d\.\d <[^>]+>[:\s\.]*(.*)/) {
 		my $str = $1;
-		$str =~ s/:.*//;
 		return $str;
 	} elsif ($status =~ /^\d{3} \d\.\d\.\d (.*?) (has exceeded .*)/) {
 		return $2;
