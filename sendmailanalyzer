@@ -980,7 +980,7 @@ sub parse_sendmail
 		my $reject = $5;
 		$arg1 =~ s/[<>]+//g;
 		# Test Sendmail DNSBL spam scan
-		if ($reject =~ /553 5\.3\.0/i) {
+		if (($reject =~ /553 5\.3\.0/i) || ($reject =~ /550 5\.7\.1/i)) {
 			$SPAM{$host}{$id}{relay} = $relay;
 			$SPAM{$host}{$id}{rule} = $rule;
 			$SPAM{$host}{$id}{spam} = 'DNSBL Spam blocked';
@@ -991,6 +991,7 @@ sub parse_sendmail
 				$SPAMDETAIL{$host}{$id}{type} = 'dnsbl';
 				$reject =~ s/.*(Spam blocked see: )/$1/;
 				$reject =~ s/.*(Spam blocked .* found in .*)/$1/;
+				$reject =~ s/.*Rejected: .* (listed at [^\s]+).*/$1/;
 				$SPAMDETAIL{$host}{$id}{spam} = $reject;
 			}
 		} else {
@@ -2453,8 +2454,7 @@ sub clear_status
         } elsif ($status =~ /(You are still greylisted)/i) {
 		return $1;
 	} elsif ($status =~ /\d{3} \d\.\d\.\d <[^>]+>[:\s\.]*(.*)/) {
-		my $str = $1;
-		return $str;
+		return $1;
 	} elsif ($status =~ /^\d{3} \d\.\d\.\d (.*?) (has exceeded .*)/) {
 		return $2;
 	} elsif ($status =~ /^\d{3} \d\.\d\.\d ([^\.]+)/) {
