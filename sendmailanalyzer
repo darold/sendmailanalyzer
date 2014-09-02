@@ -1258,6 +1258,8 @@ sub parse_sendmail
 	# Catch server TLS connections
 	} elsif ($str =~ m#(STARTTLS=[^,]+), relay=([^,]+), version=([^,]+), (verify=[^,]+), cipher=([^,]+), bits=([^,\s]+)#) {
 		push(@{$OTHER{$host}{$time_st}}, "$1, $4");
+	} elsif ($str =~ m#(STARTTLS=[^,]+), error:(.*), relay=([^,]+)#) {
+		push(@{$OTHER{$host}{$time_st}}, "$1, error: $2");
 	} else {
 		if ($str =~ /(\d{3} \d\.\d\.\d .*)/) {
 			$str = $1;
