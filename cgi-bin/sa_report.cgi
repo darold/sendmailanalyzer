@@ -1449,8 +1449,6 @@ sub get_dsn_stat
 {
 	my ($hostname, $year, $month, $day, $mon, $mday, $hour) = @_;
 
-	my %sourceid = ();
-
 	my $file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/dsn.dat";
 	open(IN, $file) || return;
 	while (my $l = <IN>) { 
@@ -1459,9 +1457,8 @@ sub get_dsn_stat
 		my @data = split(/:/, $l, 4);
 		$data[0] =~ /^(\d{2})/;
 		next if (($hour ne '') && ($1 != $hour));
-		$STATS{$data[1]}{dsnstatus} = $data[3];
-		$STATS{$data[1]}{srcid} = $data[2];
-		$sourceid{$data[2]} = $data[1];
+		$STATS{$data[2]}{dsnstatus} = $data[3];
+		$STATS{$data[2]}{srcid} = $data[1];
 		my $idx = $month;
 		if ($hour ne '') {
 			$data[0] =~ /(\d{2})\d{2}$/;
@@ -1472,7 +1469,7 @@ sub get_dsn_stat
 		} elsif ($mon ne '00') {
 			$idx = $day;
 		}
-		$STATS{$data[1]}{idx_dsn} = "$idx";
+		$STATS{$data[2]}{idx_dsn} = "$idx";
 	}
 	close(IN);
 
@@ -1521,8 +1518,6 @@ sub get_dsn_top_stat
 {
 	my ($hostname, $year, $month, $day, $mon, $mday, $hour) = @_;
 
-	my %sourceid = ();
-
 	my $file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/dsn.dat";
 	open(IN, $file) || return;
 	while (my $l = <IN>) { 
@@ -1531,8 +1526,8 @@ sub get_dsn_top_stat
 		my @data = split(/:/, $l, 4);
 		$data[0] =~ /^(\d{2})/;
 		next if (($hour ne '') && ($1 != $hour));
-		$STATS{$data[1]}{dsnstatus} = $data[3];
-		$sourceid{$data[2]} = $data[1];
+		$STATS{$data[2]}{dsnstatus} = $data[3];
+		$STATS{$data[2]}{srcid} = $data[1];
 		my $idx = $month;
 		if ($hour ne '') {
 			$data[0] =~ /(\d{2})\d{2}$/;
@@ -1543,7 +1538,7 @@ sub get_dsn_top_stat
 		} elsif ($mon ne '00') {
 			$idx = $day;
 		}
-		$STATS{$data[1]}{idx_dsn} = "$idx";
+		$STATS{$data[2]}{idx_dsn} = "$idx";
 	}
 	close(IN);
 
@@ -1556,9 +1551,9 @@ sub get_dsn_top_stat
 			my @data = split(/:/, $l);
 			$data[0] =~ /^(\d{2})/;
 			$data[2] ||= '<>';
-			next if (!exists $sourceid{$data[1]});
-			$STATS{$sourceid{$data[1]}}{sender} = $data[2];
-			$STATS{$sourceid{$data[1]}}{sender_relay} = $data[5];
+			next if (!exists $STATS{$data[1]});
+			$STATS{$data[1]}{sender} = $data[2];
+			$STATS{$data[1]}{sender_relay} = $data[5];
 		}
 		close(IN);
 	}
@@ -1570,10 +1565,10 @@ sub get_dsn_top_stat
 			# Format: Hour:Id:recipient:Relay:Status
 			my @data = split(/:/, $l);
 			$data[0] =~ /^(\d{2})/;
-			next if (!exists $sourceid{$data[1]});
+			next if (!exists $STATS{$data[1]});
 			next if ($data[4] eq 'Sent');
 			next if ($data[4] =~ /Queued/);
-			push(@{$STATS{$sourceid{$data[1]}}{rcpt}}, $data[2]);
+			push(@{$STATS{$data[1]}{rcpt}}, $data[2]);
 		}
 		close(IN);
 	}
@@ -3446,8 +3441,10 @@ sub compute_top_dsn
 {
 
 	foreach my $id (keys %STATS) {
-		next if ($DOMAIN && ($STATS{$STATS{$id}{srcid}}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS{$id}{rcpt}}));
+		next if ($DOMAIN && ($STATS{$id}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS{$id}{rcpt}}));
 		if (exists $STATS{$id}{dsnstatus}) {
+			$STATS{$id}{sender} = 'unknown' if (!exists $STATS{$id}{sender});
+			$STATS{$id}{sender_relay} = 'unknown' if (!exists $STATS{$id}{sender_relay});
 			$topdsn{dsnstatus}{$STATS{$id}{dsnstatus}}++;
 			$topdsn{sender}{$STATS{$id}{sender}}++;
 			$topdsn{relay}{$STATS{$id}{sender_relay}}++;
