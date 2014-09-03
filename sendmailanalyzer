@@ -2453,6 +2453,8 @@ sub clear_status
 		return $1;
         } elsif ($status =~ /(You are still greylisted)/i) {
 		return $1;
+        } elsif ($status =~ /(Domain of sender address) ([^\s]+) (.*)/i) {
+		return "$1 $3: $2";
 	} elsif ($status =~ /\d{3} \d\.\d\.\d <[^>]+>[:\s\.]*(.*)/) {
 		return $1;
 	} elsif ($status =~ /^\d{3} \d\.\d\.\d (.*?) (has exceeded .*)/) {
