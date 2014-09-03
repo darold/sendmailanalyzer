@@ -1858,6 +1858,7 @@ sub flush_data
 	
 	# Init greylisting temporary storage
 	%GREYLIST = ();
+	my %EXCLUDED = ();
 
 	# Save senders informations first
 	&dprint("Writing sender data to disk...");
@@ -1870,6 +1871,17 @@ sub flush_data
 			}
 			delete $SKIPMSG{$id};
 			if (exists $POSTFIX_PLUGIN_TEMP_DELIVERY{$id}) {
+				delete $FROM{$host}{$id};
+				next;
+			}
+			# Check from sender or sender relay exclusion
+			if ($CONFIG{EXCLUDE_FROM} && ($FROM{$host}{$id}{from} =~ /^$CONFIG{EXCLUDE_FROM}$/)) {
+				$EXCLUDED{$id} = 1;
+				delete $FROM{$host}{$id};
+				next;
+			}
+			if ($CONFIG{EXCLUDE_RELAY} && ($FROM{$host}{$id}{relay} =~ /^$CONFIG{EXCLUDE_RELAY}$/)) {
+				$EXCLUDED{$id} = 1;
 				delete $FROM{$host}{$id};
 				next;
 			}
@@ -1931,6 +1943,10 @@ sub flush_data
 	foreach my $host (keys %REJECT) {
 		my %rejected = ();
 		foreach my $id (keys %{$REJECT{$host}}) {
+			if (exists $EXCLUDED{$id}) {
+				delete $REJECT{$host}{$id};
+				next;
+			}
 			$REJECT{$host}{$id}{date} =~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/;
 			# Key: year/month/day, Format: Hour:Id:Rule:Relay:Arg1:Status
 			$rejected{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $REJECT{$host}{$id}{rule} . ':' . $REJECT{$host}{$id}{relay} . ':' . $REJECT{$host}{$id}{arg1} . ':' . $REJECT{$host}{$id}{status} . "\n";
@@ -1961,6 +1977,10 @@ sub flush_data
 	foreach my $host (keys %DSN) {
 		my %dsned = ();
 		foreach my $id (keys %{$DSN{$host}}) {
+			if (exists $EXCLUDED{$id}) {
+				delete $DSN{$host}{$id};
+				next;
+			}
 			next if ($DSN{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
 			# Key: year/month/day, Format: Hour:Id:SourceId:Status
 			$dsned{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $DSN{$host}{$id}{srcid} . ':' . $DSN{$host}{$id}{status} . "\n";
@@ -1994,6 +2014,10 @@ sub flush_data
 			if (exists $POSTFIX_PLUGIN_TEMP_DELIVERY{$id}) {
 				delete $TO{$host}{$id};
 				delete $POSTFIX_PLUGIN_TEMP_DELIVERY{$id};
+				next;
+			}
+			if (exists $EXCLUDED{$id}) {
+				delete $TO{$host}{$id};
 				next;
 			}
 			for (my $i = 0; $i <= $#{$TO{$host}{$id}{date}}; $i++) { 
@@ -2038,6 +2062,10 @@ sub flush_data
 	foreach my $host (keys %SPAM) {
 		my %spams = ();
 		foreach my $id (keys %{$SPAM{$host}}) {
+			if (exists $EXCLUDED{$id}) {
+				delete $SPAM{$host}{$id};
+				next;
+			}
 			next if ($SPAM{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
 			# Key: year/month/day, Format: Hour:Id:from:to:spam
 			$spams{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $SPAM{$host}{$id}{from} . ':' . $SPAM{$host}{$id}{to} . ':' . $SPAM{$host}{$id}{spam} . "\n";
@@ -2068,6 +2096,10 @@ sub flush_data
 	foreach my $host (keys %SPAMDETAIL) {
 		my %spamdetails = ();
 		foreach my $id (keys %{$SPAMDETAIL{$host}}) {
+			if (exists $EXCLUDED{$id}) {
+				delete $SPAMDETAIL{$host}{$id};
+				next;
+			}
 			next if (!$SPAMDETAIL{$host}{$id}{type});
 			next if ($SPAMDETAIL{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
 			# Key: year/month/day, Format: Hour:Id:type:score:cache:autolearn:spam
@@ -2102,6 +2134,10 @@ sub flush_data
 	foreach my $host (keys %POSTGREY) {
 		my %postgreys = ();
 		foreach my $id (keys %{$POSTGREY{$host}}) {
+			if (exists $EXCLUDED{$id}) {
+				delete $POSTGREY{$host}{$id};
+				next;
+			}
 			next if ($POSTGREY{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
 			# Key: year/month/day, Format: Hour:Id:relay:from:to:action:status
 			$postgreys{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $POSTGREY{$host}{$id}{relay} . ':' . $POSTGREY{$host}{$id}{from} . ':' . $POSTGREY{$host}{$id}{to} . ':' . $POSTGREY{$host}{$id}{action} . ':' . $POSTGREY{$host}{$id}{status} . "\n";
@@ -2132,6 +2168,10 @@ sub flush_data
 	foreach my $host (keys %VIRUS) {
 		my %viruses = ();
 		foreach my $id (keys %{$VIRUS{$host}}) {
+			if (exists $EXCLUDED{$id}) {
+				delete $VIRUS{$host}{$id};
+				next;
+			}
 			next if ($VIRUS{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
 			# Key: year/month/day, Format: Hour:Id:file:virus
 			$viruses{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $VIRUS{$host}{$id}{file} . ':' . $VIRUS{$host}{$id}{virus} . "\n";
@@ -2162,6 +2202,10 @@ sub flush_data
 	foreach my $host (keys %SYSERR) {
 		my %errors = ();
 		foreach my $id (keys %{$SYSERR{$host}}) {
+			if (exists $EXCLUDED{$id}) {
+				delete $SYSERR{$host}{$id};
+				next;
+			}
 			next if ($SYSERR{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
 			# Key: year/month/day, Format: Hour:Id:Error
 			$errors{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $SYSERR{$host}{$id}{message} . "\n";
@@ -2225,6 +2269,10 @@ sub flush_data
 	foreach my $host (keys %AUTH) {
 		my %authent = ();
 		foreach my $id (keys %{$AUTH{$host}}) {
+			if (exists $EXCLUDED{$id}) {
+				delete $AUTH{$host}{$id};
+				next;
+			}
 			for (my $i = 0; $i <= $#{$AUTH{$host}{$id}{date}}; $i++) { 
 				next if ($AUTH{$host}{$id}{date}[$i] !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
 				# Key: year/month/day, Format: date:id:relay:mech:type
