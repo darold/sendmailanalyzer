@@ -65,6 +65,8 @@ my $HELP        = 0;
 my $LAST_PARSE_FILE = 'LAST_PARSED';
 my $PID_FILE    = 'sendmailanalyzer.pid';
 my $SA_PIPE     = new IO::File;
+my $EXIM_REGEX  = qr/^(\d+\-\d+\-\d+) (\d+:\d+:\d+) ([A-Za-z0-9\-]+) ([\-\*=><]+) /;
+my $HOSTNAME    = '';
 
 # Global variable to store temporary parsed data
 my %SYSERR = ();
@@ -109,6 +111,7 @@ GetOptions (
 	'z|zcat=s' => \$CONFIG{ZCAT_PROG},
 	'y|year=s' => \$CONFIG{DEFAULT_YEAR},
 	'spamd=s' => \$CONFIG{SPAMD_NAME},
+	'hostname=s' => \$HOSTNAME,
 );
 
 &usage if ($HELP);
@@ -234,6 +237,7 @@ sendmailanalyzer v$VERSION usage:
 -z | --zcat zcat_prog  : path to the zcat command for compressed maillog.
                          Default /usr/bin/zcat.
      --spamd  name     : syslog Spamd program name. Default: spamd.
+     --hostname name   : set a hostname for exim logs. Default: unknown.
 };
 	exit 0;
 }
@@ -312,7 +316,7 @@ sub start_loop
 			$LAST_PARSED = $l;
 			$l = '';
 			# Only catch relevant logs
-			if ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\[:]/) {
+			if ( ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\[:]/) || ($LAST_PARSED =~ $EXIM_REGEX) ) {
 				my $tmpos = tell(SA_FILE);
 				if ($OLD_LAST_PARSED) {
 					# Store the last position in the log
@@ -381,7 +385,7 @@ sub start_loop
 		$l = '';
 		# Only catch relevant logs
 		my $check_time = '';
-		if ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\[]/) {
+		if ( ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\[]/) || ($LAST_PARSED =~ $EXIM_REGEX) )  {
 			# Extract common fields and store data in memory
 			$check_time = &store_data(&parse_common_fields(split(/\s+/, $LAST_PARSED)));
 		} else {
@@ -420,6 +424,14 @@ sub parse_common_fields
 		$host = $day;
 		$type = $time;
 		$time = "$4$5$6";
+	} elsif ($month =~ /(\d+)-(\d+)-(\d+)/) {
+		$date = "$1$2$3";
+		unshift(@other, $type);
+		$type = $host;
+		$host = $time;
+		if ($day =~ /(\d+):(\d+):(\d+)/) {
+			$time = "$1$2$3";
+		}
 	} else {
 		my $current_year = 0;
 		if ($CONFIG{DEFAULT_YEAR}) {
@@ -448,7 +460,7 @@ sub parse_common_fields
 	my $line = join(' ', @other);
 	$line =~ s/^\[ID.*\] //;
 
-	return ("$date","$time",$host,$type, $line, $ctime);
+	return ($date,$time,$host,$type,$line,$ctime);
 }
 
 ####
@@ -456,9 +468,11 @@ sub parse_common_fields
 ####
 sub store_data
 {
-	my ($date,$time,$host,$type,$other, $ctime) = @_;
+	my ($date,$time,$host,$type,$other,$ctime) = @_;
 
-	if (($CONFIG{MAILSCAN_NAME} || $CONFIG{CLAMD_NAME}) && ($type =~ /^$CONFIG{MAILSCAN_NAME}|$CONFIG{CLAMD_NAME}/i)) {
+	if ($type =~ /^[<=>\*\-]+$/) {
+		&parse_exim("$date","$time",$host,$type,$other);
+	} elsif (($CONFIG{MAILSCAN_NAME} || $CONFIG{CLAMD_NAME}) && ($type =~ /^$CONFIG{MAILSCAN_NAME}|$CONFIG{CLAMD_NAME}/i)) {
 		&parse_mailscanner("$date","$time",$host,$other);
 	} elsif ($CONFIG{AMAVIS_NAME} && ($type =~ /^$CONFIG{AMAVIS_NAME}/i)) {
 		&parse_amavis("$date","$time",$host,$other);
@@ -475,6 +489,62 @@ sub store_data
 	}
 
 	return $ctime;	 
+}
+
+sub parse_exim
+{
+
+	my ($date,$time,$id,$type,$other) = @_;
+
+	my $time_st = "$date$time";
+	my $host = $HOSTNAME || 'unknown';
+
+	if ($type eq '<=') {
+		if ($other =~ m#^(.*?) H=(.*?) P=.* S=(\d+) id=(.*)#) {
+			my $size = $3;
+			my $msgid = $4;
+			my $relay = &clean_relay(lc($2));
+			$FROM{$host}{$id}{from} = &edecode($1);
+			$msgid =~ s/[<>]//g;
+			$FROM{$host}{$id}{date} =  $time_st;
+			$FROM{$host}{$id}{size} = $size;
+			$FROM{$host}{$id}{nrcpts} = 1;
+			$FROM{$host}{$id}{msgid} = $msgid;
+			$FROM{$host}{$id}{relay} = $relay;
+		}
+	} elsif ($type =~ /^(=|-)>$/) {
+		if ($other =~ m#^(.*?) R=(.*?) T=(.*?) H=(.*)#) {
+			my $to = &edecode($1);
+			my $relay = &clean_relay(lc($4));
+			if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
+				return;
+			}
+			next if ($CONFIG{EXCLUDE_TO} && ($to =~ /^$CONFIG{EXCLUDE_TO}$/));
+			push(@{$TO{$host}{$id}{date}},  $time_st);
+			push(@{$TO{$host}{$id}{relay}}, $relay);
+			push(@{$TO{$host}{$id}{to}}, $to);
+			push(@{$TO{$host}{$id}{status}}, 'Sent');
+		}
+	} elsif ($type eq '==') {
+		if ($other =~ m#^(.*?) R=(.*?) T=([^:]+): (.*)#) {
+                        $REJECT{$host}{$id}{relay} = $FROM{$host}{$id}{relay};
+                        $REJECT{$host}{$id}{status} = &clear_status($2);
+                        $REJECT{$host}{$id}{date} =  $time_st;
+                        $REJECT{$host}{$id}{arg1} = &edecode($1);
+			my $rule = $3;
+			$rule =~ s/\s*\(.*//;
+                        $REJECT{$host}{$id}{rule} = $rule;
+		}
+	} elsif ($type eq '**') {
+		if ( !exists $REJECT{$host}{$id}{rule} && ($other =~ m#^([^:]+): (.*)#) ) {
+                        $REJECT{$host}{$id}{relay} = $FROM{$host}{$id}{relay};
+                        $REJECT{$host}{$id}{rule} = 'error';
+                        $REJECT{$host}{$id}{status} = &clear_status($2);
+                        $REJECT{$host}{$id}{date} =  $time_st;
+                        $REJECT{$host}{$id}{arg1} = &edecode($1);
+		}
+	}
+
 }
 
 ####
