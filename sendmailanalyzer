@@ -65,7 +65,7 @@ my $HELP        = 0;
 my $LAST_PARSE_FILE = 'LAST_PARSED';
 my $PID_FILE    = 'sendmailanalyzer.pid';
 my $SA_PIPE     = new IO::File;
-my $EXIM_REGEX  = qr/^(\d+\-\d+\-\d+) (\d+:\d+:\d+) ([A-Za-z0-9\-]+) ([\-\*=><]+) /;
+my $EXIM_REGEX  = qr/^(\d+\-\d+\-\d+) (\d+:\d+:\d+) ([A-Za-z0-9]{6}\-[A-Za-z0-9]{6}\-[A-Za-z0-9]{2}) ([\-\*=><]+) /;
 my $HOSTNAME    = '';
 
 # Global variable to store temporary parsed data
