@@ -270,10 +270,21 @@ SPAMD_NAME	spamd
 
 # Pipe separated list of destination email address that should be excluded
 # from the report. They will not be reported into data files too. The value
-# should be a valid regex, the addresses will be search in all destination
+# should be a valid regex, the addresses will be search in all destination
 # adresses like \$TO =~ /^\$EXCLUDE_TO\$/
 EXCLUDE_TO	bcc-addr1\@domain1.com|bcc-addr2\@domain2.com
 
+# Pipe separated list of sender email address that should be excluded
+# from the report. They will not be reported into data files too. The value
+# should be a valid regex, the addresses will be search in all senders
+# adresses like \$FROM =~ /^\$EXCLUDE_FROM\$/
+EXCLUDE_FROM	addr1\@domain1.com|addr2\@domain2.com
+
+# Pipe separated list of sender relay ip addresses that should be excluded
+# from the report. They will not be reported into data files too. The value
+# should be a valid regex, the addresses will be search in all senders relay
+# ip adresses like \$RELAY =~ /^\$EXCLUDE_RELAY\$/
+EXCLUDE_RELAY	addr1\@domain1.com|addr2\@domain2.com
 };
 close(OUTCFG);
 
