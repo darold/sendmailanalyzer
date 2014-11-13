@@ -88,7 +88,7 @@ make
 make install DESTDIR=$PKG 
 # Please note that some software use INSTALL_ROOT=$PKG or prefix=$PKG/usr or install_root=$PKG ...
 
-DOC="Change* INSTALL README TODO README.RPM $PNAME.conf"
+DOC="Change* INSTALL README TODO $PNAME.conf"
 
 # Install a slack-desc
 mkdir -p $PKG/install
