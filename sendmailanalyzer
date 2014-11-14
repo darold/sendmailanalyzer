@@ -148,7 +148,7 @@ if ($SHOW_VER || $CONFIG{DEBUG}) {
 sub terminate
 {
 	close($SA_PIPE) if ($SA_PIPE >= 0);
-	&flush_data();
+	&flush_data(1);
 	&dprint("Received terminating signal.", 1);
 }
 
@@ -157,7 +157,7 @@ sub restart_sa
 {
 	close($SA_PIPE) if ($SA_PIPE >= 0);
 	&dprint("Received SIGHUP signal: reloading configuration file and reopening log file.");
-	&flush_data();
+	&flush_data(1);
 	exec($^X, $PROGRAM, @ARGS) or die "FATAL: Couldn't restart: $!\n";
 }
 
@@ -403,7 +403,7 @@ sub start_loop
 	}
 
 	&dprint("Flushing last data to disk...");
-	&flush_data();
+	&flush_data(1);
 }
 
 ####
@@ -662,31 +662,42 @@ sub parse_sendmail
 		}
 	# Parse spam found by postfix/policyd-weight
 	} elsif ($str =~ m#decided action=DUNNO\s+(.*); rate: ([^;]+); <client=([^>]+)> <helo=([^>]+)> <from=([^>]+)> <to=([^>]+)>; delay.*#) {
+		my $spam = $1;
+		my $score = $2;
+		my $relay = $3;
+		my $from = $5;
+		my $to = $6;
 		my $id = &get_uniqueid();
+
 		$SPAM{$host}{$id}{spam} = 'policydweight';
 		$SPAM{$host}{$id}{date} =  $time_st;
-		$SPAM{$host}{$id}{relay} = &clean_relay($3);
-		$SPAM{$host}{$id}{from} = &edecode($5);
-		$SPAM{$host}{$id}{to} = &edecode($6);
+		$SPAM{$host}{$id}{relay} = &clean_relay($relay);
+		$SPAM{$host}{$id}{from} = &edecode($from);
+		$SPAM{$host}{$id}{to} = &edecode($to);
 		if ($CONFIG{SPAM_DETAIL}) {
 			$SPAMDETAIL{$host}{$id}{date} =  $time_st;
 			$SPAMDETAIL{$host}{$id}{type} = 'policydweight';
-			$SPAMDETAIL{$host}{$id}{spam} = $1;
-			$SPAMDETAIL{$host}{$id}{score} = $2;
+			$SPAMDETAIL{$host}{$id}{spam} = $spam;
+			$SPAMDETAIL{$host}{$id}{score} = $score;
 		}
 	# Parse spam found in cache by postfix/policyd-weight
 	} elsif ($str =~ m#decided action=DUNNO\s+(.*); rate: ([^;]+); <client=([^>]+)> <helo=([^>]+)> <from=([^>]+)> <to=([^>]+)>; delay.*#) {
+		my $spam = $1;
+		my $score = $2;
+		my $relay = $3;
+		my $from = $5;
+		my $to = $6;
 		my $id = &get_uniqueid();
 		$SPAM{$host}{$id}{spam} = 'policydweight';
 		$SPAM{$host}{$id}{date} =  $time_st;
-		$SPAM{$host}{$id}{relay} = &clean_relay($3);
-		$SPAM{$host}{$id}{from} = &edecode($5);
-		$SPAM{$host}{$id}{to} = &edecode($6);
+		$SPAM{$host}{$id}{relay} = &clean_relay($relay);
+		$SPAM{$host}{$id}{from} = &edecode($from);
+		$SPAM{$host}{$id}{to} = &edecode($to);
 		if ($CONFIG{SPAM_DETAIL}) {
 			$SPAMDETAIL{$host}{$id}{date} =  $time_st;
 			$SPAMDETAIL{$host}{$id}{type} = 'policydweight';
-			$SPAMDETAIL{$host}{$id}{spam} = $1;
-			$SPAMDETAIL{$host}{$id}{score} = $2;
+			$SPAMDETAIL{$host}{$id}{spam} = $spam;
+			$SPAMDETAIL{$host}{$id}{score} = $score;
 		}
 	# Parse spam found by dnsbl-milter
 	} elsif ($str =~ m#^([^:\s]+): Milter: from=([^,]+), reject=(.*)#) {
@@ -1062,7 +1073,7 @@ sub parse_sendmail
 				$reject =~ s/.*(Spam blocked see: )/$1/;
 				$reject =~ s/.*(Spam blocked .* found in .*)/$1/;
 				$reject =~ s/.*Rejected: .* (listed at [^\s]+).*/$1/;
-				$SPAMDETAIL{$host}{$id}{spam} = $reject;
+				$SPAMDETAIL{$host}{$id}{spam} = &clear_status($reject);
 			}
 		} else {
 			$REJECT{$host}{$id}{relay} = $relay;
@@ -1802,25 +1813,38 @@ sub parse_spamd
 	#### Store each relevant information per date and ids
 	if ($str =~ /result: Y ([^\s]+) - (.*) scantime=.*mid=<(.*)>,.*autolearn=(.*)/) {
 
+		my $score = $1;
+		my $spam = $2;
+		my $msgid = $3;
+		my $autolearn = $4;
+
 		my $id = &get_uniqueid();
-		if ($CONFIG{SPAM_DETAIL}) {
-			$SPAMDETAIL{$host}{$id}{type} = 'spamdmilter';
-			$SPAMDETAIL{$host}{$id}{score} = $1;
-			$SPAMDETAIL{$host}{$id}{spam} = $2;
-			$SPAMDETAIL{$host}{$id}{date} =  $time_st;
-			$SPAMDETAIL{$host}{$id}{mid} = $3;
-			$SPAMDETAIL{$host}{$id}{autolearn} = $4;
-		}
 
 		$SPAM{$host}{$id}{spam} = 'spamd';
 		$SPAM{$host}{$id}{date} =  $time_st;
-		$SPAM{$host}{$id}{mid} = $3;
+		$SPAM{$host}{$id}{mid} = $msgid;
+
+		if ($CONFIG{SPAM_DETAIL}) {
+			$SPAMDETAIL{$host}{$id}{type} = 'spamdmilter';
+			$SPAMDETAIL{$host}{$id}{score} = $score;
+			$SPAMDETAIL{$host}{$id}{spam} = $spam;
+			$SPAMDETAIL{$host}{$id}{date} =  $time_st;
+			$SPAMDETAIL{$host}{$id}{mid} = $msgid;
+			$SPAMDETAIL{$host}{$id}{autolearn} = $autolearn;
+		}
+
 		foreach my $mid (keys %{$FROM{$host}}) {
-			if ($FROM{$host}{$mid}{msgid} eq $SPAM{$host}{$id}{mid}) {
+
+			next if (!exists $FROM{$host}{$mid}{msgid});
+
+			# Some message id can be truncated in from log and full in spamd message
+			if ($SPAM{$host}{$id}{mid} =~ /^\Q$FROM{$host}{$mid}{msgid}\E/) {
+
 				$SPAM{$host}{$mid}{from} = $FROM{$host}{$mid}{sender};
 				$SPAM{$host}{$mid}{spam} = $SPAM{$host}{$id}{spam};
 				$SPAM{$host}{$mid}{date} = $SPAM{$host}{$id}{date};
-				$SPAM{$host}{$mid}{mid}  = $mid;
+				$SPAM{$host}{$mid}{mid}  = $SPAM{$host}{$id}{mid};
+				$FROM{$host}{$mid}{msgid} = $SPAM{$host}{$id}{mid};
 				delete $SPAM{$host}{$id};
 				if ($CONFIG{SPAM_DETAIL}) {
 					$SPAMDETAIL{$host}{$mid}{type} = 'spamdmilter';
@@ -1918,6 +1942,8 @@ sub format_time
 ####
 sub flush_data
 {
+	my $final = shift;
+
 	# In incremental mode if there's still no line parsed get out of there
 	return if ($OLD_LAST_PARSED ne '');
 
@@ -1936,10 +1962,6 @@ sub flush_data
 	foreach my $host (keys %FROM) {
 		my %senders = ();
 		foreach my $id (keys %{$FROM{$host}}) {
-			foreach (keys %MSGID) {
-				delete $MSGID{$_} if ($MSGID{$_}{id} eq $id);
-			}
-			delete $SKIPMSG{$id};
 			if (exists $POSTFIX_PLUGIN_TEMP_DELIVERY{$id}) {
 				delete $FROM{$host}{$id};
 				next;
@@ -1955,6 +1977,10 @@ sub flush_data
 				delete $FROM{$host}{$id};
 				next;
 			}
+			foreach (keys %MSGID) {
+				delete $MSGID{$_} if ($MSGID{$_}{id} eq $id);
+			}
+			delete $SKIPMSG{$id};
 
 			next if ($FROM{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
 			# Key: year/month/day, Format: Hour:Id:Sender:Size:Nrcpts:Relay
@@ -2489,6 +2515,9 @@ sub clear_status
 	# Anonymize ip addresse in status message
         $status =~ s/\[[a-fA-F0-9\.\:]+\]/.../g;
 
+	$status =~ s/(IP name possibly forged).*/$1/;
+	$status =~ s/(IP name lookup failed).*/$1/;
+
 	if ($status =~ /^Sent.*/i) {
 		return 'Sent';
 	} elsif ($status =~ /Deferred.*/i) {
@@ -2583,8 +2612,6 @@ sub clear_status
 		return $str;
 	} elsif ($status =~ /^\d\.\d\.\d (.*)/) {
 		return $1;
-	} elsif ($status =~ s/(IP name possibly forged).*/$1/) {
-		return $status;
 	}
 	$status =~ s/\.\.\..*//;
 	$status =~ s/ with .*//;
