@@ -860,7 +860,6 @@ sub parse_sendmail
 		} elsif (exists $REJECT{$host}{$id} && !$size) {
 			$REJECT{$host}{$id}{arg1} = &edecode($from);
 			$REJECT{$host}{$id}{relay} = $relay;
-			return;
 		}
 		$FROM{$host}{$id}{date} =  $time_st;
 		$FROM{$host}{$id}{from} = &edecode($from);
