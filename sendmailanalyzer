@@ -1578,8 +1578,7 @@ sub parse_amavis
 			$SPAMDETAIL{$host}{$id}{score}= $score if ($score ne '-');
 		}
 
-
-	} elsif ($str =~ /(Passed|Blocked) INFECTED \(([^\)]*)\), (.*) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*,(.*) Message-ID: [<]*([^,>]+)[>]*, /) {
+	} elsif ($str =~ /(Passed|Blocked) INFECTED \(([^\)]*)\)[^,]*, (.*) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*,(.*) Message-ID: [<]*([^,>]+)[>]*, /) {
 		my $virus = $2;
 		my $relay = lc($3);
 		my $from = $4;
@@ -1589,6 +1588,7 @@ sub parse_amavis
 		if ($queue_id =~ /Queue-ID: ([^,]+),/) {
 			$id = $1;
 		}
+
 		$VIRUS{$host}{$id}{file} = 'Inline';
 		$VIRUS{$host}{$id}{virus} = $virus;
 		$VIRUS{$host}{$id}{from} = $from;
