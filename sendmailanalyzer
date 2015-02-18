@@ -872,11 +872,18 @@ sub parse_sendmail
 		my $id = $1;
 		my $to = &edecode($2);
 		my $relay = &clean_relay(lc($3));
+		my $status = &clear_status($4, $id);
 		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
 			return;
 		}
-		my $status = &clear_status($4, $id);
-		$status = 'Sent' if ($status eq 'sent'); 
+		# Store DSN id mapping
+		if ($status eq 'Bounced') {
+			$DSN{$host}{$id}{srcid} = $id;
+			$DSN{$host}{$id}{status} = $status;
+			$DSN{$host}{$id}{date} =  $time_st;
+		} else {
+			$status = 'Sent' if ($status eq 'sent');
+		}
 		delete $TO{$host}{$id}{queue_date};
 		delete $TO{$host}{$id}{queue_to};
 		foreach my $t (split(/,/, $to)) {
