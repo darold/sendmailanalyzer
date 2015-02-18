@@ -1185,7 +1185,7 @@ sub parse_sendmail
 		$FROM{$host}{$id}{nrcpts} = 1;
 		$FROM{$host}{$id}{relay} = 'localhost';
 	# POSTFIX reject messages
-	} elsif ($str =~ m#^([^:\s]+): reject: RCPT from ([^\s]+) (.*) from=<([^>]+)>[,]* to=<([^>]+)>#) {
+	} elsif ($str =~ m#^([^:\s]+): reject: RCPT from ([^\s]+) (.*) from=<([^>]*)>[,]* to=<([^>]+)>#) {
 		my $relay = &clean_relay(lc($2));
 		my $reject = $3;
 		my $from = $4;
@@ -1233,7 +1233,7 @@ sub parse_sendmail
 		}
 
 	# POSTFIX spampd reject
-	} elsif ($str =~ m#^([^:\s]+): reject: header X-Spam-Flag: YES from ([^;]+); from=<([^>]+)> to=<([^>]+)> [^:]+: (.*)#) {
+	} elsif ($str =~ m#^([^:\s]+): reject: header X-Spam-Flag: YES from ([^;]+); from=<([^>]*)> to=<([^>]+)> [^:]+: (.*)#) {
 		my $id = $1;
 		my $relay = &clean_relay(lc($2));
 		my $rule = 'spampd';
@@ -1261,7 +1261,7 @@ sub parse_sendmail
 		}
 
 	# POSTFIX milter reject message
-	} elsif ($str =~ m#^([^:\s]+): milter-reject: END-OF-MESSAGE from ([^\s]+) ([^;]+); from=<([^>]+)>[,]* to=<([^>]+)>#) {
+	} elsif ($str =~ m#^([^:\s]+): milter-reject: END-OF-MESSAGE from ([^\s]+) ([^;]+); from=<([^>]*)>[,]* to=<([^>]+)>#) {
 		my $relay = &clean_relay(lc($2));
 		my $rule = 'milter-reject';
 		my $status = $3;
