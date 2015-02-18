@@ -1165,7 +1165,7 @@ sub show_stats
 			} elsif ($type eq 'topsender') {
 				# Get sender statistics
 				&get_sender_stat($hostname,$year,$m,$d,$mon,$mday,$hour);
-				&get_recipient_stat($hostname,$year,$m,$d,$mon,$mday,$hour) if ($DOMAIN);
+				&get_recipient_stat($hostname,$year,$m,$d,$mon,$mday,$hour);
 			} elsif ($type eq 'toprecipient') {
 				# Get recipient statistics
 				&get_sender_stat($hostname,$year,$m,$d,$mon,$mday,$hour) if ($DOMAIN);
@@ -3032,6 +3032,8 @@ sub compute_top_sender
 {
 	foreach my $id (keys %STATS) {
 		next if ($DOMAIN && ($STATS{$id}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS{$id}{rcpt}}));
+		# Only compute top sender on sent messages
+		next if (!grep(/Sent/, @{$STATS{$id}{status}}));
 		$topsender{email}{$STATS{$id}{sender}}++;
 		if ($STATS{$id}{sender} =~ /\@(.*)/) {
 			$topsender{domain}{$1}++;

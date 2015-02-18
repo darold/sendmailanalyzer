@@ -654,7 +654,7 @@ sub compute_top_stats
 				push(@{$topmaxrcpt{$STATS->{$id}{nrcpt}}{sender}}, $STATS->{$id}{sender});
 				push(@{$topmaxrcpt{$STATS->{$id}{nrcpt}}{sa_id}}, $id);
 			}
-			if ($STATS->{$id}{sender}) {
+			if ($STATS->{$id}{sender} && grep(/Sent/, @{$STATS->{$id}{status}})) {
 				my $sender = $STATS->{$id}{sender};
 				$topsender{email}{$sender}++;
 				my $dom = $sender || '';
