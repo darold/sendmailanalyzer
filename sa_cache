@@ -545,13 +545,13 @@ sub do_hour_cache
 			while (my $l = <IN>) { 
 				chomp($l);
 				# Format: Hour:FAIL=count;NO=count,OK=count
-				@data = split(/:/, $l);
+				@data = split(/:/, $l, 2);
 				my $hms = shift(@data);
 				$hms =~ /^(\d{2})/;
 				next if ($1 ne $hour);
 				my %verify = split(/[=;]/, $data[0]);
 				foreach my $v (keys %verify) {
-					$localstat{starttls}{$hms}{$v} = $verify{$v};
+					$localstat{STARTTLS}{$v} += $verify{$v};
 				}
 			}
 			close(IN);
@@ -1657,9 +1657,10 @@ sub compute_global_stats
 
 		print OUT "\%::starttls = (\n";
 		foreach my $k (keys %starttls) {
-			print OUT "\t'$k' => '$starttls{$k}',";
+			my $slbl = $k;
+			$slbl =~ s/'/\\'/g;
+			print OUT "\t'$slbl' => '$starttls{$k}',";
 		}
-		print OUT "},\n";
 		print OUT ");\n\n";
 		%starttls = ();
 
@@ -1767,6 +1768,7 @@ sub do_day_cache
 	my %localtopauth = ();
 	my %localpostgrey = ();
 	my %localtoppostgrey = ();
+	my %localstarttls = ();
 	my $lbls = '';
 	my %authval = ();
 	foreach my $hour ("00" .. "23") {
@@ -1937,6 +1939,10 @@ sub do_day_cache
 			foreach my $t (keys %localauth) {
 				$authval{$t} .= ($localauth{$t}{values}{"$hour"} || 0) . ':';
 			}
+			foreach my $k (keys %starttls) {
+			       $localstarttls{$k} += $starttls{$k};
+			}
+			%starttls = ();
 		}
 	}
 	foreach my $t (keys %localauth) {
@@ -2106,6 +2112,15 @@ sub do_day_cache
 		}
 		print OUT ");\n\n";
 		%localGLOBAL_STATUS = ();
+
+		print OUT "\%::starttls = (\n";
+		foreach my $v (sort keys %localstarttls) {
+			my $slbl = $v;
+			$slbl =~ s/'/\\'/g;
+			print OUT "'$slbl' => '$localstarttls{$v}',\n";
+		}
+		print OUT ");\n\n";
+		%localstarttls = ();
 
 		my $elbls = 'Ext -> Int:Ext -> Ext:Int -> Int:Int -> Ext';
 		print OUT "\%::delivery = (\n";
@@ -4263,6 +4278,7 @@ sub do_week_cache
 	my %localtopspamdetail = ();
 	my %localauth = ();
 	my %localtopauth = ();
+	my %localstarttls = ();
 	my $lbls = '';
 	my %authval = ();
 	&clean_globals();
@@ -4356,6 +4372,11 @@ sub do_week_cache
 				$localGLOBAL_STATUS{$k} += $GLOBAL_STATUS{$k};
 			}
 			%GLOBAL_STATUS = ();
+			foreach my $k (keys %starttls) {
+				$localstarttls{$k} += $starttls{$k};
+			}
+			%starttls = ();
+
 			foreach my $k (keys %delivery) {
 				if (!grep(/^$k$/, 'lbls','x_label')) {
 				       $localdelivery{$k} += $delivery{$k};
@@ -4595,6 +4616,15 @@ sub do_week_cache
 		}
 		print OUT ");\n\n";
 		%localGLOBAL_STATUS = ();
+
+		print OUT "\%::starttls = (\n";
+		foreach my $k (keys %localstarttls) {
+			my $slbl = $k;
+			$slbl =~ s/'/\\'/g;
+			print OUT "'$slbl' => '$localstarttls{$k}',\n";
+		}
+		print OUT ");\n\n";
+		%localstarttls = ();
 
 		my $elbls = 'Ext -> Int:Ext -> Ext:Int -> Int:Int -> Ext';
 		print OUT "\%::delivery = (\n";
