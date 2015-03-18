@@ -239,6 +239,7 @@ our %auth = ();
 our %topauth = ();
 our %postgrey = ();
 our %toppostgrey = ();
+our %starttls = ();
 
 
 ####
@@ -538,7 +539,24 @@ sub do_hour_cache
 			}
 			close(IN);
 		}
-		
+			
+		$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/starttls.dat";
+		if (open(IN, $file)) {
+			while (my $l = <IN>) { 
+				chomp($l);
+				# Format: Hour:FAIL=count;NO=count,OK=count
+				@data = split(/:/, $l);
+				my $hms = shift(@data);
+				$hms =~ /^(\d{2})/;
+				next if ($1 ne $hour);
+				my %verify = split(/[=;]/, $data[0]);
+				foreach my $v (keys %verify) {
+					$localstat{starttls}{$hms}{$v} = $verify{$v};
+				}
+			}
+			close(IN);
+		}
+
 		$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/postgrey.dat";
 		if (open(IN, $file)) {
 			while (my $l = <IN>) { 
@@ -637,6 +655,7 @@ sub clean_globals
 	%dsn = ();
 	%auth = ();
 	%postgrey = ();
+	%starttls = ();
 	%GLOBAL_STATUS = ();
 
 }
@@ -648,7 +667,7 @@ sub compute_top_stats
 	
 	if (open(OUT, ">$file")) {
 		foreach my $id (keys %$STATS) {
-			next if ($id eq 'TOPDSN');
+			next if (($id eq 'TOPDSN') || ($id eq 'STARTTLS'));
 			next if ($DOMAIN && ($STATS->{$id}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS->{$id}{rcpt}}));
 			if ($STATS->{$id}{nrcpt} > $CONFIG{MAX_RCPT}) {
 				push(@{$topmaxrcpt{$STATS->{$id}{nrcpt}}{sender}}, $STATS->{$id}{sender});
@@ -1208,7 +1227,7 @@ sub compute_global_stats
 	my %PERIOD_STAT = ();
 
 	foreach my $id (keys %$STATS) {
-		next if ($id eq 'TOPDSN');
+		next if (($id eq 'TOPDSN') || ($id eq 'STARTTLS'));
 		next if ($DOMAIN && ($STATS->{$id}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS->{$id}{rcpt}}));
 		if (exists $STATS->{$id}{dsnstatus}) {
 			next if ($DOMAIN && ($STATS->{$STATS->{$id}{srcid}}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS->{$id}{rcpt}}));
@@ -1395,6 +1414,13 @@ sub compute_global_stats
 		}
 
 	}
+
+	# Top STARTTLS stats
+	foreach my $v (keys %{$STATS->{'STARTTLS'}}) {
+		$starttls{$v} = $STATS->{'STARTTLS'}{$v};
+	}
+
+	# Messaging aggregation
 	$messaging{total_inbound} = $messaging{inbound} + $messaging{local_inbound};
 	$messaging{total_inbound_bytes} = $messaging{inbound_bytes} + $messaging{local_inbound_bytes};
 	$messaging{total_outbound} = $messaging{outbound} + $messaging{local_outbound};
@@ -1628,7 +1654,15 @@ sub compute_global_stats
 		print OUT "'Ext_Ext' => '$dsn{Ext_Ext}',\n";
 		print OUT ");\n\n";
 		%dsn = ();
-	
+
+		print OUT "\%::starttls = (\n";
+		foreach my $k (keys %starttls) {
+			print OUT "\t'$k' => '$starttls{$k}',";
+		}
+		print OUT "},\n";
+		print OUT ");\n\n";
+		%starttls = ();
+
 		close(OUT);
 	} else {
 		&logerror("can't write cache file $file: $!");

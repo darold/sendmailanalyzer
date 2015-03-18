@@ -181,4 +181,5 @@
 	'Postgrey status' => 'Status do Postgrey',
 	'Postgrey Status' => 'Status do Postgrey',
 	'Top Reasons' => 'Principais Status',
+	'STARTTLS status' => 'STARTTLS Status',
 );

@@ -408,6 +408,7 @@ our %auth = ();
 our %topauth = ();
 our %postgrey = ();
 our %toppostgrey = ();
+our %starttls = ();
 
 ####
 # Read last parsed line from file
@@ -886,7 +887,10 @@ sub show_temporal_menu
 	my $month_view = &month_link($hostname,$year,$mon,$domain);
 	my $day_view = &day_link($hostname,$year,$mon,$mday,$domain);
 	my $hour_view = &hour_link($hostname,$year,$mon,$mday,$hour,$domain);
-
+	# On year view remove empty daily calendar
+	if ($date =~ /0000$/) {
+		$day_view = '';
+	}
 	print qq{
 <table border="0" width="100%">
 <tr>
@@ -1677,6 +1681,19 @@ sub get_syserr_stat
 		$UNIQID++;
 	}
 	close(IN);
+
+	$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/starttls.dat";
+	open(IN, $file) || return;
+	while (my $l = <IN>) { 
+		chomp($l);
+		# Format: Hour:FAIL=count;NO=count;OK=count
+		my @data = split(/:/, $l, 2);
+		$data[0] =~ /^(\d{2})/;
+		next if (($hour ne '') && ($1 != $hour));
+		%{$STATS{'STARTTLS'}} = split(/[=;]/, $data[1]);
+	}
+	close(IN);
+
 }
 
 ####
@@ -2606,6 +2623,7 @@ sub compute_rejectflow
 
 	my %period_stat = ();
 	foreach my $id (keys %STATS) {
+		next if ($id eq 'STARTTLS');
 		next if ($DOMAIN && ($STATS{$id}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS{$id}{rcpt}}));
 		if (exists $STATS{$id}{rule}) {
 			next if ($id =~ /r\d{17}/);
@@ -2716,6 +2734,7 @@ sub compute_statusflow
 	my ($mailbox) = @_;
 
 	foreach my $id (keys %STATS) {
+		next if ($id eq 'STARTTLS');
 		next if ($DOMAIN && ($STATS{$id}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS{$id}{rcpt}}));
 		for (my $i = 0; $i <= $#{$STATS{$id}{status}}; $i++) {
 			next if (!$STATS{$id}{rcpt}[$i]);
@@ -2748,6 +2767,9 @@ sub compute_statusflow
 			$GLOBAL_STATUS{SysErr_bytes} += $STATS{$id}{size};
 		}
 	}
+	foreach my $v (keys %{$STATS{'STARTTLS'}}) {
+		$GLOBAL_STATUS{'STARTTLS'}{$v} = $STATS{'STARTTLS'}{$v};
+	}
 }
 
 sub display_statusflow
@@ -2769,42 +2791,44 @@ sub display_statusflow
 <tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Messaging Status'}</th></tr>
 <tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Percentage'}</td></tr>
 };
-my $delivery_global_total = 0;
-foreach (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
-	next if ( ($_ eq '') || /Command rejected/);
-	next if (/_bytes/i || /Virus/i || /Spam/i);
-	$delivery_global_total += $GLOBAL_STATUS{$_};
-}
-$delivery_global_total ||= 1;
-my $delivery_total = $GLOBAL_STATUS{Sent} || 1;
-my $delivery_total_bytes = $GLOBAL_STATUS{Sent_bytes} || 1;
-my $total_percent = 0;
-my %status = ();
-my $piecount = 0;
-foreach my $s (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
-	next if ( ($s eq '') || ($s =~ /Command rejected/));
-	next if ( ($s =~ /_bytes/) || ($s =~ /Virus/i) || ($s =~ /Spam/i) );
-	my $percent = sprintf("%.2f", ($GLOBAL_STATUS{$s}/$delivery_global_total) * 100);
-	if ($s =~ /^(\d{3}) \d\.(\d\.\d)$/) {
-		if (exists $SMTP_ERROR_CODE{$1} || exists $ESMTP_ERROR_CODE{$2}) {
-			print "<tr><td class=\"tdtopn\">$s ",$SMTP_ERROR_CODE{$1} . " " . $ESMTP_ERROR_CODE{$2} , "</td>";
+	my $delivery_global_total = 0;
+	foreach my $s (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
+		next if ( ($s eq '') || ($s =~ /Command rejected/));
+		next if ( ($s =~ /(_bytes|Virus|Spam)/i) || ($s eq 'STARTTLS'));
+		$delivery_global_total += $GLOBAL_STATUS{$s};
+	}
+	$delivery_global_total ||= 1;
+
+	my $delivery_total = $GLOBAL_STATUS{Sent} || 1;
+	my $delivery_total_bytes = $GLOBAL_STATUS{Sent_bytes} || 1;
+	my $total_percent = 0;
+	my %status = ();
+	my $piecount = 0;
+	foreach my $s (sort {$GLOBAL_STATUS{$b} <=> $GLOBAL_STATUS{$a}} keys %GLOBAL_STATUS) {
+		next if ( ($s eq '') || ($s =~ /Command rejected/));
+		next if ( ($s =~ /(_bytes|Virus|Spam)/i) || ($s eq 'STARTTLS'));
+		my $percent = sprintf("%.2f", ($GLOBAL_STATUS{$s}/$delivery_global_total) * 100);
+		if ($s =~ /^(\d{3}) \d\.(\d\.\d)$/) {
+			if (exists $SMTP_ERROR_CODE{$1} || exists $ESMTP_ERROR_CODE{$2}) {
+				print "<tr><td class=\"tdtopn\">$s ",$SMTP_ERROR_CODE{$1} . " " . $ESMTP_ERROR_CODE{$2} , "</td>";
+			} else {
+				print "<tr><td class=\"tdtopn\">$s</td>";
+			}
 		} else {
 			print "<tr><td class=\"tdtopn\">$s</td>";
 		}
-	} else {
-		print "<tr><td class=\"tdtopn\">$s</td>";
+		print "<td class=\"tdtopnr\">$GLOBAL_STATUS{$s}</td><td class=\"tdtopnr\">", sprintf("%.2f", $GLOBAL_STATUS{$s . '_bytes'}/$SIZE_UNIT), "</td><td class=\"tdtopnr\">$percent %</td></tr>\n";
+		if ( ($piecount < $MAXPIECOUNT) && ($percent > $MIN_SHOW_PIE)) {
+			$status{"$s"} = $percent;
+			$total_percent += $GLOBAL_STATUS{$s};
+			$piecount++;
+		}
 	}
-	print "<td class=\"tdtopnr\">$GLOBAL_STATUS{$s}</td><td class=\"tdtopnr\">", sprintf("%.2f", $GLOBAL_STATUS{$s . '_bytes'}/$SIZE_UNIT), "</td><td class=\"tdtopnr\">$percent %</td></tr>\n";
-	if ( ($piecount < $MAXPIECOUNT) && ($percent > $MIN_SHOW_PIE)) {
-		$status{"$s"} = $percent;
-		$total_percent += $GLOBAL_STATUS{$s};
-		$piecount++;
-	}
-}
-my $other_percent = 100 - sprintf("%.2f", ($total_percent/$delivery_global_total) * 100);
-$status{"Others"} = $other_percent if ($other_percent > 0);
 
-print qq{
+	my $other_percent = 100 - sprintf("%.2f", ($total_percent/$delivery_global_total) * 100);
+	$status{"Others"} = $other_percent if ($other_percent > 0);
+
+	print qq{
 <tr><td colspan="4" align="center">&nbsp;</td></tr>
 </table>
 
@@ -2813,14 +2837,44 @@ print qq{
 <table>
 <tr><td align="center">
 };
-print &grafit_pie(	labels => $status{lbls}, values => \%status,
-			title => $TRANSLATE{'Messaging status'},
-			divid => 'messagingstatus'
-);
-print qq{
+	print &grafit_pie(	labels => $status{lbls}, values => \%status,
+				title => $TRANSLATE{'Messaging status'},
+				divid => 'messagingstatus'
+	);
+	print qq{
 </td></tr>
 </table>
+};
 
+
+	my $starttls_total = 0;
+	foreach my $s (sort {$GLOBAL_STATUS{'STARTTLS'}{$b} <=> $GLOBAL_STATUS{'STARTTLS'}{$a}} keys %{$GLOBAL_STATUS{'STARTTLS'}}) {
+		$starttls_total += $GLOBAL_STATUS{'STARTTLS'}{$s};
+	}
+
+	if ($starttls_total > 0) {
+		print qq{
+</td></tr>
+<tr><td colspan="2">
+};
+		$total_percent = 0;
+		my %starttls = ();
+		$piecount = 0;
+		foreach my $s (sort {$GLOBAL_STATUS{'STARTTLS'}{$b} <=> $GLOBAL_STATUS{'STARTTLS'}{$a}} keys %{$GLOBAL_STATUS{'STARTTLS'}}) {
+			my $percent = sprintf("%.2f", ($GLOBAL_STATUS{'STARTTLS'}{$s}/$starttls_total) * 100);
+			if ( ($piecount < $MAXPIECOUNT) && ($percent > $MIN_SHOW_PIE)) {
+				$starttls{"$s"} = $percent;
+				$total_percent += $GLOBAL_STATUS{'STARTTLS'}{$s};
+				$piecount++;
+			}
+		}
+
+		print &grafit_pie(	labels => $starttls{lbls}, values => \%starttls,
+					title => $TRANSLATE{'STARTTLS status'},
+					divid => 'starttlsstatus'
+		);
+	}
+	print qq{
 </td></tr></table>
 };
 
@@ -3531,6 +3585,7 @@ sub compute_top_reject
 {
 
 	foreach my $id (keys %STATS) {
+		next if ($id eq 'STARTTLS');
 		next if ($DOMAIN && ($STATS{$id}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS{$id}{rcpt}}));
 		if (exists $STATS{$id}{rule}) {
 			$topreject{sender}{$STATS{$id}{sender}}++;

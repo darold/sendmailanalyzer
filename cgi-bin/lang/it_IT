@@ -178,4 +178,5 @@
 	'Postgrey Status' => 'Stato Postgrey',
 	'Postgrey Statistics' => 'Statistiche Postgrey',
 	'Top Reasons' => 'Stato',
+	'STARTTLS status' => 'STARTTLS Stato',
 );

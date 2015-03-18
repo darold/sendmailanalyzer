@@ -88,6 +88,7 @@ my %MSGID = ();
 my %SKIPMSG = ();
 my %POSTFIX_PLUGIN_TEMP_DELIVERY = ();
 my %AMAVIS_ID = ();
+my %STARTTLS = ();
 
 # Collect command line arguments
 GetOptions (
@@ -1351,7 +1352,10 @@ sub parse_sendmail
 		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay(lc($1)));
 	# Catch server TLS connections
 	} elsif ($str =~ m#(STARTTLS=[^,]+), relay=([^,]+), version=([^,]+), (verify=[^,]+), cipher=([^,]+), bits=([^,\s]+)#) {
-		push(@{$OTHER{$host}{$time_st}}, "$1, $4");
+		my $verify = $4;
+		push(@{$OTHER{$host}{$time_st}}, "$1, $verify");
+		$verify =~ /verify=(.*)/;
+		$STARTTLS{$host}{$time_st}{$1}++;
 	} elsif ($str =~ m#(STARTTLS=[^,]+), error:(.*), relay=([^,]+)#) {
 		push(@{$OTHER{$host}{$time_st}}, "$1, error: $2");
 	} else {
@@ -2341,7 +2345,7 @@ sub flush_data
 		foreach my $dt (keys %{$OTHER{$host}}) {
 			next if ($dt !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
 			foreach my $v (@{$OTHER{$host}{$dt}}) {
-				# Key: year/month/day, Format: Hour:Id:Error
+				# Key: year/month/day, Format: Hour:Error
 				$errors{"$1/$2/$3"} .= "$4$5$6" . ':' . $v . "\n";
 				$nobj++;
 			}
@@ -2364,6 +2368,41 @@ sub flush_data
 	&dprint("\tWrote $nobj warning message object.");
 	# clear all warning message memory storage
 	%OTHER = ();
+
+	# Save STARTTLS stats
+	&dprint("Writing STARTTLS statistics to disk...");
+	$nobj = 0;
+	foreach my $host (keys %STARTTLS) {
+		my %starttls = ();
+		foreach my $dt (keys %{$STARTTLS{$host}}) {
+			next if ($dt !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+			# Key: year/month/day, Format: Hour:Id:FAIL=count;NO=count;OK=count;
+			$starttls{"$1/$2/$3"} .= "$4$5$6" . ':';
+			foreach my $v (keys %{$STARTTLS{$host}{$dt}}) {
+				$starttls{"$1/$2/$3"} .= $v . '=' . ($STARTTLS{$host}{$dt}{$v} || 0) . ';';
+				$nobj++;
+			}
+			$starttls{"$1/$2/$3"} .= "\n";
+			$starttls{"$1/$2/$3"} =~ s/;$//s;
+		}
+		delete $STARTTLS{$host};
+		foreach my $dir (keys %starttls) {
+			if (!-d "$CONFIG{OUT_DIR}/$host/$dir") {
+				&create_directory("$host/$dir");
+			}
+			if (not open(OUT, ">>$CONFIG{OUT_DIR}/$host/$dir/starttls.dat") ) {
+				&logerror("Can't write to file $CONFIG{OUT_DIR}/$host/$dir/starttls.dat: $!");
+				&logerror("Data will be lost.");
+				next;
+			} else {
+				print OUT $starttls{$dir};
+				close(OUT);
+			}
+		}
+	}
+	&dprint("\tWrote $nobj STARTTLS objects.");
+	# clear all warning message memory storage
+	%STARTTLS = ();
 
 	# Save auth message objects
 	&dprint("Writing warning auth data to disk...");
