@@ -935,15 +935,15 @@ For example:
 
 =item MAIL_HUB
 
-FQDN comma separated list of internal mail hubs, aka: where email are
-redirected if the host is a gateway. For example: mailhost.mydom.dom
+Comma separated ip addresses list of internal mail hubs, aka: where email
+are redirected if the host is a gateway. For example: mailhost.mydom.dom
 This directive is very important to help SendmailAnalyzer to find the
 direction of incoming and outgoing message.
 
 =item MAIL_GW
 
-FQDN comma separated list of MTA gateways where external mail comes from.
-This directive is very important to help SendmailAnalyzer to find the
+Comma separated ip addresses list of MTA gateways where external mail comes
+from.  This directive is very important to help SendmailAnalyzer to find the
 direction of incoming and outgoing message.
 
 =item DEFAULT_DOMAIN
