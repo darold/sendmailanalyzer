@@ -101,11 +101,11 @@ TOP		25
 # Number of object displayed in the top mailbox statistics
 TOP_MBOX	25
 
-# Space separated list of DNS name of the mail hubs (where email are redirected
+# Space separated list of ip addresses of the mail hubs (where email are redirected
 # if this host is a gateway or a hub)
 MAIL_HUB
 
-# Space separated list of DNS name of the MTA gateway (where external mail
+# Space separated list of ip addresses of the MTA gateway (where external mail
 # comes from if this host is a hub or a delivery system)
 MAIL_GW
 
