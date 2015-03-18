@@ -2768,7 +2768,7 @@ sub compute_statusflow
 		}
 	}
 	foreach my $v (keys %{$STATS{'STARTTLS'}}) {
-		$GLOBAL_STATUS{'STARTTLS'}{$v} = $STATS{'STARTTLS'}{$v};
+		$starttls{$v} = $STATS{'STARTTLS'}{$v};
 	}
 }
 
@@ -2846,10 +2846,9 @@ sub display_statusflow
 </table>
 };
 
-
 	my $starttls_total = 0;
-	foreach my $s (sort {$GLOBAL_STATUS{'STARTTLS'}{$b} <=> $GLOBAL_STATUS{'STARTTLS'}{$a}} keys %{$GLOBAL_STATUS{'STARTTLS'}}) {
-		$starttls_total += $GLOBAL_STATUS{'STARTTLS'}{$s};
+	foreach my $v (keys %starttls) {
+		$starttls_total += $starttls{$v};
 	}
 
 	if ($starttls_total > 0) {
@@ -2858,18 +2857,18 @@ sub display_statusflow
 <tr><td colspan="2">
 };
 		$total_percent = 0;
-		my %starttls = ();
+		my %localstarttls = ();
 		$piecount = 0;
-		foreach my $s (sort {$GLOBAL_STATUS{'STARTTLS'}{$b} <=> $GLOBAL_STATUS{'STARTTLS'}{$a}} keys %{$GLOBAL_STATUS{'STARTTLS'}}) {
-			my $percent = sprintf("%.2f", ($GLOBAL_STATUS{'STARTTLS'}{$s}/$starttls_total) * 100);
+		foreach my $s (sort keys %starttls) {
+			my $percent = sprintf("%.2f", ($starttls{$s}/$starttls_total) * 100);
 			if ( ($piecount < $MAXPIECOUNT) && ($percent > $MIN_SHOW_PIE)) {
-				$starttls{"$s"} = $percent;
-				$total_percent += $GLOBAL_STATUS{'STARTTLS'}{$s};
+				$localstarttls{"$s"} = $percent;
+				$total_percent += $starttls{$s};
 				$piecount++;
 			}
 		}
 
-		print &grafit_pie(	labels => $starttls{lbls}, values => \%starttls,
+		print &grafit_pie(	labels => $localstarttls{lbls}, values => \%localstarttls,
 					title => $TRANSLATE{'STARTTLS status'},
 					divid => 'starttlsstatus'
 		);
