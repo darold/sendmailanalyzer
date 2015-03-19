@@ -67,6 +67,7 @@ my $PID_FILE    = 'sendmailanalyzer.pid';
 my $SA_PIPE     = new IO::File;
 my $EXIM_REGEX  = qr/^(\d+\-\d+\-\d+) (\d+:\d+:\d+) ([A-Za-z0-9]{6}\-[A-Za-z0-9]{6}\-[A-Za-z0-9]{2}) ([\-\*=><]+) /;
 my $HOSTNAME    = '';
+my $DUPLICATE   = 0;
 
 # Global variable to store temporary parsed data
 my %SYSERR = ();
@@ -113,6 +114,7 @@ GetOptions (
 	'y|year=s' => \$CONFIG{DEFAULT_YEAR},
 	'spamd=s' => \$CONFIG{SPAMD_NAME},
 	'hostname=s' => \$HOSTNAME,
+	'duplicate!' => \$DUPLICATE,
 );
 
 &usage if ($HELP);
@@ -239,6 +241,9 @@ sendmailanalyzer v$VERSION usage:
                          Default /usr/bin/zcat.
      --spamd  name     : syslog Spamd program name. Default: spamd.
      --hostname name   : set a hostname for exim logs. Default: unknown.
+     --duplicate       : instruct sendmail analyzer to count one sender per
+                         MTA id and not message-id. For Postfix only. Note
+			 that when you will no more see multiple destination.
 };
 	exit 0;
 }
@@ -790,20 +795,30 @@ sub parse_sendmail
 		push(@{$AUTH{$host}{$authid}{mech}}, $3);
 		push(@{$AUTH{$host}{$authid}{date}},  $time_st);
 		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay(lc($2)));
-	# POSTFIX client origin
+	# POSTFIX client origin and relay
 	} elsif ($str =~ m#^([^:\s]+): client=([^,]*)#) {
 		my $id = $1;
-		$MSGID{$id}{relay} = &clean_relay(lc($2));
+		my $relay = &clean_relay(lc($2));
 		# Get real origin when available
 		if ($str =~ m#^[^:\s]+: client=.*, orig_client=([^,]*)#) {
-			$MSGID{$id}{relay} = &clean_relay(lc($1));
+			$relay = &clean_relay(lc($1));
+		}
+		$MSGID{$id}{relay} = $relay;
+		$FROM{$host}{$id}{relay} = $relay;
+		# Catch POSTFIX SASL SMTP AUTH
+		if ($str =~ m#sasl_method=([^,]*), sasl_username=([^,]*)#) {
+			my $authid = $2;
+			push(@{$AUTH{$host}{$authid}{type}}, 'SASL');
+			push(@{$AUTH{$host}{$authid}{mech}}, $1);
+			push(@{$AUTH{$host}{$authid}{date}},  $time_st);
+			push(@{$AUTH{$host}{$authid}{relay}}, $relay);
 		}
 	# POSTFIX message id
 	} elsif ($str =~ m#^([^:\s]+): message-id=([^,]*)#) {
 		my $id = $1;
 		my $msgid = $2;
 		$msgid =~ s/[<>]//g;
-		if (exists $MSGID{$msgid}) {
+		if (!$DUPLICATE && exists $MSGID{$msgid}) {
 			# remove the relay stored above
 			delete $MSGID{$id};
 			# This message is already processed with an original message id
@@ -814,24 +829,12 @@ sub parse_sendmail
 		$FROM{$host}{$id}{msgid} = $msgid;
 		$MSGID{$msgid}{id} = $id;
 		$MSGID{$msgid}{relay} = $MSGID{$id}{relay};
+		$FROM{$host}{$id}{relay} = $MSGID{$id}{relay};
 		delete $MSGID{$id};
 	# POSTFIX local relay
 	} elsif ($str =~ m#^([^:\s]+): uid=\d+ from=#) {
 		my $id = $1;
 		$FROM{$host}{$id}{relay} = 'localhost';
-	# POSTFIX relay
-	} elsif ($str =~ m#^([^:\s]+): client=([^,]*)#) {
-		my $id = $1;
-		my $relay = &clean_relay(lc($2));
-		$FROM{$host}{$id}{relay} = $relay;
-		# Catch POSTFIX SASL SMTP AUTH
-		if ($str =~ m#sasl_method=([^,]*), sasl_username=([^,]*)#) {
-			my $authid = $2;
-			push(@{$AUTH{$host}{$authid}{type}}, 'SASL');
-			push(@{$AUTH{$host}{$authid}{mech}}, $1);
-			push(@{$AUTH{$host}{$authid}{date}},  $time_st);
-			push(@{$AUTH{$host}{$authid}{relay}}, $relay);
-		}
 	# From clause
 	} elsif ($str =~ m#^([^:\s]+): from=([^,]*), size=(\d+),.*, nrcpts=(\d+), msgid=([^,]+),.*relay=([^,]+)#) {
 		my $id = $1;
@@ -1972,6 +1975,7 @@ sub flush_data
 	foreach my $host (keys %FROM) {
 		my %senders = ();
 		foreach my $id (keys %{$FROM{$host}}) {
+
 			if (exists $POSTFIX_PLUGIN_TEMP_DELIVERY{$id}) {
 				delete $FROM{$host}{$id};
 				next;
