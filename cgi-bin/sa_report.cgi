@@ -67,6 +67,7 @@ my $HOUR    = $CGI->param('hour') || '';
 my $VIEW    = $CGI->param('view') || '';
 my $LANG    = $CGI->param('lang') || '';
 my $WEEK    = $CGI->param('week') || '';
+my $DOWNLOAD= $CGI->param('download') || '';
 
 my $MAXPIECOUNT = 10;
 my $MIN_SHOW_PIE = 2;
@@ -77,8 +78,9 @@ my $DEFAULT_CHARSET='iso-8859-1';
 
 # Write sendmailanalyzer header
 $CGI->charset($CONFIG{HTML_CHARSET} || $DEFAULT_CHARSET);
-print $CGI->header();
-print $CGI->start_html(-title=>"sendmailanalyzer v$VERSION");
+if (!$DOWNLOAD) {
+	print $CGI->header();
+	print $CGI->start_html(-title=>"sendmailanalyzer v$VERSION");
 	
 	print qq{
 <!-- javascript to draw graphics -->
@@ -200,12 +202,14 @@ table.topcounter {
 /* ]]> */-->
 </style>
 };
+}
+
 # CSS style used in temporal menu for the current hour/day/month
 my $SELCURRENT = ' style="color: #4179a1; font-weight: bold;"';
 
 if (my $ret = &secure_params()) {
 	&logerror("Bad CGI param, hacking attempt: $ret");
-	print $CGI->end_html();
+	print $CGI->end_html() if (!$DOWNLOAD);
 	die "FATAL: Bad CGI param, hacking attempt: $ret\n";
 }
 
@@ -225,7 +229,7 @@ if ($LANG) {
 # Check if lang file is readable
 if (!-e $CONFIG{LANG}) {
 	&logerror("Language file $CONFIG{LANG} doesn't exist!");
-	print $CGI->end_html();
+	print $CGI->end_html() if (!$DOWNLOAD);
 	die "FATAL: Language file is not readable, $CONFIG{LANG}\n";
 } else {
 	do "$CONFIG{LANG}";
@@ -238,7 +242,7 @@ if (-e $CONFIG{ERROR_CODE}) {
 }
 
 # Print global header
-&sa_header($CGI) if (!$VIEW);
+&sa_header($CGI) if (!$VIEW && !$DOWNLOAD);
 
 # Set default host report if there's only one host and no per domain report.
 my @syshost = get_list_host();
@@ -367,15 +371,15 @@ if (!$HOST) {
 	print qq{
 <form name="viewname"><input type="hidden" name="view" value="$VIEW"></form>
 <table id="report" width="100%" height="550px" valign="top"><tr><td valign="center" align="center">
-};
+} if (!$DOWNLOAD);
 	&show_stats($HOST, $CURDATE, $HOUR, $DOMAIN, $VIEW, $WEEK) if (&check_auth);
-	print "\n</td></tr></table>\n";
+	print "\n</td></tr></table>\n" if (!$DOWNLOAD);
 }
 
 # Write sendmailanalyzer footer
-&sa_footer($CGI) if (!$VIEW);
+&sa_footer($CGI) if (!$VIEW && !$DOWNLOAD);
 
-print $CGI->end_html();
+print $CGI->end_html() if (!$DOWNLOAD);
 
 exit 0;
 
@@ -1279,9 +1283,17 @@ sub show_stats
 		&summarize_postgreyflow($begin, $end, %period_stats);
 		&display_postgreyflow($x_label);
 	} elsif ($type eq 'topsender') {
-		&display_top_sender($hostname, $date, $hour);
+		if (!$DOWNLOAD) {
+			&display_top_sender($hostname, $date, $hour);
+		} else {
+			&dump_top_sender($hostname, $date, $hour);
+		}
 	} elsif ($type eq 'toprecipient') {
-		&display_top_recipient($hostname, $date, $hour);
+		if (!$DOWNLOAD) {
+			&display_top_recipient($hostname, $date, $hour);
+		} else {
+			&dump_top_recipient($hostname, $date, $hour);
+		}
 	} elsif ($type eq 'topspam') {
 		&display_top_spam($hostname, $date, $hour);
 	} elsif ($type eq 'topvirus') {
@@ -3172,7 +3184,7 @@ sub display_top_sender
 <tr>
 <td class="tdhead">$TRANSLATE{'Top Sender Domain'}</td>
 <td class="tdhead">$TRANSLATE{'Top Sender Relay'}</td>
-<td class="tdhead">$TRANSLATE{'Top Sender Address'}</td>
+<td class="tdhead">$TRANSLATE{'Top Sender Address'} <a href="$ENV{SCRIPT_NAME}?view=topsender&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK&download=csv">[csv]</a></td>
 </tr>
 <tr>
 <td class="tdtopn" nowrap valign="top">$topdomain</td>
@@ -3183,6 +3195,32 @@ sub display_top_sender
 };
 
 }
+
+sub dump_top_sender
+{
+	my ($hostname, $date, $hour) = @_;
+
+	# Top sender statistics
+	my $filename = "$hostname-$date";
+	$filename .= "-$hour" if ($hour);
+	$filename .= "-topsender.csv";
+
+	print "Content-Type:application/x-download\n";     
+	print "Content-Disposition:attachment;filename=$filename\n\n";
+	if (!$CONFIG{ANONYMIZE}) {
+		print "Top Sender Address;Number\n";
+		my $top = 0;
+		foreach my $d (sort { $topsender{email}{$b} <=> $topsender{email}{$a} } keys %{$topsender{email}}) {
+			last if ($top == $CONFIG{TOP});
+			print "$d;$topsender{email}{$d}\n";
+			$top++;
+		}
+	} else {
+		print "\"No data available with anonymized content\"\n";
+	}
+
+}
+
 
 sub compute_top_recipient
 {
@@ -3288,7 +3326,7 @@ sub display_top_recipient
 <tr>
 <td class="tdhead">$TRANSLATE{'Top Recipient Domain'}</td>
 <td class="tdhead">$TRANSLATE{'Top Recipient Relay'}</td>
-<td class="tdhead">$TRANSLATE{'Top Recipients Address'}</td>
+<td class="tdhead">$TRANSLATE{'Top Recipients Address'} <a href="$ENV{SCRIPT_NAME}?view=toprecipient&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK&download=csv">[csv]</a></td>
 </tr>
 <tr>
 <td class="tdtopn" nowrap valign="top">$topdomain</td>
@@ -3299,6 +3337,32 @@ sub display_top_recipient
 };
 
 }
+
+sub dump_top_recipient
+{
+	my ($hostname, $date, $hour) = @_;
+
+	# Top recipient statistics
+	my $filename = "$hostname-$date";
+	$filename .= "-$hour" if ($hour);
+	$filename .= "-toprcpt.csv";
+
+	print "Content-Type:application/x-download\n";     
+	print "Content-Disposition:attachment;filename=$filename\n\n";
+	if (!$CONFIG{ANONYMIZE}) {
+		print "Top Recipients Address;Number\n";
+		my $top = 0;
+		foreach my $d (sort { $toprcpt{email}{$b} <=> $toprcpt{email}{$a} } keys %{$toprcpt{email}}) {
+			last if ($top == $CONFIG{TOP});
+			print "$d;$toprcpt{email}{$d}\n";
+			$top++;
+		}
+	} else {
+		print "\"No data available with anonymized content\"\n";
+	}
+
+}
+
 
 sub compute_top_spam
 {
