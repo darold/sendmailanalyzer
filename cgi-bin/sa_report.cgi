@@ -1702,7 +1702,10 @@ sub get_syserr_stat
 		my @data = split(/:/, $l, 2);
 		$data[0] =~ /^(\d{2})/;
 		next if (($hour ne '') && ($1 != $hour));
-		%{$STATS{'STARTTLS'}} = split(/[=;]/, $data[1]);
+		foreach my $p (split(/;/, $data[1])) {
+			my ($k, $v) = split(/=/, $p);
+			$STATS{'STARTTLS'}{$k} += $v;
+		}
 	}
 	close(IN);
 
@@ -2779,8 +2782,9 @@ sub compute_statusflow
 			$GLOBAL_STATUS{SysErr_bytes} += $STATS{$id}{size};
 		}
 	}
+
 	foreach my $v (keys %{$STATS{'STARTTLS'}}) {
-		$starttls{$v} = $STATS{'STARTTLS'}{$v};
+		$starttls{$v} += $STATS{'STARTTLS'}{$v};
 	}
 }
 
