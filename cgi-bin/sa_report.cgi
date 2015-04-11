@@ -123,13 +123,18 @@ th {padding:0px;font-family:sans-serif;font-size:8pt;color:#ffffff;background-co
 .smalltitle {font-family:sans-serif;font-size:14pt;color:#CC6600;}
 .subtitle {font-family:sans-serif;font-size:12pt;color:#4179a1;}
 .small {font-family:sans-serif;font-size:8pt;color:#000000;}
+.error {font-family:sans-serif;font-size:10pt;color:#FF0000;}
 pre {font-family:sans-serif;font-size:9pt;color:#ffffff;background-color:#4179a1;}
 pre a { border-style: none; text-decoration: none; }
 pre a:active { color: #ffffff; }
 pre a:visited { color: #ffffff; }
 pre a:link { color: #ffffff; }
 pre a:hover { color: #ffffff; background-color: #CC6600; }
-.error {font-family:sans-serif;font-size:10pt;color:#FF0000;}
+a { border-style: none; text-decoration: none; font-family:sans-serif; color:#4179a1;}
+a:active { color: #4179a1; }
+a:visited { color: #4179a1; }
+a:link { color: #4179a1; }
+a:hover { color: #ffffff; background-color: #CC6600; }
 #info {border: none; width: 100%; height: 600px;}
 #menu {font-family:sans-serif;font-size:10pt;color: #ffffff; background-color: #4179a1;}
 #menu th {margin-right: 100px}
@@ -151,11 +156,6 @@ pre a:hover { color: #ffffff; background-color: #CC6600; }
 #temporal a:link { color: #4179a1; background-color:#dddddd;}
 #temporal a:hover { color: #ffffff; background-color: #CC6600; }
 #temporal td {padding:0px;font-family:sans-serif;font-size:8pt;color:#000000;background-color:#dddddd;}
-a { border-style: none; text-decoration: none; font-family:sans-serif; color:#4179a1;}
-a:active { color: #4179a1; }
-a:visited { color: #4179a1; }
-a:link { color: #4179a1; }
-a:hover { color: #ffffff; background-color: #CC6600; }
 table, th, td {
 	vertical-align:top;
 	horizontal-align: center;
@@ -256,7 +256,11 @@ if (!$HOST) {
 	&show_list_host(@syshost) if (&check_auth);
 } elsif ($TYPE && $PERI) {
 	# Show details
-	&show_detail($HOST, $CURDATE, $HOUR, $TYPE, $PERI, $SEARCH) if (&check_auth);
+	if (!$DOWNLOAD) {
+		&show_detail($HOST, $CURDATE, $HOUR, $TYPE, $PERI, $SEARCH) if (&check_auth);
+	} else {
+		&show_download_detail($HOST, $CURDATE, $HOUR, $TYPE, $PERI, $SEARCH) if (&check_auth);
+	}
 } elsif (!$VIEW) {
 	print "<table id=\"menu\" width=\"100%\"><tr><td colspan=\"2\">\n";
 	&show_temporal_menu($HOST, $CURDATE, $HOUR, $DOMAIN, $WEEK);
@@ -3097,6 +3101,36 @@ sub detail_link
 	return substr($CGI->unescape(&decode_str($name)), 0, 124);
 }
 
+sub detail_download_link
+{
+	my ($hostname, $date, $type, $peri, $name, $hour) = @_;
+
+	$name ||= '<>';
+
+	my ($sec,$min,$h,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+	$mon++;
+	$date =~ /\d{4}(\d{2})/;
+	my $month = $1;
+	my @files = ();
+	my $path = $CONFIG{OUT_DIR} . '/' . $hostname . '/' . $date;
+	$path =~ s/(\d{4})(\d{2})(\d{2})$/$1\/$2\/$3\//;
+	if (($date !~ /00$/) && !$WEEK) {
+		if (not opendir(DIR, "$path")) {
+			&logerror("Can't open directory $CONFIG{OUT_DIR}: $!\n");
+		} else {
+			@files = grep { /.*\.dat$/ } readdir(DIR);
+			closedir(DIR);
+		}
+	}
+	# Return a link if we still have dat file.
+	if ( ($date !~ /00$/) && ($#files >= 0) ) {
+		$name = $CGI->escape($name);
+		return "<a href=\"$ENV{SCRIPT_NAME}?host=$hostname&date=$date&hour=$hour&type=$type&peri=$peri&domain=$DOMAIN&search=$name&download=csv\">[csv]</a>";
+	}
+
+}
+
+
 sub compute_top_sender
 {
 	foreach my $id (keys %STATS) {
@@ -3119,6 +3153,7 @@ sub display_top_sender
 	my ($hostname, $date, $hour) = @_;
 
 	# Top sender statistics
+
 	my $topdomain = '';
 	my $top = 0;
 	foreach my $d (sort { $topsender{domain}{$b} <=> $topsender{domain}{$a} } keys %{$topsender{domain}}) {
@@ -3184,11 +3219,11 @@ sub display_top_sender
 </td></tr>
 </table>
 <table align="center" class="topcounter">
-<tr><th colspan="3" class="thheadcounter">$TRANSLATE{'Senders Statistics'} (top $CONFIG{TOP})</th></tr>
+<tr><th colspan="3" class="thheadcounter"><div id="menu">$TRANSLATE{'Senders Statistics'} (top $CONFIG{TOP}) <a href="$ENV{SCRIPT_NAME}?view=topsender&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK&download=csv">[csv]</a></div></th></tr>
 <tr>
 <td class="tdhead">$TRANSLATE{'Top Sender Domain'}</td>
 <td class="tdhead">$TRANSLATE{'Top Sender Relay'}</td>
-<td class="tdhead">$TRANSLATE{'Top Sender Address'} <a href="$ENV{SCRIPT_NAME}?view=topsender&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK&download=csv">[csv]</a></td>
+<td class="tdhead">$TRANSLATE{'Top Sender Address'}</td>
 </tr>
 <tr>
 <td class="tdtopn" nowrap valign="top">$topdomain</td>
@@ -3211,20 +3246,45 @@ sub dump_top_sender
 
 	print "Content-Type:application/x-download\n";     
 	print "Content-Disposition:attachment;filename=$filename\n\n";
+
+	my $top = 0;
+	print "Top Sender domain;Number\n";
+	foreach my $d (sort { $topsender{domain}{$b} <=> $topsender{domain}{$a} } keys %{$topsender{domain}}) {
+		last if ($top == $CONFIG{TOP});
+		print "$d;$topsender{domain}{$d}\n";
+		$top++;
+	}
+	print "\n";
+	delete $topsender{domain};
+	$top = 0;
+	print "Top Sender relay;Number\n";
+	foreach my $d (sort { $topsender{relay}{$b} <=> $topsender{relay}{$a} } keys %{$topsender{relay}}) {
+		last if ($top == $CONFIG{TOP});
+		my $tmp = $d;
+		if (exists $CONFIG{REPLACE_HOST}) {
+			foreach my $pat (keys %{$CONFIG{REPLACE_HOST}}) {
+				next if (!$pat || !$CONFIG{REPLACE_HOST}{$pat});
+				last if ($tmp =~ s/$pat/$CONFIG{REPLACE_HOST}{$pat}/);
+			}
+		}
+		print "$tmp;$topsender{relay}{$d}\n";
+		$top++;
+	}
+	print "\n";
+	delete $topsender{relay};
+
 	if (!$CONFIG{ANONYMIZE}) {
 		print "Top Sender Address;Number\n";
-		my $top = 0;
+		$top = 0;
 		foreach my $d (sort { $topsender{email}{$b} <=> $topsender{email}{$a} } keys %{$topsender{email}}) {
 			last if ($top == $CONFIG{TOP});
 			print "$d;$topsender{email}{$d}\n";
 			$top++;
 		}
-	} else {
-		print "\"No data available with anonymized content\"\n";
+		print "\n";
 	}
 
 }
-
 
 sub compute_top_recipient
 {
@@ -3326,11 +3386,11 @@ sub display_top_recipient
 </td></tr>
 </table>
 <table align="center" class="topcounter">
-<tr><th colspan="3" class="thheadcounter">$TRANSLATE{'Recipients Statistics'} (top $CONFIG{TOP})</th></tr>
+<tr><th colspan="3" class="thheadcounter"><div id="menu">$TRANSLATE{'Recipients Statistics'} (top $CONFIG{TOP}) <a href="$ENV{SCRIPT_NAME}?view=toprecipent&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK&download=csv">[csv]</a></div></th></tr>
 <tr>
 <td class="tdhead">$TRANSLATE{'Top Recipient Domain'}</td>
 <td class="tdhead">$TRANSLATE{'Top Recipient Relay'}</td>
-<td class="tdhead">$TRANSLATE{'Top Recipients Address'} <a href="$ENV{SCRIPT_NAME}?view=toprecipient&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK&download=csv">[csv]</a></td>
+<td class="tdhead">$TRANSLATE{'Top Recipients Address'}</td>
 </tr>
 <tr>
 <td class="tdtopn" nowrap valign="top">$topdomain</td>
@@ -3353,6 +3413,31 @@ sub dump_top_recipient
 
 	print "Content-Type:application/x-download\n";     
 	print "Content-Disposition:attachment;filename=$filename\n\n";
+
+	my $top = 0;
+	foreach my $d (sort { $toprcpt{domain}{$b} <=> $toprcpt{domain}{$a} } keys %{$toprcpt{domain}}) {
+		last if ($top == $CONFIG{TOP});
+		print "$d;$toprcpt{domain}{$d}\n";
+		$top++;
+	}
+	print "\n";
+	delete $toprcpt{domain};
+	$top = 0;
+	foreach my $d (sort { $toprcpt{relay}{$b} <=> $toprcpt{relay}{$a} } keys %{$toprcpt{relay}}) {
+		last if ($top == $CONFIG{TOP});
+		my $tmp = $d;
+		if (exists $CONFIG{REPLACE_HOST}) {
+			foreach my $pat (keys %{$CONFIG{REPLACE_HOST}}) {
+				next if (!$pat || !$CONFIG{REPLACE_HOST}{$pat});
+				last if ($tmp =~ s/$pat/$CONFIG{REPLACE_HOST}{$pat}/);
+			}
+		}
+		print "$tmp;$toprcpt{relay}{$d}\n";
+		$top++;
+	}
+	print "\n";
+	delete $toprcpt{relay};
+
 	if (!$CONFIG{ANONYMIZE}) {
 		print "Top Recipients Address;Number\n";
 		my $top = 0;
@@ -3361,8 +3446,7 @@ sub dump_top_recipient
 			print "$d;$toprcpt{email}{$d}\n";
 			$top++;
 		}
-	} else {
-		print "\"No data available with anonymized content\"\n";
+		print "\n";
 	}
 
 }
@@ -4114,7 +4198,7 @@ sub display_top_postgrey
 	}
 }
 
-sub show_detail
+sub get_detail_stat
 {
 	my ($hostname, $date, $hour, $type, $peri, $search) = @_;
 
@@ -4144,7 +4228,26 @@ sub show_detail
 		print "BAD DETAIL TYPE\n";
 	}
 
-	print qq{<form><table align="center"><tr><td class="smalltitle">$search</td></tr></table><table>\n<tr><th>&nbsp;</th><th>$TRANSLATE{'Hour'}</th>};
+	return %lstat;
+
+}
+
+sub show_detail
+{
+	my ($hostname, $date, $hour, $type, $peri, $search) = @_;
+
+	my $path = $CONFIG{OUT_DIR} . '/' . $hostname . '/' . $date;
+	$path =~ s/(\d{4})(\d{2})(\d{2})$/$1\/$2\/$3\//;
+	$search = '' if ($search eq '<>');
+	my %lstat = &get_detail_stat($hostname, $date, $hour, $type, $peri, $search);
+
+	my $dlink = $ENV{SCRIPT_NAME} . '?download=csv';
+	my @params = $CGI->param();
+	foreach my $p (@params) {
+		my $val = $CGI->param($p) || '';
+		$dlink .= '&' . "$p=" . $CGI->escape($val);
+	}
+	print qq{<form><table align="center"><tr><td class="smalltitle">$search - <a href="$dlink">[csv]</a></td></tr></table><table>\n<tr><th>&nbsp;</th><th>$TRANSLATE{'Hour'}</th>};
 	if ($type eq 'dsn') {
 		print qq{<th>$TRANSLATE{'Original Id'}</th><th>Id</th>};
 	} else {
@@ -4315,6 +4418,157 @@ sub show_detail
 		$line++;
 	}
 	print "</table>\n</form>\n";
+}
+
+sub show_download_detail
+{
+	my ($hostname, $date, $hour, $type, $peri, $search) = @_;
+
+	my $path = $CONFIG{OUT_DIR} . '/' . $hostname . '/' . $date;
+	$path =~ s/(\d{4})(\d{2})(\d{2})$/$1\/$2\/$3\//;
+	$search = '' if ($search eq '<>');
+	my %lstat = &get_detail_stat($hostname, $date, $hour, $type, $peri, $search);
+
+	my $filename = "$hostname-$date";
+	$filename .= "-$hour" if ($hour);
+	$filename .= "-detailed-$type-($search).csv";
+
+	print "Content-Type:application/x-download\n";     
+	print "Content-Disposition:attachment;filename=$filename\n\n";
+
+	print "Num;$TRANSLATE{'Hour'};";
+	if ($type eq 'dsn') {
+		print "$TRANSLATE{'Original Id'};";
+	}
+	print "Id;$TRANSLATE{'Sender'};";
+	print "$TRANSLATE{'Size'};" if (($type ne 'dsn') && ($type ne 'postgrey'));
+	print "$TRANSLATE{'Sender Relay'};$TRANSLATE{'Recipients'};";
+	if ($type !~ /spam|reject|postgrey/) {
+		print "$TRANSLATE{'Recipient Relay'};";
+	}
+	if ($type !~ /spam/) {
+		print "$TRANSLATE{'Status'};";
+	}
+	if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient', 'postgrey')) {
+		if ($type eq 'spam') {
+			print "$TRANSLATE{'Spam'};";
+		} elsif ($type =~ /spam_/) {
+			print "$TRANSLATE{'Score'};$TRANSLATE{'Cache'};$TRANSLATE{'Autolearn'};$TRANSLATE{'Spam'};";
+		} elsif ($type eq 'virus') {
+			print "$TRANSLATE{'Virus'};$TRANSLATE{'File'};";
+		} else {
+			print "$TRANSLATE{'Rule'};";
+		}
+	}
+	print "\n";
+	my $line = 1;
+	foreach my $id (sort { $lstat{$a}{hour} <=> $lstat{$b}{hour} } keys %lstat) {
+		next if ($DOMAIN && ($lstat{$id}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$lstat{$id}{rcpt}}));
+		last if ($line > $CONFIG{MAX_LINE});
+		$lstat{$id}{hour} =~ s/(\d{2})(\d{2})(\d{2})/$1:$2:$3/;
+		if (length($lstat{$id}{hour}) == 2) {
+			$lstat{$id}{hour} .= ':00:00';
+		}
+		$lstat{$id}{sender} =~ s/^.*\@/anonymized\@/ if ($CONFIG{ANONYMIZE});
+		if (exists $CONFIG{REPLACE_HOST}) {
+			foreach my $pat (keys %{$CONFIG{REPLACE_HOST}}) {
+				$lstat{$id}{sender_relay} =~ s/$pat/$CONFIG{REPLACE_HOST}{$pat}/g;
+			}
+		}
+		print "$line;$lstat{$id}{hour};$id;";
+		if (($type eq 'dsn') && ($type ne 'postgrey')) {
+			$lstat{$id}{srcid} = &detail_link($hostname,$date,'sender','id',$lstat{$id}{srcid}, $hour);
+			print "$lstat{$id}{srcid};";
+		}
+		print "$lstat{$id}{sender};";
+		print "$lstat{$id}{size};" if (($type ne 'dsn') && ($type ne 'postgrey'));
+		print "$lstat{$id}{sender_relay};";
+		if (defined $lstat{$id}{chck_rcpt}) {
+			if ($CONFIG{ANONYMIZE}) {
+				map { s/^.*\@/anonymized\@/ } @{$lstat{$id}{rcpt}};
+			}
+			if ($#{$lstat{$id}{chck_rcpt}} > 0) {
+				if (grep(!/$lstat{$id}{chck_rcpt}[0]/, @{$lstat{$id}{chck_rcpt}})) {
+					for (my $i = 0; $i <= $#{$lstat{$id}{chck_rcpt}}; $i++) {
+						print "$lstat{$id}{chck_rcpt}[$i],";
+					}
+				} else {
+					print $lstat{$id}{chck_rcpt}[0];
+				}
+			} else {
+				print $lstat{$id}{chck_rcpt}[0];
+			}
+		} elsif (defined $lstat{$id}{rcpt}) {
+			if ($CONFIG{ANONYMIZE}) {
+				map { s/^.*\@/anonymized\@/ } @{$lstat{$id}{rcpt}};
+			}
+			if ($#{$lstat{$id}{rcpt}} > 0) {
+				if (grep(!/$lstat{$id}{rcpt}[0]/, @{$lstat{$id}{rcpt}})) {
+					for (my $i = 0; $i <= $#{$lstat{$id}{rcpt}}; $i++) {
+						print "$lstat{$id}{rcpt}[$i],";
+					}
+				} else {
+					print $lstat{$id}{rcpt}[0];
+				}
+			} else {
+				print $lstat{$id}{rcpt}[0];
+			}
+		}
+		print ";";
+		if ($type !~ /spam|reject|postgrey/) {
+			if (defined $lstat{$id}{rcpt_relay} && ($#{$lstat{$id}{rcpt_relay}} >= 0)) {
+				if (exists $CONFIG{REPLACE_HOST}) {
+					foreach my $pat (keys %{$CONFIG{REPLACE_HOST}}) {
+						map { s/$pat/$CONFIG{REPLACE_HOST}{$pat}/g } @{$lstat{$id}{rcpt_relay}};
+					}
+				}
+				if ( ($#{$lstat{$id}{rcpt_relay}} > 0) && grep(!/$lstat{$id}{rcpt_relay}[0]/, @{$lstat{$id}{rcpt_relay}})) {
+					for (my $i = 0; $i <= $#{$lstat{$id}{rcpt_relay}}; $i++) {
+						print "$lstat{$id}{rcpt_relay}[$i],";
+					}
+				} else {
+					print $lstat{$id}{rcpt_relay}[0];
+				}
+			}
+			print ";"
+		}
+		if ($type !~ /spam/) {
+			if (defined $lstat{$id}{chck_status}) {
+				if ( ($#{$lstat{$id}{chck_status}} > 0) && grep(!/$lstat{$id}{chck_status}[0]/, @{$lstat{$id}{chck_status}})) {
+					for (my $i = 0; $i <= $#{$lstat{$id}{chck_status}}; $i++) {
+						print "$lstat{$id}{chck_status}[$i],";
+					}
+				} else {
+					print $lstat{$id}{chck_status}[0];
+				}
+			} elsif (defined $lstat{$id}{status}) {
+				if ( ($#{$lstat{$id}{status}} > 0) && grep(!/$lstat{$id}{status}[0]/, @{$lstat{$id}{status}})) {
+					for (my $i = 0; $i <= $#{$lstat{$id}{status}}; $i++) {
+						print "$lstat{$id}{status}[$i],";
+					}
+				} else {
+					print $lstat{$id}{status}[0];
+				}
+			} elsif (defined $lstat{$id}{reason}) {
+					print $lstat{$id}{reason};
+			}
+			print ";"
+		}
+		if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient', 'postgrey')) {
+			if ($type eq 'spam') {
+				print "$lstat{$id}{spam};";
+			} elsif ($type =~ /spam_/) {
+				print "$lstat{$id}{score};$lstat{$id}{cache};$lstat{$id}{autolearn};$lstat{$id}{spam};";
+			} elsif ($type eq 'virus') {
+				print "$lstat{$id}{virus};$lstat{$id}{file};";
+			} else {
+				$lstat{$id}{rule} ||= '&nbsp;';
+				print "$lstat{$id}{rule};";
+			}
+		}
+		print "\n";
+		$line++;
+	}
 }
 
 sub get_sender_detail
