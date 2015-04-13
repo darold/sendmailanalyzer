@@ -3248,42 +3248,52 @@ sub dump_top_sender
 	print "Content-Disposition:attachment;filename=$filename\n\n";
 
 	my $top = 0;
-	print "Top Sender domain;Number\n";
-	foreach my $d (sort { $topsender{domain}{$b} <=> $topsender{domain}{$a} } keys %{$topsender{domain}}) {
-		last if ($top == $CONFIG{TOP});
-		print "$d;$topsender{domain}{$d}\n";
-		$top++;
+	print "Top Sender domain;Number;Top Sender relay;Number";
+	if (!$CONFIG{ANONYMIZE}) {
+		print ";Top Sender Address;Number";
 	}
 	print "\n";
+	my @data = ();
+	foreach my $d (sort { $topsender{domain}{$b} <=> $topsender{domain}{$a} } keys %{$topsender{domain}}) {
+		last if ($top == $CONFIG{TOP});
+		push(@data, "$d;$topsender{domain}{$d}");
+		$top++;
+	}
 	delete $topsender{domain};
 	$top = 0;
-	print "Top Sender relay;Number\n";
 	foreach my $d (sort { $topsender{relay}{$b} <=> $topsender{relay}{$a} } keys %{$topsender{relay}}) {
 		last if ($top == $CONFIG{TOP});
-		my $tmp = $d;
+		my $tmp = $d || '<>';
 		if (exists $CONFIG{REPLACE_HOST}) {
 			foreach my $pat (keys %{$CONFIG{REPLACE_HOST}}) {
 				next if (!$pat || !$CONFIG{REPLACE_HOST}{$pat});
 				last if ($tmp =~ s/$pat/$CONFIG{REPLACE_HOST}{$pat}/);
 			}
 		}
-		print "$tmp;$topsender{relay}{$d}\n";
+		if (! $data[$top]) {
+			push(@data, ";;$tmp;$topsender{relay}{$d}");
+		} else {
+			$data[$top] .= ";$tmp;$topsender{relay}{$d}";
+		}
 		$top++;
 	}
-	print "\n";
 	delete $topsender{relay};
 
 	if (!$CONFIG{ANONYMIZE}) {
-		print "Top Sender Address;Number\n";
 		$top = 0;
 		foreach my $d (sort { $topsender{email}{$b} <=> $topsender{email}{$a} } keys %{$topsender{email}}) {
 			last if ($top == $CONFIG{TOP});
-			print "$d;$topsender{email}{$d}\n";
+			if (! $data[$top]) {
+				push(@data, ";;;;$d;$topsender{email}{$d}");
+			} else {
+				$data[$top] .= ";$d;$topsender{email}{$d}";
+			}
 			$top++;
 		}
-		print "\n";
 	}
-
+	foreach (@data) {
+		print "$_\n";
+	}
 }
 
 sub compute_top_recipient
@@ -3386,7 +3396,7 @@ sub display_top_recipient
 </td></tr>
 </table>
 <table align="center" class="topcounter">
-<tr><th colspan="3" class="thheadcounter"><div id="menu">$TRANSLATE{'Recipients Statistics'} (top $CONFIG{TOP}) <a href="$ENV{SCRIPT_NAME}?view=toprecipent&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK&download=csv">[csv]</a></div></th></tr>
+<tr><th colspan="3" class="thheadcounter"><div id="menu">$TRANSLATE{'Recipients Statistics'} (top $CONFIG{TOP}) <a href="$ENV{SCRIPT_NAME}?view=toprecipient&host=$HOST&date=$CURDATE&lang=$LANG&domain=$DOMAIN&hour=$HOUR&week=$WEEK&download=csv">[csv]</a></div></th></tr>
 <tr>
 <td class="tdhead">$TRANSLATE{'Top Recipient Domain'}</td>
 <td class="tdhead">$TRANSLATE{'Top Recipient Relay'}</td>
@@ -3414,39 +3424,52 @@ sub dump_top_recipient
 	print "Content-Type:application/x-download\n";     
 	print "Content-Disposition:attachment;filename=$filename\n\n";
 
-	my $top = 0;
-	foreach my $d (sort { $toprcpt{domain}{$b} <=> $toprcpt{domain}{$a} } keys %{$toprcpt{domain}}) {
-		last if ($top == $CONFIG{TOP});
-		print "$d;$toprcpt{domain}{$d}\n";
-		$top++;
+	print "Top Recipients Domain;Number;Top Recipients Relay;Number";
+	if (!$CONFIG{ANONYMIZE}) {
+		print ";Top Recipients Address;Number";
 	}
 	print "\n";
+	my $top = 0;
+	my @data = ();
+	foreach my $d (sort { $toprcpt{domain}{$b} <=> $toprcpt{domain}{$a} } keys %{$toprcpt{domain}}) {
+		last if ($top == $CONFIG{TOP});
+		push(@data, "$d;$toprcpt{domain}{$d}");
+		$top++;
+	}
 	delete $toprcpt{domain};
 	$top = 0;
 	foreach my $d (sort { $toprcpt{relay}{$b} <=> $toprcpt{relay}{$a} } keys %{$toprcpt{relay}}) {
 		last if ($top == $CONFIG{TOP});
-		my $tmp = $d;
+		my $tmp = $d || '<>';
 		if (exists $CONFIG{REPLACE_HOST}) {
 			foreach my $pat (keys %{$CONFIG{REPLACE_HOST}}) {
 				next if (!$pat || !$CONFIG{REPLACE_HOST}{$pat});
 				last if ($tmp =~ s/$pat/$CONFIG{REPLACE_HOST}{$pat}/);
 			}
 		}
-		print "$tmp;$toprcpt{relay}{$d}\n";
+		if (! $data[$top]) {
+			push(@data, ";;$tmp;$toprcpt{relay}{$d}");
+		} else {
+			$data[$top] .= ";$tmp;$toprcpt{relay}{$d}";
+		}
 		$top++;
 	}
-	print "\n";
 	delete $toprcpt{relay};
 
 	if (!$CONFIG{ANONYMIZE}) {
-		print "Top Recipients Address;Number\n";
-		my $top = 0;
+		$top = 0;
 		foreach my $d (sort { $toprcpt{email}{$b} <=> $toprcpt{email}{$a} } keys %{$toprcpt{email}}) {
 			last if ($top == $CONFIG{TOP});
-			print "$d;$toprcpt{email}{$d}\n";
+			if (! $data[$top]) {
+				push(@data, ";;;;$d;$toprcpt{email}{$d}");
+			} else {
+				$data[$top] .= ";$d;$toprcpt{email}{$d}";
+			}
 			$top++;
 		}
-		print "\n";
+	}
+	foreach (@data) {
+		print "$_\n";
 	}
 
 }
