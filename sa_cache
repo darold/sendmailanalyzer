@@ -28,7 +28,7 @@ use POSIX qw / strftime :sys_wait_h /;
 use Time::Local 'timelocal_nocheck';
 
 
-$VERSION     = '9.0';
+$VERSION     = '9.1';
 $AUTHOR = "Gilles Darold <gilles\@darold.net>";
 $COPYRIGHT = "(c) 2002-2014 - Gilles Darold <gilles\@darold.net>";
 

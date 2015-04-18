@@ -1,3 +1,109 @@
+2015-04-18 Version 9.1
+
+This release fixes one year of reported issues, adds several additional milters
+and useful features.
+
+  * Add CSV export of top senders and recipients as well as search results.
+  * Add STARTLS status report in the Status report.
+  * More translation file: Russian and Italian.
+  * Add DSN report for postfix log.
+  * Add support to Exim log file.
+  * Add support to milter-limit reported in Top Rejection & Events report
+    with status starting with "has exceeded ...".
+  * Improve incremental mode by seeking directly to last parser position
+    in the logfile after last run. It will also auto detect file rotation
+    and fall back to the start of the file when the file has changed.
+  * Add postfix warning into SysErr reports.
+  * Add support to spampd spam detection.
+  * Add information about settings for sendmailanalyzer into systemd service.
+  * Add ruleset=check_relay with reject=550 5.7.1 to the spam reports.
+
+There's also new command line parameters or configuration directive:
+
+  * --duplicate command line option to use to fix a bad Postfix behavior
+    which use different MTA id per recipient for a single message. Note that
+    when enabled, you will not see messages with multiple recipient.
+  * Add new configuration directives EXCLUDE_FROM, EXCLUDE_RELAY and EXCLUDE_TO
+    to not report emails from/to the specified list of senders/recipients or
+    from senders relay.
+  * Add WEEKLY_FREE_SPACE configuration directive to force sa_cache to archive
+    or remove data file each weeks instead of default per month.
+
+Here is the full list of change and credits:
+
+  - Detailed views are now also downloadable as CSV file. Thanks to Tsioritafita
+    Rahajanisainana for the feature request.
+  - Fix computation of starttls graph. Thanks to MAYER Hans for the report.
+  - Allow download of Top senders and recipients in CSV format from a link [csv]
+    after the column header. Thanks to Tsioritafita Andre Rolly Rahajanisainana
+    for the feature request.
+  - Add russian translation. Thanks to sef1976 for the patch.
+  - Add --duplicate command line entry to fix a bad Postfix behavior which use
+    different MTA id per recipient for a single message. Note that when enabled
+    you will not see messages with multiple recipient. Thanks to Olivier Zolli
+    for the report.
+  - Add STARTLS status report. Thanks to Hans Mayer for the feature request.
+  - Fix documentation about MAIL_GW and MAIL_HUB where ip addresses must be
+    used instead of DNS name. Thanks to Roger for the report.
+  - Fix comment to MAIL_GW and MAIL_HUB where ip addresses must be used instead
+    of DNS name. Thanks to Roger for the report.
+  - Remove rejected mail from top senders statistics. Thanks to Michal Paulus
+    for the report.
+  - Add DSN report for postfix log. Thanks to Wolfgang for the feature request.
+  - Fix DNSBL entries are missing if the from=<>. Thanks to Olivier Zolli for
+    the patch.
+  - Update configuration file in debian directory.
+  - Add Italian translation file. Thanks to Luca Sasdelli for the patch.
+  - Fix unrecognized virus infection log report produced by amavis-new. Thanks
+    to Olaf Menzel for the report.
+  - Fix case where incoming message was not counted in messaging flow.
+  - Fix spamd sendmail parser, some messages was lost. Thanks for Sir Y Dog
+    for the report.
+  - Remove README.RPM from slackBuild, the file no longer exists. Thanks to
+    Syr Y Dog for the report.
+  - First work on adding support to Exim log file.
+  - Add new configuration directives EXCLUDE_FROM, EXCLUDE_TO and EXCLUDE_RELAY
+    to not report emails from the specified list of senders or senders relay.
+    Thanks to Dave Wreski for the feature request.
+  - Fix rejection Top status with Domain of sender address....
+  - Fix Top DSN wrong report count. Unknown senders are marked as unknown.
+    Thanks to Paul Cantle for the report.
+  - Fix Top DSN details reports. Thanks to Paul Cantle for the report.
+  - Fix enhdnsbl rejection, they should be reported as DNSBL spam now. Thanks
+    to Piotr Bodnar for the report.
+  - Limit Top rejection status to any text before : character.
+  - Fix some status cleanup.
+  - Add support to milter-limit. Will be shown in Top Rejection & Events report
+    with status starting with "has exceeded ...". Thanks to Juan Carlos Sanchez
+    for the feature request.
+  - Fix missing sender relay when no DNS name was appended in front. Thanks to
+    Juan Carlos Sanchez for the report.
+  - Exclude authid single message from System messages report.
+  - Add aggregating of STARTTLS error.
+  - Fix a possible case where Amavis Hits score was not stores.
+  - Make systemd happy with sendmailanalyzer.pid file. Thanks to Piotr Bodnar
+    for the report.
+  - Test log file size before seeking in incremental mode.
+  - Accelerate incremental mode by seeking directly to last position of the
+    parser in the logfile after last run. It will also auto detect file rotation
+    and fall back to the start of the file when the file has changed.
+  - Some documentation fixes. Thanks to Igor Vuk for the patch.
+  - Add WEEKLY_FREE_SPACE configuration directive to force sa_cache to archive
+    or remove data file each weeks instead of default per month. This will help
+    saving space on huge MTA.
+  - Fix summarization of some status messages.
+  - Add error message when the archive command can not be achieved.
+  - Add postfix warning into SysErr reports. Thanks to Mathieu Chateau for the
+    feature request.
+  - Add support to spampd spam detection. Thanks to Thibaut Varene for the
+    feature request.
+  - Recalculate current time at each line to compare log entry with current date
+    to search the year used in the log file.
+  - Add information about settings for sendmailanalyzer into systemd service.
+    Thanks to fmalfatto for the report.
+  - Add ruleset=check_relay with reject=550 5.7.1 to the spam reports. Thanks
+    to Ricardson Williams for the report.
+
 2014-03-15 Version 9.0
 
 This is a major release with lot of major enhancements and a full year of bugs
