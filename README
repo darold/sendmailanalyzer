@@ -689,6 +689,11 @@ CONFIGURATION
         Feel free to remove those you're not using to not see link to empty
         report in the menu.
 
+    SHOW_SUBJECT
+        When enabled it allow email subjects to be shown in detailed view.
+        Of course The log file must contain this information. Default is
+        disabled.
+
   Maillog parsing options
     FULL
         Parse maillog from begining before running tail program. Can be

@@ -400,7 +400,7 @@ sub do_hour_cache
 		if (open(IN, $file)) {
 			while (my $l = <IN>) { 
 				chomp($l);
-				# Format: Hour:Id:Sender:Size:Nrcpts:Relay
+				# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
 				@data = split(/:/, $l);
 				$data[0] =~ /^(\d{2})/;
 				next if ($1 ne $hour);
@@ -415,7 +415,9 @@ sub do_hour_cache
 					$localstat{TOPDSN}{$sourceid{$data[1]}}{sender} = $data[2];
 					$localstat{TOPDSN}{$sourceid{$data[1]}}{sender_relay} = $data[5];
 				}
-
+				if ($#data == 6) {
+					$localstat{$data[1]}{subject} = $data[6];
+				}
 			}
 			close(IN);
 		}

@@ -179,6 +179,7 @@
 	'Postgrey Status' => 'Postgrey Status',
 	'Top Reasons' => 'Top status',
 	'STARTTLS status' => 'STARTTLS Status',
+	'Subject' => 'Sujeto',
 );
 
 ################################################################################

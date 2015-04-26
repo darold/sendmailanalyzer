@@ -179,4 +179,5 @@
 	'Postgrey Status' => 'Postgrey статус',
 	'Top Reasons' => 'Топ причина',
 	'STARTTLS status' => 'STARTTLS статус',
+	'Subject' => 'предмет',
 );

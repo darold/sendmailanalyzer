@@ -838,6 +838,11 @@ list is:
 Feel free to remove those you're not using to not see link to empty report in
 the menu.
 
+=item SHOW_SUBJECT
+
+When enabled it allow email subjects to be shown in detailed view. Of course
+The log file must contain this information. Default is disabled.
+
 =back
 
 =head2 Maillog parsing options

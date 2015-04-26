@@ -1329,7 +1329,7 @@ sub get_sender_stat
 	open(IN, $file) || return;
 	while (my $l = <IN>) { 
 		chomp($l);
-		# Format: Hour:Id:Sender:Size:Nrcpts:Relay
+		# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
 		my @data = split(/:/, $l);
 		$data[0] =~ /^(\d{2})/;
 		next if (($hour ne '') && ($1 != $hour));
@@ -1339,6 +1339,10 @@ sub get_sender_stat
 		$STATS{$data[1]}{size} = $data[3];
 		$STATS{$data[1]}{nrcpt} = $data[4];
 		$STATS{$data[1]}{sender_relay} = $data[5];
+		for (my $i = 6; $i <= $#data; $i++) {
+			$STATS{$data[1]}{subject} .= ($i > 6) ? ':' : '';
+			$STATS{$data[1]}{subject} .= $data[$i];
+		}
 		my $idx = $month;
 		if ($hour ne '') {
 			$data[0] =~ /(\d{2})\d{2}$/;
@@ -1498,7 +1502,7 @@ sub get_dsn_stat
 	if (open(IN, $file)) {
 		while (my $l = <IN>) { 
 			chomp($l);
-			# Format: Hour:Id:Sender:Size:Nrcpts:Relay
+			# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
 			my @data = split(/:/, $l);
 			$data[0] =~ /^(\d{2})/;
 			next if (($hour ne '') && ($1 != $hour));
@@ -1509,6 +1513,10 @@ sub get_dsn_stat
 			$STATS{$data[1]}{size} = $data[3];
 			$STATS{$data[1]}{nrcpt} = $data[4];
 			$STATS{$data[1]}{sender_relay} = $data[5];
+			for (my $i = 6; $i <= $#data; $i++) {
+				$STATS{$data[1]}{subject} .= ($i > 6) ? ':' : '';
+				$STATS{$data[1]}{subject} .= $data[$i];
+			}
 		}
 		close(IN);
 	}
@@ -1567,13 +1575,17 @@ sub get_dsn_top_stat
 	if (open(IN, $file)) {
 		while (my $l = <IN>) { 
 			chomp($l);
-			# Format: Hour:Id:Sender:Size:Nrcpts:Relay
+			# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
 			my @data = split(/:/, $l);
 			$data[0] =~ /^(\d{2})/;
 			$data[2] ||= '<>';
 			next if (!exists $STATS{$data[1]});
 			$STATS{$data[1]}{sender} = $data[2];
 			$STATS{$data[1]}{sender_relay} = $data[5];
+			for (my $i = 6; $i <= $#data; $i++) {
+				$STATS{$data[1]}{subject} .= ($i > 6) ? ':' : '';
+				$STATS{$data[1]}{subject} .= $data[$i];
+			}
 		}
 		close(IN);
 	}
@@ -4297,6 +4309,9 @@ sub show_detail
 			print qq{<th>$TRANSLATE{'Rule'}</th>\n};
 		}
 	}
+	if ($CONFIG{SHOW_SUBJECT}) {
+		print qq{<th>$TRANSLATE{'Subject'}</th>\n};
+	}
 	print "</tr>\n";
 	my $line = 1;
 	foreach my $id (sort { $lstat{$a}{hour} <=> $lstat{$b}{hour} } keys %lstat) {
@@ -4436,6 +4451,10 @@ sub show_detail
 				$lstat{$id}{rule} ||= '&nbsp;';
 				print qq{<td class="tdtopn">$lstat{$id}{rule}</td>};
 			}
+		}
+		if ($CONFIG{SHOW_SUBJECT}) {
+			$lstat{$id}{subject} ||= '&nbsp;';
+			print qq{<td class="tdtopn">$lstat{$id}{subject}</td>};
 		}
 		print "</tr>\n";
 		$line++;
@@ -4600,11 +4619,10 @@ sub get_sender_detail
 
 	my %local_stat = ();
 	my $file = "$path/senders.dat";
-	# Format: Hour:Id:Sender:Size:Nrcpts:Relay
 	if (open(IN, $file)) {
 		while (my $l = <IN>) {
 			chomp($l);
-			# Format: Hour:Id:Sender:Size:Nrcpts:Relay
+			# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
 			my @data = split(/:/, $l);
 			$data[0] =~ /^(\d{2})/;
 			next if (($hour ne '') && ($1 != $hour));
@@ -4631,6 +4649,10 @@ sub get_sender_detail
 			$local_stat{$data[1]}{size} = $data[3];
 			$local_stat{$data[1]}{nrcpt} = $data[4];
 			$local_stat{$data[1]}{sender_relay} = $data[5];
+			for (my $i = 6; $i <= $#data; $i++) {
+				$local_stat{$data[1]}{subject} .= ($i > 6) ? ':' : '';
+				$local_stat{$data[1]}{subject} .= $data[$i];
+			}
 		}
 		close(IN);
 	}
@@ -4767,7 +4789,7 @@ sub get_recipient_detail
 	if (open(IN, $file)) {
 		while (my $l = <IN>) { 
 			chomp($l);
-			# Format: Hour:Id:Sender:Size:Nrcpts:Relay
+			# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
 			my @data = split(/:/, $l);
 			$data[0] =~ /^(\d{2})/;
 			next if (($hour ne '') && ($1 != $hour));
@@ -4778,6 +4800,10 @@ sub get_recipient_detail
 			$local_stat{$data[1]}{size} = $data[3];
 			$local_stat{$data[1]}{nrcpt} = $data[4];
 			$local_stat{$data[1]}{sender_relay} = $data[5];
+			for (my $i = 6; $i <= $#data; $i++) {
+				$local_stat{$data[1]}{subject} .= ($i > 6) ? ':' : '';
+				$local_stat{$data[1]}{subject} .= $data[$i];
+			}
 		}
 		close(IN);
 	}
@@ -4903,11 +4929,10 @@ sub get_reject_detail
 		close(IN);
 	}
 	$file = "$path/senders.dat";
-	# Format: Hour:Id:Sender:Size:Nrcpts:Relay
 	if (open(IN, $file)) {
 		while (my $l = <IN>) { 
 			chomp($l);
-			# Format: Hour:Id:Sender:Size:Nrcpts:Relay
+			# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
 			my @data = split(/:/, $l);
 			$data[0] =~ /^(\d{2})/;
 			next if (($hour ne '') && ($1 != $hour));
@@ -4934,6 +4959,10 @@ sub get_reject_detail
 			$local_stat{$data[1]}{size} = $data[3];
 			$local_stat{$data[1]}{nrcpt} = $data[4];
 			$local_stat{$data[1]}{sender_relay} = $data[5];
+			for (my $i = 6; $i <= $#data; $i++) {
+				$local_stat{$data[1]}{subject} .= ($i > 6) ? ':' : '';
+				$local_stat{$data[1]}{subject} .= $data[$i];
+			}
 		}
 		close(IN);
 	}
@@ -4992,12 +5021,11 @@ sub get_spam_detail
 		close(IN);
 	}
 	$file = "$path/senders.dat";
-	# Format: Hour:Id:Sender:Size:Nrcpts:Relay
 	if (open(IN, $file)) {
 		my $i = 0;
 		while (my $l = <IN>) { 
 			chomp($l);
-			# Format: Hour:Id:Sender:Size:Nrcpts:Relay
+			# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
 			my @data = split(/:/, $l);
 			$data[0] =~ /^(\d{2})/;
 			next if (($hour ne '') && ($1 != $hour));
@@ -5011,6 +5039,10 @@ sub get_spam_detail
 			$local_stat{$data[1]}{size} = $data[3];
 			$local_stat{$data[1]}{nrcpt} = $data[4];
 			$local_stat{$data[1]}{sender_relay} = $data[5];
+			for (my $i = 6; $i <= $#data; $i++) {
+				$local_stat{$data[1]}{subject} .= ($i > 6) ? ':' : '';
+				$local_stat{$data[1]}{subject} .= $data[$i];
+			}
 		}
 		close(IN);
 	}
@@ -5085,17 +5117,20 @@ sub get_spaminfo_detail
 		close(IN);
 	}
 	$file = "$path/senders.dat";
-	# Format: Hour:Id:Sender:Size:Nrcpts:Relay
 	if (open(IN, $file)) {
 		while (my $l = <IN>) { 
 			chomp($l);
-			# Format: Hour:Id:Sender:Size:Nrcpts:Relay
+			# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
 			my @data = split(/:/, $l);
 			next if (!exists $local_stat{$data[1]});
 			$local_stat{$data[1]}{sender} = $data[2];
 			$local_stat{$data[1]}{size} = $data[3];
 			$local_stat{$data[1]}{nrcpt} = $data[4];
 			$local_stat{$data[1]}{sender_relay} = $data[5];
+			for (my $i = 6; $i <= $#data; $i++) {
+				$local_stat{$data[1]}{subject} .= ($i > 6) ? ':' : '';
+				$local_stat{$data[1]}{subject} .= $data[$i];
+			}
 		}
 		close(IN);
 	}
@@ -5130,11 +5165,10 @@ sub get_virus_detail
 	}
 
 	$file = "$path/senders.dat";
-	# Format: Hour:Id:Sender:Size:Nrcpts:Relay
 	if (open(IN, $file)) {
 		while (my $l = <IN>) { 
 			chomp($l);
-			# Format: Hour:Id:Sender:Size:Nrcpts:Relay
+			# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
 			my @data = split(/:/, $l);
 			$data[0] =~ /^(\d{2})/;
 			next if (($hour ne '') && ($1 != $hour));
@@ -5150,6 +5184,10 @@ sub get_virus_detail
 			$local_stat{$data[1]}{size} = $data[3];
 			$local_stat{$data[1]}{nrcpt} = $data[4];
 			$local_stat{$data[1]}{sender_relay} = $data[5];
+			for (my $i = 6; $i <= $#data; $i++) {
+				$local_stat{$data[1]}{subject} .= ($i > 6) ? ':' : '';
+				$local_stat{$data[1]}{subject} .= $data[$i];
+			}
 		}
 		close(IN);
 	}
@@ -5203,11 +5241,10 @@ sub get_dsn_detail
 	}
 
 	$file = "$path/senders.dat";
-	# Format: Hour:Id:Sender:Size:Nrcpts:Relay
 	if (open(IN, $file)) {
 		while (my $l = <IN>) { 
 			chomp($l);
-			# Format: Hour:Id:Sender:Size:Nrcpts:Relay
+			# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
 			my @data = split(/:/, $l);
 			$data[0] =~ /^(\d{2})/;
 			next if (($hour ne '') && ($1 != $hour));
@@ -5218,6 +5255,10 @@ sub get_dsn_detail
 			$local_stat{$data[1]}{size} = $data[3];
 			$local_stat{$data[1]}{nrcpt} = $data[4];
 			$local_stat{$data[1]}{sender_relay} = $data[5];
+			for (my $i = 6; $i <= $#data; $i++) {
+				$local_stat{$data[1]}{subject} .= ($i > 6) ? ':' : '';
+				$local_stat{$data[1]}{subject} .= $data[$i];
+			}
 		}
 		close(IN);
 	}

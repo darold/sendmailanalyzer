@@ -285,6 +285,10 @@ EXCLUDE_FROM	addr1\@domain1.com|addr2\@domain2.com
 # should be a valid regex, the addresses will be search in all senders relay
 # ip adresses like \$RELAY =~ /^\$EXCLUDE_RELAY\$/
 EXCLUDE_RELAY	addr1\@domain1.com|addr2\@domain2.com
+
+# When enabled it allow email subjects to be shown in detailed view. Of course
+# The log file must contain this information.
+SHOW_SUBJECT	0
 };
 close(OUTCFG);
 

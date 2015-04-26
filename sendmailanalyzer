@@ -621,6 +621,10 @@ sub parse_sendmail
 	} elsif ($str =~ m#^(SSL_connect error).*#) {
 		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
 		$SYSERR{$host}{"$date$time"}{message} = $1;
+	# Postfix subject information
+	} elsif ($str =~ m#^([^:\s]+): warning: header Subject: (.*?) from ([^;]+);#) {
+		my $id = $1;
+		$FROM{$host}{$id}{subject} =  &decode_subject($2);
 	} elsif ($str =~ m#^warning: (.*)#) {
 		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
 		$SYSERR{$host}{"$date$time"}{message} = $1;
@@ -637,6 +641,10 @@ sub parse_sendmail
 		}
 		delete $SKIPMSG{$id};
 		return;
+	# Sendmail subject information
+	} elsif ($str =~ m#^([^:\s]+): Subject:(.*)#) {
+		my $id = $1;
+		$FROM{$host}{$id}{subject} =  &decode_subject($2);
 	# Parse protocole error
 	} elsif ($str =~ m#^([^:\s]+): ([^:\s]+): (.*protocol error:.*)#) {
 		$SYSERR{$host}{$1}{date} =  $time_st;
@@ -1903,6 +1911,31 @@ sub edecode
 }
 
 ####
+# Decode subject
+####
+sub decode_subject
+{
+	my ($str) = @_;
+
+	if ($str =~ /=\?[^\?]+\?(.)\?(.*)?=/) {
+		my $subject = $1;
+		if (uc($subject) eq 'B') {
+			$subject = decode_base64($subject);
+		} elsif (uc($subject) eq 'Q') {
+			$subject = decode_qp($subject);
+		}
+		$str =~ s/=\?[^\?]+\?(.)\?(.*)?=/$subject/;
+	}
+
+	if ($str =~ /=\?[^\?]+\?(.)\?(.*)?=/) {
+		&decode_subject($str);
+	}
+
+	return $str;
+}
+
+
+####
 # Clean relay address
 ####
 sub clean_relay
@@ -1997,8 +2030,8 @@ sub flush_data
 			delete $SKIPMSG{$id};
 
 			next if ($FROM{$host}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
-			# Key: year/month/day, Format: Hour:Id:Sender:Size:Nrcpts:Relay
-			$senders{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $FROM{$host}{$id}{from} . ':' . $FROM{$host}{$id}{size} . ':' . $FROM{$host}{$id}{nrcpts} . ':' . $FROM{$host}{$id}{relay} . "\n";
+			# Key: year/month/day, Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
+			$senders{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $FROM{$host}{$id}{from} . ':' . $FROM{$host}{$id}{size} . ':' . $FROM{$host}{$id}{nrcpts} . ':' . $FROM{$host}{$id}{relay} . ':' . $FROM{$host}{$id}{subject} ."\n";
 			$nobj++;
 			# Complete Spam information
 			if (exists $SPAM{$host}{$id}) {
