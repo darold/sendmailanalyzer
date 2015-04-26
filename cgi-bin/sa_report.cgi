@@ -4502,6 +4502,9 @@ sub show_download_detail
 			print "$TRANSLATE{'Rule'};";
 		}
 	}
+	if ($CONFIG{SHOW_SUBJECT}) {
+		print "$TRANSLATE{'Subject'};";
+	}
 	print "\n";
 	my $line = 1;
 	foreach my $id (sort { $lstat{$a}{hour} <=> $lstat{$b}{hour} } keys %lstat) {
@@ -4604,9 +4607,11 @@ sub show_download_detail
 			} elsif ($type eq 'virus') {
 				print "$lstat{$id}{virus};$lstat{$id}{file};";
 			} else {
-				$lstat{$id}{rule} ||= '&nbsp;';
 				print "$lstat{$id}{rule};";
 			}
+		}
+		if ($CONFIG{SHOW_SUBJECT}) {
+			print "$lstat{$id}{subject};";
 		}
 		print "\n";
 		$line++;
