@@ -988,9 +988,10 @@ use alphanumeric characters as it is used to create a subdirectory.
 
 Use this to set the recipient relay used for local delivery if your message
 appears twice in details view and in messaging, sender and recipient counter.
-This is especially right when with postfix configured to have local delivery
-via dovecot service. Default: dovecot, that means that recipient log lines
-with relay=dovecot will instruct sendmailanalyzer to skip those messages.
+This is especially right with postfix configured to have local delivery via
+dovecot service. Default: dovecot, that means that recipient log lines with
+relay=dovecot will instruct sendmailanalyzer to skip those messages. A common
+value can also be 127.0.0.1 with MTA where the message is first sent locally.
 
 =item EXCLUDE_TO
 
