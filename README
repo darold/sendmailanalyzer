@@ -716,7 +716,7 @@ CONFIGURATION
         to a pipe separated list of values, for example:
         sm-mta|sendmail|sm-msp-queue.
 
-        Default: sm-mta|sendmail|postfix
+        Default: sm-mta|sendmail|postfix|spampd
 
     MAILSCAN_NAME
         Syslog name of MailScanner. Syslog writes it to maillog with the pid

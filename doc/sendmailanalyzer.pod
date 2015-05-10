@@ -872,7 +872,7 @@ have multiple names (ex: sm-mta, sendmail and sm-msp-queue) in this
 case you can set the value of this directive to a pipe separated list
 of values, for example: sm-mta|sendmail|sm-msp-queue.
 
-Default: sm-mta|sendmail|postfix
+Default: sm-mta|sendmail|postfix|spampd
 
 =item MAILSCAN_NAME
 
