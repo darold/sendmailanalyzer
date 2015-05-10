@@ -88,7 +88,7 @@ DELAY		5
 # ... sendmail[1234] ... This is required to only parse relevant logged lines
 # Can be overwritten with --sendmail or -s
 # You can set multiple Syslog name as a list separated by a pipe '|'
-MTA_NAME	sm-mta|sendmail|postfix
+MTA_NAME	sm-mta|sendmail|postfix|spampd
 
 # Syslog name of MailScanner. Syslog write it to maillog with the pid as follow:
 # ... MailScanner[1234] ... This is required to only parse relevant logged lines
@@ -246,6 +246,10 @@ SHOW_DIRECTION	1
 # ... clamd[1234] ...
 # Can be overwritten with --clamd or -n
 CLAMD_NAME	clamd
+
+# Syslog name of Clamsmtpd.
+# ... clamsmtpd: ...
+CLAMSMTPD_NAME	clamsmtpd
 
 # Syslog name of Postgrey. Syslog write it to maillog with the pid as follow:
 # ... postgrey[1234] ... This is required to only parse relevant logged lines

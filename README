@@ -741,6 +741,10 @@ CONFIGURATION
         LOG_MAIL. Default value is 'clamd' (... clamd[1234] ...). Can be
         overwritten with --clamd or -n.
 
+    CLAMSMTPD_NAME
+        Syslog name of clamsmtpd. Default value is 'clamsmtpd' (...
+        clamsmtpd: ...).
+
     POSTGREY_NAME
         Syslog name of Postgrey or sqlgrey. Syslog writes Postgrey to
         maillog with the pid as follows: ... postgrey[1234] ... and sqlgrey

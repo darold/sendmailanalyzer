@@ -90,6 +90,7 @@ my %SKIPMSG = ();
 my %POSTFIX_PLUGIN_TEMP_DELIVERY = ();
 my %AMAVIS_ID = ();
 my %STARTTLS = ();
+my %SPAMPD = ();
 
 # Collect command line arguments
 GetOptions (
@@ -322,7 +323,7 @@ sub start_loop
 			$LAST_PARSED = $l;
 			$l = '';
 			# Only catch relevant logs
-			if ( ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\[:]/) || ($LAST_PARSED =~ $EXIM_REGEX) ) {
+			if ( ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME}|$CONFIG{CLAMSMTPD_NAME})[\/\[:]/) || ($LAST_PARSED =~ $EXIM_REGEX) ) {
 				my $tmpos = tell(SA_FILE);
 				if ($OLD_LAST_PARSED) {
 					# Store the last position in the log
@@ -482,8 +483,10 @@ sub store_data
 		&parse_mailscanner("$date","$time",$host,$other);
 	} elsif ($CONFIG{AMAVIS_NAME} && ($type =~ /^$CONFIG{AMAVIS_NAME}/i)) {
 		&parse_amavis("$date","$time",$host,$other);
+	} elsif ($CONFIG{CLAMSMTPD_NAME} && ($type =~ /^$CONFIG{CLAMSMTPD_NAME}/i)) {
+		&parse_clamsmtpd("$date","$time",$host,$other);
 	} elsif ($CONFIG{MTA_NAME} && ($type =~ /^$CONFIG{MTA_NAME}/i)) {
-		&parse_sendmail("$date","$time",$host,$other);
+		&parse_sendmail("$date","$time",$host,$other,$type);
 	} elsif ($CONFIG{MD_NAME} && ($type =~ /^$CONFIG{MD_NAME}/i)) {
 		&parse_mimedefang("$date","$time",$host,$other);
 	} elsif ($CONFIG{POSTGREY_NAME} && ($type =~ /^$CONFIG{POSTGREY_NAME}/i)) {
@@ -550,7 +553,6 @@ sub parse_exim
                         $REJECT{$host}{$id}{arg1} = &edecode($1);
 		}
 	}
-
 }
 
 ####
@@ -558,7 +560,7 @@ sub parse_exim
 ####
 sub parse_sendmail
 {
-	my ($date,$time,$host,$str) = @_;
+	my ($date,$time,$host,$str,$type) = @_;
 
 	my $time_st = "$date$time";
 
@@ -568,6 +570,9 @@ sub parse_sendmail
 	}
 
 	#### Store each relevant information per host and id
+
+	# Some spampd line must be skipped
+	return if (($type eq 'spampd') && ($str =~ /(processing|clean) message/));
 
 	# Parse MTA system error
 	if ($str =~ m#^([^:\s]+): SYSERR[^:]+: (.*)# ) {
@@ -622,14 +627,52 @@ sub parse_sendmail
 		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
 		$SYSERR{$host}{"$date$time"}{message} = $1;
 	# Postfix subject information
-	} elsif ($str =~ m#^([^:\s]+): warning: header Subject: (.*?) from ([^;]+);#) {
+	} elsif ($str =~ m#^([^:\s]+): (warning|info): header Subject: (.*?) from ([^;]+);#) {
 		my $id = $1;
 		$FROM{$host}{$id}{subject} =  &decode_subject($2);
-	} elsif ($str =~ m#^warning: (.*)#) {
+	} elsif ($str =~ m#^warning: .*#) {
 		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
-		$SYSERR{$host}{"$date$time"}{message} = $1;
-		$SYSERR{$host}{"$date$time"}{message} =~ s/(address not listed for hostname) .*/$1/;
-		$SYSERR{$host}{"$date$time"}{message} =~ s/.*: ([^:]+)$/warning: $1/;
+		$SYSERR{$host}{"$date$time"}{message} = &clear_status($str);
+	# POSTFIX spampd pass
+	} elsif ($str =~ m#identified spam (<[^>]+>) \(([^\)]+)\) from ([^\s]+) for ([^\s]+) .* (\d+) bytes.#) {
+		my $id = $1;
+		my $rule = 'spampd';
+		my $from = &edecode($3);
+		my $to = &edecode($4);
+		my $status = $2;
+		my $size = $5;
+		foreach my $i (keys %MSGID) {
+			if ($i eq $id) {
+				$id = $MSGID{$i}{id};
+				last;
+			}
+		}
+		return if ($CONFIG{EXCLUDE_TO} && ($to =~ /^$CONFIG{EXCLUDE_TO}$/));
+
+		$SPAM{$host}{$id}{relay} = $FROM{$host}{$id}{relay};
+		$SPAM{$host}{$id}{rule} = 'reject';
+		$SPAM{$host}{$id}{spam} = $status;
+		$SPAM{$host}{$id}{date} =  $time_st;
+		$SPAM{$host}{$id}{from} = $from;
+		$SPAM{$host}{$id}{to} = $to;
+		$SPAM{$host}{$id}{status} = $status;
+
+	# POSTFIX spampd pass
+	} elsif ($str =~ m#identified spam \(([^\)]+)\) \(([^\)]+)\) from ([^\s]+) for ([^\s]+) .* (\d+) bytes.#) {
+		my $id = $1;
+		my $rule = 'spampd';
+		my $from = &edecode($3);
+		my $to = &edecode($4);
+		my $status = $2;
+		my $size = $5;
+		return if ($CONFIG{EXCLUDE_TO} && ($to =~ /^$CONFIG{EXCLUDE_TO}$/));
+
+		$status =~ s/.*\///;
+		$SPAMPD{$host}{$from}{$to}{rule} = 'reject';
+		$SPAMPD{$host}{$from}{$to}{spam} = $status;
+		$SPAMPD{$host}{$from}{$to}{date} =  $time_st;
+		$SPAMPD{$host}{$from}{$to}{status} = $status;
+
 	# Sendmail authid single message
 	} elsif ($str =~ m#^([^:\s]+): authid=#) {
 		return;
@@ -795,6 +838,17 @@ sub parse_sendmail
 				$FROM{$host}{$id}{relay} = $MSGID{$i}{relay};
 				last;
 			}
+		}
+		if (exists $SPAMPD{$host}{$from}) {
+			foreach my $to (keys %{$SPAMPD{$host}{$from}}) {
+
+				$SPAM{$host}{$id}{relay} = $FROM{$host}{$id}{relay};
+				$SPAM{$host}{$id}{rule} = $SPAMPD{$host}{$from}{$to}{rule};
+				$SPAM{$host}{$id}{spam} = $SPAMPD{$host}{$from}{$to}{spam};
+				$SPAM{$host}{$id}{date} = $SPAMPD{$host}{$from}{$to}{date};
+				$SPAM{$host}{$id}{status} = $SPAMPD{$host}{$from}{$to}{status};
+			}
+			delete $SPAMPD{$host}{$from};
 		}
 	# Catch POSTFIX SASL AUTH method
 	} elsif ($str =~ m#^([^:\s]+): client=([^,]+), sasl_method=([^,]+), sasl_username=(.*)#) {
@@ -1146,7 +1200,7 @@ sub parse_sendmail
 		push(@{$TO{$host}{$id}{to}}, $to);
 		push(@{$TO{$host}{$id}{status}}, $status);
 		$REJECT{$host}{$id}{rule} = 'reject';
-		$REJECT{$host}{$id}{status} = $status;
+		$REJECT{$host}{$id}{status} = &clear_status($status);
 		$REJECT{$host}{$id}{date} =  $time_st;
 	# Add support to milter sender rejection
 	} elsif ($str =~ m#^([^:\s]+): Milter: from=(.*), reject=(\d+ \d+\.\d+\.\d+\s+.*)#) {
@@ -1675,6 +1729,35 @@ sub parse_amavis
 			$SPAMDETAIL{$host}{$id}{spam} = $4;
 			($SPAMDETAIL{$host}{$id}{from}, $SPAMDETAIL{$host}{$id}{to}) = split(/ -> /, $from_to);
 		}
+	}
+}
+
+####
+# Parse clamsmtpd syslog output
+####
+sub parse_clamsmtpd
+{
+	my ($date, $time ,$host,$str) = @_;
+
+	my $timest = "$date$time";
+
+	if ($str =~ /^([^:]+): from=([^,]+), to=([^,]+), status=VIRUS:(.*)/) {
+		my $virus = $4;
+		my $from = &edecode($2);
+		my $to = &edecode($3);
+		my $id = $1;
+
+		foreach my $i (keys %{$FROM{$host}}) {
+			if ($FROM{$host}{$i}{from} = $from) {
+				$id = $i;
+				last;
+			}
+		}
+		$VIRUS{$host}{$id}{file} = 'Inline';
+		$VIRUS{$host}{$id}{virus} = $virus;
+		$VIRUS{$host}{$id}{from} = $from;
+		$VIRUS{$host}{$id}{to} = $to;
+		$VIRUS{$host}{$id}{date} = $timest;
 	}
 }
 
@@ -2232,6 +2315,7 @@ sub flush_data
 	&dprint("\tWrote $nobj spam object.");
 	# clear all spams memory storage
 	%SPAM = ();
+	%SPAMPD = ();
 
 	# Save Spam detail objects
 	&dprint("Writing Spam detail data to disk...");
@@ -2561,7 +2645,7 @@ sub read_config
 	$CONFIG{FULL} ||= 0;
 	$CONFIG{BREAK} ||= 0;
 	$CONFIG{DELAY} ||= 5;
-	$CONFIG{MTA_NAME} ||= 'sendmail|sm-mta';
+	$CONFIG{MTA_NAME} ||= 'sm-mta|sendmail|postfix|spampd';
 	$CONFIG{MAILSCAN_NAME} ||= 'MailScanner';
 	$CONFIG{CLAMD_NAME} ||= 'clamd';
 	$CONFIG{MD_NAME} ||= 'mimedefang.pl';
@@ -2569,6 +2653,7 @@ sub read_config
 	if (!exists $CONFIG{SPAM_DETAIL}) {
 		$CONFIG{SPAM_DETAIL} = 1;
 	}
+	$CONFIG{CLAMSMTPD_NAME} = 'clamsmtpd';
 	$CONFIG{MTA_NAME} =~ s/[\s\t,;]+/\|/g;
 	$CONFIG{PID_DIR} ||= '/var/run';
 	$CONFIG{POSTGREY_NAME} ||= 'postgrey|sqlgrey';
@@ -2609,6 +2694,22 @@ sub clear_status
 		return $status;
 	} elsif ($status =~ /bounced.*/i) {
 		return 'Bounced';
+	} elsif ($status =~ /hostname (.*) does not resolve to address ([^:]+): (.*)/) {
+		return "hostname does not resolve to address, $3";
+	} elsif ($status =~ /hostname (.*) does not resolve to address ([^:]+)/) {
+		return "hostname does not resolve to address";
+	} elsif ($status =~ /(numeric domain name)/) {
+		return "numeric domain name";
+	} elsif ($status =~ /(address not listed for hostname)/) {
+		return $1;
+	} elsif ($status =~ /warning: (Illegal address syntax).* in ([^\s]+ command):/) {
+		return "$1 $2";
+	} elsif ($status =~ /warning: (non-SMTP command)/) {
+		return "$1";
+	} elsif ($status =~ /warning: [^:]+:\d+ ([^:]+)/) {
+		return $1;
+	} elsif ($status =~ /warning: [^:]+: ([^:]+)/) {
+		return $1;
 	} elsif ($status =~ /did not issue/) {
 		$status =~ s/.*did not issue/No/;
 		return $status;
@@ -2673,7 +2774,6 @@ sub clear_status
 		return $1;
         } elsif ($status =~ /(improper command pipelining after RCPT).*/) {
 		return $1;
-	# POSTFIX Status
         } elsif ($status =~ /(can't identify domain) in.*/) {
 		return $1;
         } elsif ($status =~ /.*(Illegal address syntax).*( in .* command)/) {
