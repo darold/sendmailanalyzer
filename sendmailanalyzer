@@ -2670,7 +2670,7 @@ sub clear_status
 
 	# Try to avoid doublon when postfix send the message to a plugin
 	# and then the plugin will use postfix again to send the message.
-	if ($status =~  /sent \(250 OK, sent [^\s]+ ([0-9A-F]{11})\)/) {
+	if ($status =~  /sent \(250 .* ([0-9A-F]+)\)/) {
 		$POSTFIX_PLUGIN_TEMP_DELIVERY{$1} = $id;
 	}
 
