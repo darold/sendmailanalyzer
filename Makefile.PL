@@ -262,9 +262,10 @@ POSTGREY_NAME	postgrey|sqlgrey
 
 # Use this to set the recipient relay used for local delivery if your message
 # appears twice in details view and in messaging, sender and recipient counter.
-# This is especially right when with postfix configuraed to have local delivery
+# This is especially right with postfix configured to have local delivery
 # via dovecot service. Default: dovecot, that mean that recipient log lines with
-# relay=dovecot will instruct sendmailanalyzer to skip those messages.
+# relay=dovecot will instruct sendmailanalyzer to skip those messages. One
+# other common value is 127.0.0.1
 SKIP_RCPT_RELAY	dovecot
 
 # Syslog name of Spamd. Syslog write it to maillog with the pid as follow:
