@@ -1857,8 +1857,12 @@ sub set_direction
 	###### Check for sender origine
 	# This host is a gateway and it forward mails to an internal hub
 	if (!$CONFIG{MAIL_GW} && $CONFIG{MAIL_HUB}) {
-		# if message doesn't come from localhost it comes from outside 
-		$direction = 'Ext_' if ($STATS{$id}{sender_relay} ne 'localhost');
+		# if message doesn't come from localhost or user defined loca relay it comes from outside 
+		if (exists $CONFIG{LOCAL_HOST_DOMAIN}{$hostname} && ($#{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}} > -1) ) {
+			$direction = 'Ext_' if (!grep($STATS{$id}{sender_relay} =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}}));
+		} elsif (exists $CONFIG{LOCAL_DOMAIN} && ($#{$CONFIG{LOCAL_DOMAIN}} > -1)) {
+			 $direction = 'Ext_' if (!grep($STATS{$id}{sender_relay} =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_DOMAIN}}));
+		}
 	# This host received mails from any side
 	} elsif (!$CONFIG{MAIL_GW} && !$CONFIG{MAIL_HUB}) {
 		# The message is not internal
@@ -1868,8 +1872,7 @@ sub set_direction
 				if (!grep($STATS{$id}{sender_relay} =~ /\b$_$/i, @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}})) {
 					$direction = 'Ext_';
 				}
-			}
-			if (exists $CONFIG{LOCAL_DOMAIN} && ($#{$CONFIG{LOCAL_DOMAIN}} > -1)) {
+			} elsif (exists $CONFIG{LOCAL_DOMAIN} && ($#{$CONFIG{LOCAL_DOMAIN}} > -1)) {
 				if (!grep($STATS{$id}{sender_relay} =~ /\b$_$/i, @{$CONFIG{LOCAL_DOMAIN}})) {
 					$direction = 'Ext_';
 				}
@@ -1890,7 +1893,7 @@ sub set_direction
 
 	###### Now check for destination
 	# If the recipient relay is localhost, it should be distributed internally
-	if (grep(/^$STATS{$id}{rcpt_relay}[$i]$/, 'localhost')) {
+	if ($STATS{$id}{rcpt_relay}[$i] eq 'localhost') {
 		$direction .= 'Int';
 	# If this host is a mail gateway and the recipient relay match one of
 	# our destination hub lets say it should be distributed internally
