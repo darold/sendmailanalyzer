@@ -91,6 +91,7 @@ my %POSTFIX_PLUGIN_TEMP_DELIVERY = ();
 my %AMAVIS_ID = ();
 my %STARTTLS = ();
 my %SPAMPD = ();
+my %KEEP_TEMPORARY = ();
 
 # Collect command line arguments
 GetOptions (
@@ -162,6 +163,7 @@ sub restart_sa
 	close($SA_PIPE) if ($SA_PIPE >= 0);
 	&dprint("Received SIGHUP signal: reloading configuration file and reopening log file.");
 	&flush_data(1);
+	&clean_globals();
 	exec($^X, $PROGRAM, @ARGS) or die "FATAL: Couldn't restart: $!\n";
 }
 
@@ -202,6 +204,7 @@ $0 = 'sendmailanalyzer';
 # Continuously read the maillog file using a pipe to tail program
 &dprint("Entering main loop...");
 &start_loop;
+
 
 exit 0;
 
@@ -628,7 +631,7 @@ sub parse_sendmail
 		$SYSERR{$host}{"$date$time"}{message} = $1;
 	# Postfix subject information
 	} elsif ($str =~ m#^([^:\s]+): (warning|info): header Subject: (.*?) from ([^;]+);#) {
-		my $id = $1;
+		my $id = $KEEP_TEMPORARY{$1} || $1;
 		$FROM{$host}{$id}{subject} =  &decode_subject($2);
 	} elsif ($str =~ m#^warning: .*#) {
 		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
@@ -683,6 +686,7 @@ sub parse_sendmail
 			delete $MSGID{$_} if ($MSGID{$_}{id} eq $id);
 		}
 		delete $SKIPMSG{$id};
+		delete $KEEP_TEMPORARY{$id};
 		return;
 	# Sendmail subject information
 	} elsif ($str =~ m#^([^:\s]+): Subject:(.*)#) {
@@ -812,7 +816,7 @@ sub parse_sendmail
 		}
 	# Local failure
 	} elsif ($str =~ m#^([^:\s]+): <([^>]+)>\.\.\. (.*)#) {
-		my $id = $1;
+		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $to = $2;
 		my $status = &clear_status($3);
 		delete $TO{$host}{$id}{queue_date};
@@ -824,7 +828,7 @@ sub parse_sendmail
 		push(@{$TO{$host}{$id}{status}}, $status);
 	# POSTFIX queue From clause
 	} elsif ($str =~ m#^([^:\s]+): from=([^,]*), size=(\d+), nrcpt=(\d+).*#) {
-		my $id = $1;
+		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $from = lc($2);
 		$from ||= 'empty';
 		my $size = $3;
@@ -833,12 +837,6 @@ sub parse_sendmail
 		$FROM{$host}{$id}{from} = &edecode($from);
 		$FROM{$host}{$id}{size} = $size;
 		$FROM{$host}{$id}{nrcpts} = $nrcpts;
-		foreach my $i (keys %MSGID) {
-			if ($MSGID{$i}{id} eq $id) {
-				$FROM{$host}{$id}{relay} = $MSGID{$i}{relay};
-				last;
-			}
-		}
 		if (exists $SPAMPD{$host}{$from}) {
 			foreach my $to (keys %{$SPAMPD{$host}{$from}}) {
 
@@ -859,13 +857,16 @@ sub parse_sendmail
 		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay(lc($2)));
 	# POSTFIX client origin and relay
 	} elsif ($str =~ m#^([^:\s]+): client=([^,]*)#) {
-		my $id = $1;
+		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $relay = &clean_relay(lc($2));
+
+		# POSTFIX origin queue
 		# Get real origin when available
-		if ($str =~ m#^[^:\s]+: client=.*, orig_client=([^,]*)#) {
-			$relay = &clean_relay(lc($1));
+		if ($str =~ m#^[^:\s]+: client=([^,]+), orig_queue_id=([^,]+), orig_client=([^,]+)#) {
+			$KEEP_TEMPORARY{$id} = $2;
+			$id = $2;
+			$relay = &clean_relay(lc($3));
 		}
-		$MSGID{$id}{relay} = $relay;
 		$FROM{$host}{$id}{relay} = $relay;
 		# Catch POSTFIX SASL SMTP AUTH
 		if ($str =~ m#sasl_method=([^,]*), sasl_username=([^,]*)#) {
@@ -877,7 +878,7 @@ sub parse_sendmail
 		}
 	# POSTFIX message id
 	} elsif ($str =~ m#^([^:\s]+): message-id=([^,]*)#) {
-		my $id = $1;
+		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $msgid = $2;
 		$msgid =~ s/[<>]//g;
 		if (!$DUPLICATE && exists $MSGID{$msgid}) {
@@ -890,12 +891,10 @@ sub parse_sendmail
 		}
 		$FROM{$host}{$id}{msgid} = $msgid;
 		$MSGID{$msgid}{id} = $id;
-		$MSGID{$msgid}{relay} = $MSGID{$id}{relay};
-		$FROM{$host}{$id}{relay} = $MSGID{$id}{relay};
 		delete $MSGID{$id};
 	# POSTFIX local relay
 	} elsif ($str =~ m#^([^:\s]+): uid=\d+ from=#) {
-		my $id = $1;
+		my $id = $KEEP_TEMPORARY{$1} || $1;
 		$FROM{$host}{$id}{relay} = 'localhost';
 	# From clause
 	} elsif ($str =~ m#^([^:\s]+): from=([^,]*), size=(\d+),.*, nrcpts=(\d+), msgid=([^,]+),.*relay=([^,]+)#) {
@@ -935,10 +934,15 @@ sub parse_sendmail
 
 	# POSTFIX To clause 
 	} elsif ($str =~ m#^([^:\s]+): to=([^,]+), relay=([^,]+),.*status=(.*)#) {
-		my $id = $1;
+		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $to = &edecode($2);
 		my $relay = &clean_relay(lc($3));
-		my $status = &clear_status($4, $id);
+		my $status = $4;
+		if ($status =~ /queued as ([^\)]+)\)/) {
+			$KEEP_TEMPORARY{$1} = $id;
+			return;
+		}
+		$status = &clear_status($status, $id);
 		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
 			return;
 		}
@@ -964,7 +968,7 @@ sub parse_sendmail
 
 	# POSTFIX To clause with origine
 	} elsif ($str =~ m#^([^:\s]+): to=([^,]+), orig_to=([^,]+), relay=([^,]+),.*status=(.*)#) {
-		my $id = $1;
+		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $to = &edecode($2);
 		my $relay = &clean_relay(lc($4));
 		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
@@ -1259,10 +1263,10 @@ sub parse_sendmail
 		$FROM{$host}{$id}{relay} = 'localhost';
 	# POSTFIX reject messages
 	} elsif ($str =~ m#^([^:\s]+): reject: RCPT from ([^\s]+) (.*) from=<([^>]*)>[,]* to=<([^>]+)>#) {
-		my $relay = &clean_relay(lc($2));
 		my $reject = $3;
 		my $from = $4;
 		my $to = $5;
+		my $relay = &clean_relay(lc($2));
 		my $id = &get_uniqueid();
 		$reject =~ s/^([^;]+);//;
 		my $status = $1 || '';
@@ -1307,7 +1311,7 @@ sub parse_sendmail
 
 	# POSTFIX spampd reject
 	} elsif ($str =~ m#^([^:\s]+): reject: header X-Spam-Flag: YES from ([^;]+); from=<([^>]*)> to=<([^>]+)> [^:]+: (.*)#) {
-		my $id = $1;
+		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $relay = &clean_relay(lc($2));
 		my $rule = 'spampd';
 		my $from = &edecode($3);
@@ -1335,12 +1339,12 @@ sub parse_sendmail
 
 	# POSTFIX milter reject message
 	} elsif ($str =~ m#^([^:\s]+): milter-reject: END-OF-MESSAGE from ([^\s]+) ([^;]+); from=<([^>]*)>[,]* to=<([^>]+)>#) {
+		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $relay = &clean_relay(lc($2));
 		my $rule = 'milter-reject';
 		my $status = $3;
 		my $from = &edecode($4);
 		my $to = &edecode($5);
-		my $id = $1;
 		return if ($CONFIG{EXCLUDE_TO} && ($to =~ /^$CONFIG{EXCLUDE_TO}$/));
 		if ($status =~ /Virus detected .*\((.*)\)/) {
 			$VIRUS{$host}{$id}{file} = 'Inline';
@@ -1380,7 +1384,7 @@ sub parse_sendmail
 		}
 	# POSTFIX some error messages
 	} elsif ($str =~ m#^([^:\s]+): ([^=]+)\.\.\. (.*)#) {
-		my $id = $1;
+		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $to = $2;
 		my $status = &clear_status($3);
 		$SYSERR{$host}{$id}{date} =  $time_st;
@@ -1540,7 +1544,6 @@ sub parse_amavis
 
 		if (exists $MSGID{$msgid}) {
 			$id = $MSGID{$msgid}{id};
-			$relay ||= $MSGID{$msgid}{relay};
 			delete $MSGID{$msgid};
 		}
 		$SPAM{$host}{$id}{from} = $sender;
@@ -2894,3 +2897,29 @@ sub get_uniqueid
 
 	return 'FaKe' . $u_id;
 }
+
+sub clean_globals
+{
+	%SYSERR = ();
+	%DSN = ();
+	%FROM = ();
+	%TO = ();
+	%REJECT = ();
+	%SPAM = ();
+	%VIRUS = ();
+	%ERRMSG = ();
+	%OTHER = ();
+	%SPAMDETAIL = ();
+	%AUTH = ();
+	%GREYLIST = ();
+	%POSTGREY = ();
+	%MSGID = ();
+	%SKIPMSG = ();
+	%POSTFIX_PLUGIN_TEMP_DELIVERY = ();
+	%AMAVIS_ID = ();
+	%STARTTLS = ();
+	%SPAMPD = ();
+	%KEEP_TEMPORARY = ();
+}
+
+
