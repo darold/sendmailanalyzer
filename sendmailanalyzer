@@ -246,8 +246,8 @@ sendmailanalyzer v$VERSION usage:
      --spamd  name     : syslog Spamd program name. Default: spamd.
      --hostname name   : set a hostname for exim logs. Default: unknown.
      --duplicate       : instruct sendmail analyzer to count one sender per
-                         MTA id and not message-id. For Postfix only. Note
-			 that when you will no more see multiple destination.
+                         MTA id and not message-id. For Postfix only. Note that
+			 when enabled you will no more see multiple destination.
 };
 	exit 0;
 }
