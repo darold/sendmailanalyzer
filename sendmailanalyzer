@@ -67,7 +67,6 @@ my $PID_FILE    = 'sendmailanalyzer.pid';
 my $SA_PIPE     = new IO::File;
 my $EXIM_REGEX  = qr/^(\d+\-\d+\-\d+) (\d+:\d+:\d+) ([A-Za-z0-9]{6}\-[A-Za-z0-9]{6}\-[A-Za-z0-9]{2}) ([\-\*=><]+) /;
 my $HOSTNAME    = '';
-my $DUPLICATE   = 0;
 
 # Global variable to store temporary parsed data
 my %SYSERR = ();
@@ -116,7 +115,6 @@ GetOptions (
 	'y|year=s' => \$CONFIG{DEFAULT_YEAR},
 	'spamd=s' => \$CONFIG{SPAMD_NAME},
 	'hostname=s' => \$HOSTNAME,
-	'duplicate!' => \$DUPLICATE,
 );
 
 &usage if ($HELP);
@@ -245,9 +243,6 @@ sendmailanalyzer v$VERSION usage:
                          Default /usr/bin/zcat.
      --spamd  name     : syslog Spamd program name. Default: spamd.
      --hostname name   : set a hostname for exim logs. Default: unknown.
-     --duplicate       : instruct sendmail analyzer to count one sender per
-                         MTA id and not message-id. For Postfix only. Note that
-			 when enabled you will no more see multiple destination.
 };
 	exit 0;
 }
@@ -881,17 +876,12 @@ sub parse_sendmail
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $msgid = $2;
 		$msgid =~ s/[<>]//g;
-		if (!$DUPLICATE && exists $MSGID{$msgid}) {
-			# remove the relay stored above
-			delete $MSGID{$id};
-			# This message is already processed with an original message id
-			# so we will skip other postfix log line related to this new id
-			$SKIPMSG{$id} = 1;
-			next;
+		if (exists $MSGID{$msgid}) {
+			$KEEP_TEMPORARY{$id} = $MSGID{$msgid}{id};
 		}
-		$FROM{$host}{$id}{msgid} = $msgid;
 		$MSGID{$msgid}{id} = $id;
-		delete $MSGID{$id};
+		$FROM{$host}{$id}{msgid} = $msgid;
+		return;
 	# POSTFIX local relay
 	} elsif ($str =~ m#^([^:\s]+): uid=\d+ from=#) {
 		my $id = $KEEP_TEMPORARY{$1} || $1;
@@ -942,6 +932,10 @@ sub parse_sendmail
 			$KEEP_TEMPORARY{$1} = $id;
 			return;
 		}
+		if ($status =~ /sent \(250 OK, sent [^\s]+ ([^\)]+)\)/) {
+			$KEEP_TEMPORARY{$1} = $id;
+			return;
+		}
 		$status = &clear_status($status, $id);
 		if ($relay eq $CONFIG{'SKIP_RCPT_RELAY'}) {
 			return;
@@ -982,8 +976,6 @@ sub parse_sendmail
 			$t = &edecode($t);
 			return if ($t eq 'more');
 			next if ($CONFIG{EXCLUDE_TO} && ($t =~ /^$CONFIG{EXCLUDE_TO}$/));
-			push(@{$TO{$host}{$id}{date}},  $time_st);
-			push(@{$TO{$host}{$id}{relay}}, $relay);
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
 		}
