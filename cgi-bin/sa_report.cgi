@@ -4474,6 +4474,9 @@ sub show_download_detail
 	$search = '' if ($search eq '<>');
 	my %lstat = &get_detail_stat($hostname, $date, $hour, $type, $peri, $search);
 
+	my $thedate = $date;
+	$thedate =~ s/(\d{4})(\d{2})(\d{2})/$1-$2-$3/;
+
 	my $filename = "$hostname-$date";
 	$filename .= "-$hour" if ($hour);
 	$filename .= "-detailed-$type-($search).csv";
@@ -4523,7 +4526,7 @@ sub show_download_detail
 				$lstat{$id}{sender_relay} =~ s/$pat/$CONFIG{REPLACE_HOST}{$pat}/g;
 			}
 		}
-		print "$line;$lstat{$id}{hour};$id;";
+		print "$line;$thedate $lstat{$id}{hour};$id;";
 		if (($type eq 'dsn') && ($type ne 'postgrey')) {
 			$lstat{$id}{srcid} = &detail_link($hostname,$date,'sender','id',$lstat{$id}{srcid}, $hour);
 			print "$lstat{$id}{srcid};";
