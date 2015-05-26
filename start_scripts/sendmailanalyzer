@@ -37,7 +37,7 @@ sa_start() {
 # Stop SendmailAnalyzer:
 sa_stop() {
 	echo -n "Stopping SendmailAnalyzer Daemon: "
-	kill `cat $PIDFILE`
+	kill -s kill `cat $PIDFILE`
 	rm -f $LOCKFILE
 	echo	
 }
