@@ -4279,6 +4279,9 @@ sub show_detail
 	$search = '' if ($search eq '<>');
 	my %lstat = &get_detail_stat($hostname, $date, $hour, $type, $peri, $search);
 
+	my $thedate = $date;
+	$thedate =~ s/(\d{4})(\d{2})(\d{2})/$1-$2-$3/;
+
 	my $dlink = $ENV{SCRIPT_NAME} . '?download=csv';
 	my @params = $CGI->param();
 	foreach my $p (@params) {
@@ -4333,7 +4336,7 @@ sub show_detail
 		$lstat{$id}{sender} ||= '&nbsp;';
 		$lstat{$id}{size} ||= '&nbsp;';
 		$lstat{$id}{sender_relay} ||= '&nbsp;';
-		print qq{<tr valign="top"><td class="tdtopn">$line</td><td class="tdtopn">$lstat{$id}{hour}</td><td class="tdtopn">$id</td>};
+		print qq{<tr valign="top"><td class="tdtopn">$line</td><td class="tdtopn">$thedate $lstat{$id}{hour}</td><td class="tdtopn">$id</td>};
 		if (($type eq 'dsn') && ($type ne 'postgrey')) {
 			$lstat{$id}{srcid} = &detail_link($hostname,$date,'sender','id',$lstat{$id}{srcid}, $hour);
 			print qq{<td class="tdtopn" nowrap="1">$lstat{$id}{srcid}</td>};
