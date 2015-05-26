@@ -624,10 +624,14 @@ sub parse_sendmail
 	} elsif ($str =~ m#^(SSL_connect error).*#) {
 		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
 		$SYSERR{$host}{"$date$time"}{message} = $1;
+	# Sendmail Milter change subject
+	} elsif ($str =~ m#^([^:\s]+): Milter change: header Subject: from (.*?) to (.*)$#) {
+		my $id = $KEEP_TEMPORARY{$1} || $1;
+		$FROM{$host}{$id}{subject} = &decode_subject($2);
 	# Postfix subject information
 	} elsif ($str =~ m#^([^:\s]+): (warning|info): header Subject: (.*?) from ([^;]+);#) {
 		my $id = $KEEP_TEMPORARY{$1} || $1;
-		$FROM{$host}{$id}{subject} =  &decode_subject($2);
+		$FROM{$host}{$id}{subject} = &decode_subject($2);
 	} elsif ($str =~ m#^warning: .*#) {
 		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
 		$SYSERR{$host}{"$date$time"}{message} = &clear_status($str);
