@@ -631,7 +631,7 @@ sub parse_sendmail
 	# Postfix subject information
 	} elsif ($str =~ m#^([^:\s]+): (warning|info): header Subject: (.*?) from ([^;]+);#) {
 		my $id = $KEEP_TEMPORARY{$1} || $1;
-		$FROM{$host}{$id}{subject} = &decode_subject($2);
+		$FROM{$host}{$id}{subject} = &decode_subject($3);
 	} elsif ($str =~ m#^warning: .*#) {
 		$SYSERR{$host}{"$date$time"}{date} =  $time_st;
 		$SYSERR{$host}{"$date$time"}{message} = &clear_status($str);
@@ -1999,20 +1999,26 @@ sub decode_subject
 {
 	my ($str) = @_;
 
-	if ($str =~ /=\?[^\?]+\?(.)\?(.*)?=/) {
+	while ($str =~ /=\?[^\?]+\?(.)\?(.*?)\?=/) {
 		my $subject = $1;
 		if (uc($subject) eq 'B') {
-			$subject = decode_base64($subject);
+			$subject = decode_base64($2);
 		} elsif (uc($subject) eq 'Q') {
-			$subject = decode_qp($subject);
+			$subject = decode_qp($2);
 		}
-		$str =~ s/=\?[^\?]+\?(.)\?(.*)?=/$subject/;
+		$str =~ s/=\?[^\?]+\?(.)\?(.*?)\?=/$subject/;
 	}
 
-	if ($str =~ /=\?[^\?]+\?(.)\?(.*)?=/) {
-		&decode_subject($str);
+	while ($str =~ /=\?[^\?]+\?(.)\?(.*?)/) {
+		my $subject = $1;
+		if (uc($subject) eq 'B') {
+			$subject = decode_base64($2);
+		} elsif (uc($subject) eq 'Q') {
+			$subject = decode_qp($2);
+		}
+		$str =~ s/=\?[^\?]+\?(.)\?(.*?)/$subject/;
 	}
-
+	$str =~ s/\?\?//g;
 	return $str;
 }
 
