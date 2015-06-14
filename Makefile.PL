@@ -409,7 +409,7 @@ WriteMakefile(
     'ABSTRACT'     => 'Sendmail log analyzer',
     'DESTDIR'      => $ENV{DESTDIR},
     'INSTALLDIRS'  => $ENV{INSTALLDIRS},
-    'clean'        => {FILES => "install_all.sh sendmailanalyzer.conf"}
+    'clean'        => {FILES => "install_all.sh sendmailanalyzer.conf sendmailanalyzer.1 sa_cache.1 changelog"}
 );
 
 sub MY::install {

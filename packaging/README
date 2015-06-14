@@ -33,14 +33,16 @@ slackbuild/
 
 debian/
 	Holds all files to build debian package.
-	Go to the debian directory and just run the following command to
-	generate the debian package:
+	Go to the sendmailanalyzer source directory and just run the following
+	command to generate the debian package:
 
-		dpkg -b sendmailanalyzer sendmailanalyzer.deb
+		dpkg-buildpackage -us -uc
 
 	To install the package, run:
 
-		dpkg -i sendmailanalyzer.deb
+		dpkg -i sendmailanalyzer_9.1-1_all.deb
+
+	from parent directory.
 
 
 
