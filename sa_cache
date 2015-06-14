@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #
 #    SendmailAnalyzer: maillog parser and statistics reports tool for Sendmail
-#    Copyright (C) 2002-2014 Gilles Darold
+#    Copyright (C) 2002-2015 Gilles Darold
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ use Time::Local 'timelocal_nocheck';
 
 $VERSION     = '9.1';
 $AUTHOR = "Gilles Darold <gilles\@darold.net>";
-$COPYRIGHT = "(c) 2002-2014 - Gilles Darold <gilles\@darold.net>";
+$COPYRIGHT = "(c) 2002-2015 - Gilles Darold <gilles\@darold.net>";
 
 # Configuration storage hash
 my %CONFIG = ();

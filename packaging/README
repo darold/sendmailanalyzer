@@ -33,9 +33,8 @@ slackbuild/
 
 debian/
 	Holds all files to build debian package.
-	First you need to execute script create-deb-tree.sh in the debian
-	directory to create the package tree. After that just run the following
-	command to generate the debian package:
+	Go to the debian directory and just run the following command to
+	generate the debian package:
 
 		dpkg -b sendmailanalyzer sendmailanalyzer.deb
 
