@@ -99,6 +99,7 @@ GetOptions (
 	'c|config=s' => \$CONFIG_FILE,
 	'd|debug!' => \$CONFIG{DEBUG},
 	'f|full!' => \$CONFIG{FULL},
+	'F|force!' => \$CONFIG{FORCE},
 	'g|postgrey=s' => \$CONFIG{POSTGREY_NAME},
 	'h|help!' => \$HELP,
 	'i|interactive!' => \$INTERACTIVE,
@@ -116,6 +117,8 @@ GetOptions (
 	'spamd=s' => \$CONFIG{SPAMD_NAME},
 	'hostname=s' => \$HOSTNAME,
 );
+
+$CONFIG{FULL} = 1 if ($CONFIG{FORCE});
 
 &usage if ($HELP);
 
@@ -223,6 +226,8 @@ sendmailanalyzer v$VERSION usage:
 -d | --debug           : turn on debug mode.
 -f | --full            : parse full maillog and compute stat. Default is to read
 			 LAST_PARSED file to start from last collected event.
+-F | --force           : same as --full but don't take care of LAST_PARSED file,
+			 that means that log file always contains new entries.
 -h | --help            : show this short help and exit.
 -i | --interactive     : run in interactive mode useful if you want day to day
                        : report. Default is daemon mode, real time statistics.
@@ -270,14 +275,16 @@ my $OLD_OFFSET      = 0;
 sub start_loop
 {
 	if ($CONFIG{FULL}) {
-		if (-e "$CONFIG{OUT_DIR}/$LAST_PARSE_FILE") {
-			if ( not open(IN, "$CONFIG{OUT_DIR}/$LAST_PARSE_FILE")) {
-				&logerror("Can't read file $CONFIG{OUT_DIR}/$LAST_PARSE_FILE: $!");
-			} else {
-				my $tmp = <IN>;
-				chomp($tmp);
-				($OLD_LAST_PARSED,$OLD_OFFSET) = split(/[\t]/, $tmp);
-				close(IN);
+		if (!$CONFIG{FORCE}) {
+			if (-e "$CONFIG{OUT_DIR}/$LAST_PARSE_FILE") {
+				if ( not open(IN, "$CONFIG{OUT_DIR}/$LAST_PARSE_FILE")) {
+					&logerror("Can't read file $CONFIG{OUT_DIR}/$LAST_PARSE_FILE: $!");
+				} else {
+					my $tmp = <IN>;
+					chomp($tmp);
+					($OLD_LAST_PARSED,$OLD_OFFSET) = split(/[\t]/, $tmp);
+					close(IN);
+				}
 			}
 		}
 		&dprint("Parsing full $CONFIG{LOG_FILE}");
@@ -2567,12 +2574,14 @@ sub flush_data
 	%AUTH = ();
 
 	# Write last parsed data
-	if (not open(OUT, ">$CONFIG{OUT_DIR}/$LAST_PARSE_FILE") ) {
-		&logerror("Can't write to file $CONFIG{OUT_DIR}/$LAST_PARSE_FILE: $!");
-	} else {
-		&dprint("Writing last parsed line and last log file reading offset...");
-		print OUT "$LAST_PARSED\t$OLD_OFFSET";
-		close(OUT);
+	if (!$CONFIG{FORCE}) {
+		if (not open(OUT, ">$CONFIG{OUT_DIR}/$LAST_PARSE_FILE") ) {
+			&logerror("Can't write to file $CONFIG{OUT_DIR}/$LAST_PARSE_FILE: $!");
+		} else {
+			&dprint("Writing last parsed line and last log file reading offset...");
+			print OUT "$LAST_PARSED\t$OLD_OFFSET";
+			close(OUT);
+		}
 	}
 }
 
@@ -2648,6 +2657,7 @@ sub read_config
 	$CONFIG{PID_DIR} ||= $CONFIG{PID_FILE};
 	$CONFIG{DEBUG} ||= 0;
 	$CONFIG{FULL} ||= 0;
+	$CONFIG{FORCE} ||= 0;
 	$CONFIG{BREAK} ||= 0;
 	$CONFIG{DELAY} ||= 5;
 	$CONFIG{MTA_NAME} ||= 'sm-mta|sendmail|postfix|spampd';

@@ -72,9 +72,15 @@ OUT_DIR		$BASEDIR
 # Can be overwritten with --debug or -d
 DEBUG		0
 
-# Parse maillog from begining before running tail program.
+# Parse maillog from begining before running tail program. Default
+# is to read LAST_PARSED file to start from last collected event.
 # Can be overwritten with --full or -f
 FULL		0
+
+# Parse maillog from begining before running tail program but
+# force sendmailanalyzer to never use the LAST_PARSED file.
+# Can be overwritten with --force or -F
+FORCE		0
 
 # Do not run tail program and exit after a full parsing of the log file
 # Can be overwritten with --break or -b
