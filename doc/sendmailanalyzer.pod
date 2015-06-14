@@ -852,9 +852,18 @@ The log file must contain this information. Default is disabled.
 =item FULL
 
 Parse maillog from begining before running tail program. Can be overwritten
-with --full or -f in sendmailanalyzer args. Default is 0, jump at the end
-of log. Most of the time you may want to enable this to jump at the last parsed
-line during the previous run.
+with --full or -f in sendmailanalyzer args. When enabled, default is to read
+LAST_PARSED file to start from last collected event. Most of the time you may
+want to enable this to jump at the last parsed line during the previous run.
+If you always have fresh entries in your log, use FORCE instead. When FULL
+and FORCE are disabled, sendmailanalyzer go directly to the end of the file
+using the tail -f command.
+
+=item FORCE
+
+Parse maillog from the begining before running the tail program but force
+sendmailanalyzer to never use the LAST_PARSED file. Can be overwritten with
+command line option --force or -F.
 
 =item BREAK
 
