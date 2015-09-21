@@ -1463,7 +1463,7 @@ sub parse_mailscanner
 			$SPAMDETAIL{$host}{$1}{type} = 'dnsbl';
 			$SPAMDETAIL{$host}{$1}{spam} = $2;
 		}
-	} elsif ($str =~ /Message ([^\s]+) from (.*) to (.*) is (?:polluriel|spam), ([^\(]+) \((.*)\)/) {
+	} elsif ($str =~ /Message ([^\s]+) from (.*) to (.*) is (?:polluriel|spam), ([^\(]+) \(([^\)]*)\)?/) {
 		my $id= $1;
 		next if ($SPAM{$host}{$id});
 		$SPAM{$host}{$id}{from} = $FROM{$host}{$id}{from} || $2;
