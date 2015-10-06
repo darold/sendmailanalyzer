@@ -943,6 +943,32 @@ sub parse_sendmail
 			$KEEP_TEMPORARY{$1} = $id;
 			return;
 		}
+		# Spam message discarded by amavisd and reported as sent must be affected to spam
+		if ($status =~ /sent \(250 [^,]+, ([^,]+), .* spam\)/) {
+			$status = ucfirst($1);
+			$SPAM{$host}{$id}{relay} = $relay;
+			$SPAM{$host}{$id}{rule} = 'discarded';
+			$SPAM{$host}{$id}{spam} = "Amavis $status spam";
+			$SPAM{$host}{$id}{date} =  $time_st;
+			$SPAM{$host}{$id}{from} = $FROM{$host}{$id}{from} if (exists $FROM{$host}{$id}{from});
+			if ($CONFIG{SPAM_DETAIL}) {
+				$SPAMDETAIL{$host}{$id}{date} =  $time_st;
+				$SPAMDETAIL{$host}{$id}{type} = 'amavis';
+				$SPAMDETAIL{$host}{$id}{spam} = $status;
+			}
+			return;
+		}
+		# Virus message discarded by amavisd and reported as sent must be affected to virus
+		if ($status =~ /sent \(250 [^,]+, ([^,]+), .* INFECTED: (.*)\)/) {
+			$status = ucfirst($1);
+			$VIRUS{$host}{$id}{file} = 'Inline';
+			$VIRUS{$host}{$id}{virus} = $2;
+			$VIRUS{$host}{$id}{relay} = $relay;
+			$VIRUS{$host}{$id}{from} = $FROM{$host}{$id}{from} if (exists $FROM{$host}{$id}{from});
+			$VIRUS{$host}{$id}{to} = $to;
+			$VIRUS{$host}{$id}{date} =  $time_st;
+			return;
+		}
 		if ($status =~ /sent \(250 OK, sent [^\s]+ ([^\)]+)\)/) {
 			$KEEP_TEMPORARY{$1} = $id;
 			return;

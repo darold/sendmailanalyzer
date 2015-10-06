@@ -3043,7 +3043,7 @@ sub display_postgreyflow
 		return;
 	}
 
-	print qq {
+	print qq{
 <table width="80%"><td valign="top">
 <table align="center">
 <tr><th colspan="3" class="thhead">$TRANSLATE{'Postgrey Status'}</th></tr>
@@ -3190,7 +3190,7 @@ sub display_top_sender
 		}
 		$top++;
 	}
-	my $other_percent = 100 - sprintf("%.2f", ($percent_total*100)/$totalrelay);
+	my $other_percent = 100 - sprintf("%.2f", ($percent_total*100)/($totalrelay||1));
 	$relays{"Others"} = $other_percent if ($other_percent > 0);
 
 	delete $topsender{relay};
