@@ -813,6 +813,8 @@ sub parse_sendmail
 			$SPAM{$host}{$id}{spam} = 'Blocked by SpamAssassin';
 		} elsif ($status =~ /554 5\.7\.1 (.*) detected by ClamAV.*/) {
 			$SPAM{$host}{$id}{spam} = "ClamAv $1"
+		} elsif ($status =~ /550 5\.7\.0 (.*) id=/) {
+			$SPAM{$host}{$id}{spam} = "eXpurGate $1"
 		} elsif ($status =~ /554 5\.7\.1 Command rejected/) {
 			return # Already handle at Clamav virus report
 		} elsif ($status =~ /Please try again later/) {
@@ -1233,7 +1235,7 @@ sub parse_sendmail
 		push(@{$TO{$host}{$id}{to}}, $to);
 		push(@{$TO{$host}{$id}{status}}, $status);
 		$REJECT{$host}{$id}{rule} = 'reject';
-		$REJECT{$host}{$id}{status} = &clear_status($status);
+		$REJECT{$host}{$id}{status} = $status;
 		$REJECT{$host}{$id}{date} =  $time_st;
 	# Add support to milter sender rejection
 	} elsif ($str =~ m#^([^:\s]+): Milter: from=(.*), reject=(\d+ \d+\.\d+\.\d+\s+.*)#) {
@@ -2826,6 +2828,8 @@ sub clear_status
         } elsif ($status =~ /(Domain of sender address) ([^\s]+) (.*)/i) {
 		return "$1 $3: $2";
 	} elsif ($status =~ /\d{3} \d\.\d\.\d <[^>]+>[:\s\.]*(.*)/) {
+		return $1;
+	} elsif ($status =~ /\d{3} \d\.\d\.\d [^@]+\@[^\s]+ (.*)/) {
 		return $1;
 	} elsif ($status =~ /^\d{3} \d\.\d\.\d (.*?) (has exceeded .*)/) {
 		return $2;
