@@ -20,7 +20,7 @@ use vars qw($VERSION $AUTHOR $COPYRIGHT $PROGRAM @ARGS);
  
 use strict;
 
-use Getopt::Long;
+use Getopt::Long qw(:config no_ignore_case bundling);
 use POSIX qw(:sys_wait_h :errno_h :fcntl_h :signal_h);
 use MIME::Base64;
 use MIME::QuotedPrint;
@@ -103,6 +103,7 @@ GetOptions (
 	'g|postgrey=s' => \$CONFIG{POSTGREY_NAME},
 	'h|help!' => \$HELP,
 	'i|interactive!' => \$INTERACTIVE,
+	'j|journalctl=s' => \$CONFIG{JOURNALCTL_CMD},
 	'l|log=s' => \$CONFIG{LOG_FILE},
 	'm|mailscanner=s' => \$CONFIG{MAILSCAN_NAME},
 	'n|clamd=s' => \$CONFIG{CLAMD_NAME},
@@ -231,6 +232,7 @@ sendmailanalyzer v$VERSION usage:
 -h | --help            : show this short help and exit.
 -i | --interactive     : run in interactive mode useful if you want day to day
                        : report. Default is daemon mode, real time statistics.
+-j | --journalctl cmd  : set the journalctl command to use to replace logfile.
 -l | --log file        : path to maillog file. Default is /var/log/maillog.
 -m | --mailscanner name: syslog MailScanner program name. Default: Mailscanner.
 -o | --output dir      : path to the output directory where data file will be
@@ -287,18 +289,29 @@ sub start_loop
 				}
 			}
 		}
-		&dprint("Parsing full $CONFIG{LOG_FILE}");
-		if ($CONFIG{LOG_FILE} !~ /\.gz/) {
-			if (!($KID = open(SA_FILE, "$CONFIG{LOG_FILE}"))) {
-				&dprint("$0: cannot read $CONFIG{LOG_FILE}: $!", 1);
+		if ($CONFIG{JOURNALCTL_CMD}) {
+			$OLD_OFFSET = 0;
+			my $since = '';
+			if ($OLD_LAST_PARSED =~ /^(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)/) {
+				$since = " --since=\"$1-$2-$3 $4:$5:$6\"";
+			}
+			&dprint("Parsing full entries from command: $CONFIG{JOURNALCTL_CMD}$since --output=\"short-iso\"");
+			if (!($KID = open(SA_FILE, "$CONFIG{JOURNALCTL_CMD}$since --output=\"short-iso\" |"))) {
+				&dprint("$0: cannot read input from command: $CONFIG{JOURNALCTL_CMD}$since --output=\"short-iso\", $!", 1);
 			}
 		} else {
-			# Open a pipe to zcat program for compressed log
-			if (!($KID = open(SA_FILE, "$CONFIG{ZCAT_PROG} $CONFIG{LOG_FILE}|"))) {
-				&dprint("$0: cannot read from pipe to \"$CONFIG{ZCAT_PROG} $CONFIG{LOG_FILE}\": $!", 1);
+			&dprint("Parsing full $CONFIG{LOG_FILE}");
+			if ($CONFIG{LOG_FILE} !~ /\.gz/) {
+				if (!($KID = open(SA_FILE, "$CONFIG{LOG_FILE}"))) {
+					&dprint("$0: cannot read $CONFIG{LOG_FILE}: $!", 1);
+				}
+			} else {
+				# Open a pipe to zcat program for compressed log
+				if (!($KID = open(SA_FILE, "$CONFIG{ZCAT_PROG} $CONFIG{LOG_FILE}|"))) {
+					&dprint("$0: cannot read from pipe to \"$CONFIG{ZCAT_PROG} $CONFIG{LOG_FILE}\": $!", 1);
+				}
 			}
 		}
-
 		# Write pid file
 		if (open(OUT, ">$CONFIG{PID_DIR}/$PID_FILE")) {
 			print OUT "$$";
@@ -373,11 +386,27 @@ sub start_loop
 		&dprint("Daemon mode is not possible with compressed log file", 1);
 	}
 
-	&dprint("Opening pipe to $CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}");
-
-	# Open a pipe to the tail program
-	if ( !($KID = $SA_PIPE->open("$CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}|"))) {
-		&dprint("$0: cannot read from pipe to \"$CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}\": $!");
+	# Open a pipe to the tail program or to the journalctl command
+	my $since = '';
+	if ($LAST_PARSED) {
+		if ($LAST_PARSED =~ /^(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)/) {
+			$since = " --since=\"$1-$2-$3 $4:$5:$6\"";
+		}
+	} else {
+		if ($OLD_LAST_PARSED =~ /^(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)/) {
+			$since = " --since=\"$1-$2-$3 $4:$5:$6\"";
+		}
+	}
+	if ($CONFIG{JOURNALCTL_CMD}) {
+		&dprint("Opening pipe to command: $CONFIG{JOURNALCTL_CMD}$since --output=\"short-iso\" -f");
+		if (!($KID = open(SA_FILE, "$CONFIG{JOURNALCTL_CMD}$since --output=\"short-iso\" -f |"))) {
+			&dprint("$0: cannot read input from command: $CONFIG{JOURNALCTL_CMD}$since --output=\"short-iso\" -f, $!", 1);
+		}
+	} else {
+		&dprint("Opening pipe to $CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}");
+		if ( !($KID = $SA_PIPE->open("$CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}|"))) {
+			&dprint("$0: cannot read from pipe to \"$CONFIG{TAIL_PROG} $CONFIG{TAIL_ARGS} $CONFIG{LOG_FILE}\": $!");
+		}
 	}
 
 	# Write pid file
