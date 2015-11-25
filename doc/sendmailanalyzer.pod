@@ -694,6 +694,27 @@ in sendmailanalyzer args. Default is /var/log/maillog. If the extension
 is .gz SendmailAnalyzer will automatically use zcat to parse the compressed
 log. For Postfix you may use /var/log/mail.log instead.
 
+=item JOURNALCTL_CMD
+
+Use it to set the journalctl command to use instead of log file entry. For
+example, with postfix it migth be set to the following:
+
+	JOURNALCTL_CMD	journalctl -u postfix
+
+and for sendmail:
+
+	JOURNALCTL_CMD	journalctl -u sendmail
+
+When enabled, the LOG_FILE configuration directive above is just ommitted.
+The additional option: --output="short-iso" is also always used to format
+timestamp.
+
+In incremental mode sendmailanalyzer will automatically set the --since option
+to the last parsed timestamp to prevent loading previous messages.
+
+Note that in daemon mode sendmailanalyzer will automatically add the -f option
+to the command. Can be overwritten with --journalctl or -j options.
+
 =item OUT_DIR
 
 Output directory for data storage. Can be overwritten with --output or -o

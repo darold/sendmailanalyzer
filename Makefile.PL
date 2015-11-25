@@ -50,6 +50,15 @@ unless(open(OUTCFG, ">sendmailanalyzer.conf")) {
 # Can be overwritten with --log or -l
 LOG_FILE	$LOGFILE
 
+# journalctl command to use instead of log file entry. For postfix
+# it migth be set to the following. When enabled, the LOG_FILE
+# configuration directive above is just ommitted. Note that in daemon
+# mode sendmailanalyzer will automatically add the -f option to the
+# command. The additional option: --output="short-iso" is also always
+# used to format timestamp. Can be overwritten with --journalctl or
+# -j options.
+#JOURNALCTL_CMD		journalctl -u postfix
+
 # Path to store the pid file (sendmailanalyzer.pid).
 PID_DIR		$PIDDIR
 
