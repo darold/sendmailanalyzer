@@ -292,7 +292,7 @@ sub start_loop
 		if ($CONFIG{JOURNALCTL_CMD}) {
 			$OLD_OFFSET = 0;
 			my $since = '';
-			if ( ($CONFIG{JOURNALCTL_CMD} !~ /--since|-S/) && ($OLD_LAST_PARSED =~ /^(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)/) ) {
+			if ( ($CONFIG{JOURNALCTL_CMD} !~ /--since|-S/) && ($OLD_LAST_PARSED =~ /^(\d+)-(\d+)-(\d+).(\d+):(\d+):(\d+)/) ) {
 				$since = " --since=\"$1-$2-$3 $4:$5:$6\"";
 			}
 			&dprint("Parsing full entries from command: $CONFIG{JOURNALCTL_CMD}$since --output=\"short-iso\"");
@@ -390,11 +390,11 @@ sub start_loop
 	my $since = '';
 	if ($CONFIG{JOURNALCTL_CMD} !~ /--since|-S/) {
 		if ($LAST_PARSED) {
-			if ($LAST_PARSED =~ /^(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)/) {
+			if ($LAST_PARSED =~ /^(\d+)-(\d+)-(\d+).(\d+):(\d+):(\d+)/) {
 				$since = " --since=\"$1-$2-$3 $4:$5:$6\"";
 			}
 		} else {
-			if ($OLD_LAST_PARSED =~ /^(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)/) {
+			if ($OLD_LAST_PARSED =~ /^(\d+)-(\d+)-(\d+).(\d+):(\d+):(\d+)/) {
 				$since = " --since=\"$1-$2-$3 $4:$5:$6\"";
 			}
 		}
