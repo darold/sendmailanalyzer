@@ -85,6 +85,7 @@ if (!$DOWNLOAD) {
 	print qq{
 <!-- javascript to draw graphics -->
 <script type="text/javascript" src="$CONFIG{URL_JSCRIPT}"></script>
+<script type="text/javascript" src="$CONFIG{URL_SORTABLE}"></script>
 <style type="text/css">
 <!--/* <![CDATA[ */
 body {font-family:sans-serif;font-size:10pt;color:#000000;background-color:#f0f0f0;}
@@ -538,6 +539,9 @@ sub read_config
 	}
 	if (!exists $CONFIG{URL_JSCRIPT}) {
 		$CONFIG{URL_JSCRIPT} = 'flotr2.js';
+	}
+	if (!exists $CONFIG{URL_SORTABLE}) {
+		$CONFIG{URL_SORTABLE} = 'sorttable.js';
 	}
 }
 
@@ -4281,7 +4285,7 @@ sub show_detail
 		my $val = $CGI->param($p) || '';
 		$dlink .= '&' . "$p=" . $CGI->escape($val);
 	}
-	print qq{<form><table align="center"><tr><td class="smalltitle">$search - <a href="$dlink">[csv]</a></td></tr></table><table>\n<tr><th>&nbsp;</th><th>$TRANSLATE{'Hour'}</th>};
+	print qq{<form><table align="center"><tr><td class="smalltitle">$search - <a href="$dlink">[csv]</a></td></tr></table><table class="sortable">\n<tr><th>&nbsp;</th><th>$TRANSLATE{'Hour'}</th>};
 	if ($type eq 'dsn') {
 		print qq{<th>$TRANSLATE{'Original Id'}</th><th>Id</th>};
 	} else {

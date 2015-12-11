@@ -766,6 +766,10 @@ Url to the barorng image. Default: salogo.gif
 
 Url to the flotr2 javascript library. Default: flotr2.js
 
+=item URL_SORTABLE
+
+Url to the sorttable javascript library. Default: sorttable.js
+
 =item TOP
 
 Number of object displayed in the top statistics. Default is 25.

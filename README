@@ -632,6 +632,9 @@ CONFIGURATION
     URL_JSCRIPT
         Url to the flotr2 javascript library. Default: flotr2.js
 
+    URL_SORTABLE
+        Url to the sorttable javascript library. Default: sorttable.js
+
     TOP Number of object displayed in the top statistics. Default is 25.
 
     TOP_MBOX

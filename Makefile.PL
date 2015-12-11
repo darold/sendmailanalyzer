@@ -187,6 +187,9 @@ URL_LOGO	salogo.png
 # Path to the flotr2 javascript library. Default current directory
 URL_JSCRIPT	flotr2.js
 
+# Path to the sortable javascript library. Default current directory
+URL_SORTABLE	sorttable.js
+
 # Syslog name of Amavis. Syslog write it to maillog with the pid as follow:
 # ... amavis[1234] ... This is required to only parse relevant logged lines
 AMAVIS_NAME	amavis|maiad
@@ -349,6 +352,7 @@ install -m 755 cgi-bin/sa_report.cgi $DESTDIR$HTMLDIR/
 install -m 644 cgi-bin/lang/* $DESTDIR$HTMLDIR/lang/
 install -m 644 salogo.png $DESTDIR$HTMLDIR/
 install -m 644 flotr2.js $DESTDIR$HTMLDIR/
+install -m 644 sorttable.js $DESTDIR$HTMLDIR/
 pod2man doc/sendmailanalyzer.pod doc/sendmailanalyzer.3
 pod2man doc/sa_cache.pod doc/sa_cache.3
 install -m 644 doc/sendmailanalyzer.3 $DESTDIR$MANDIR/
