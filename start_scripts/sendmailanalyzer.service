@@ -22,7 +22,7 @@ After=sendmail.service
 Type=forking
 PIDFile=/tmp/sendmailanalyzer.pid
 ExecStart=/usr/local/sendmailanalyzer/sendmailanalyzer -f
-ExecStop=/bin/kill -TERM sendmailanalyzer
+ExecStop=/bin/bash -c "/bin/kill -TERM `/usr/bin/cat /var/run/sendmailanalyzer.pid`"
 
 [Install]
 WantedBy=multi-user.target
