@@ -1,3 +1,74 @@
+2016-01-17 Version 9.2
+
+This release fixes some bugs reported since last release and adds several
+additional milters and useful features.
+
+  * All column in detailed views are now sortable.
+  * Add support to systemd journalctl with the JOURNALCTL_CMD configuration
+    directive or the -j command line option.
+  * Allow parsing of log files coming from multiple host.
+  * Add support to postfix clamsmtpd virus and spampd detection.
+  * Add report of subject in detailed view when available in log file.
+  * Add date before hour in the detailed report.
+  * Add explanation about how to rebuild reports in documentation.
+    
+There's also new command line parameters or configuration directive:
+
+  * Add -j | --journalctl command line option to specify the journalctl command
+  * Add -F | --force command line option to be used instead of -f | --full to
+    parse full log file without taking care of the history file LAST_PARSED.
+    This is useful if you always have log files with fresh entries and log
+    files coming from multiple host. Before that you had to remove the
+    history file before parsing a new log.
+
+Here is the full list of change and credits:
+
+  - Update de_DE translation file. Thanks to Wolfgang for the patch.
+  - Fix wrong ExecStop command. Thanks to fmalfatto for the patch.
+  - Add sorttable.js javascript to be able to sort on each column in detailed
+    views. Thanks to Siervo Andrey Amado Benavides for the patch.
+  - Fix systemd start script
+  - Allow yyyy-mm-dd hh:mm:ss in history timestamp for journalctl together
+    with iso format: yyyy-mm-ddThh:mm:ss.
+  - Prevent redefining --since journalctl option if it is already given in
+    JOURNALCTL_CMD or --journalctl.
+  - Add documentation about JOURNALCTL configuration directive and the -j or
+    --journalctl command line option.
+  - Fix command line option in uppercase and not.
+  - Fix wrong status and spam rule for spam rejected by eXpurGate milter.
+    Thanks to Tiyma Ahmed for the report.
+  - Fix Postfix/Amavis discarded spam and virus that appears with status sent.
+    Thanks to Miquel Angel Daniel Veny for the report.
+  - Fix long spamassassin messages that are not detected as spam by sendmail
+    analyzer. Thanks to Stefan Berger for the patch.
+  - Add information about the FORCE configuration option and -F command line.
+  - Add -F | --force command line option to be used if you always have log
+    files with fresh entries and log files coming from multiple host. Thanks
+    to Sladjan Andjelic for the feature request.
+  - Update Debian package and documentation in packaging/README. Thanks to
+    Nicolas Quiniou-Briand for the report.
+  - Update copyrights.
+  - Fix start script, it was not killing off the process, added -s kill. Thanks
+    to Gary McLean for the patch.
+  - Add support to sendmail milter with subject rewriting.
+  - Fix an other issue in message delivery direction. Thanks to Gary McLean for
+    the report.
+  - Add date before hour in the detailed report.
+  - Add date with hour to the CSV details file output. Thanks to Tsioritafita
+    Rajahanisainana for the report.
+  - Remove --duplicate option, it is too much confusing. Fix case where SA
+    doubled recipient entries with the same message-id but not the same MTA id.
+  - Fix postfix double delivery by using "queued as" and "orig_queue_id".
+  - Fix case where sender relay was not checked against LOCAL_DOMAIN to find
+    mail incoming direction. Thanks to Kulikov Dmitrii for the report.
+  - Fix case to avoid double when postfix send the message locally to a plugin.
+  - Change MTA_NAME default value to add spampd: sm-mta|sendmail|postfix|spampd
+  - Add support to postfix clamsmtpd virus and spampd detection. Thanks to
+    Zdenek Zamecnik for the feature request.
+  - Add subject field to CSV download.
+  - Add report of subject in detailed view when available in log file. Thanks
+    to Tsioritafita Rahajanisainana for the feature request.
+
 2015-04-18 Version 9.1
 
 This release fixes one year of reported issues, adds several additional milters

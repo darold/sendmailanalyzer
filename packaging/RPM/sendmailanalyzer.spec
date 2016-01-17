@@ -5,7 +5,7 @@
 
 Name: %{uname}
 Epoch: 0
-Version: 9.1
+Version: 9.2
 Release: 1%{?dist}
 Summary: Sendmail/Postfix log analyser with graphical reports
 
@@ -182,7 +182,7 @@ fi
 - Remove a rogue tab character, add pt_BR translation
 
 * Tue May 07 2013 Gilles Darold
-- Upgrade for 9.1 changes
+- Upgrade for 9.2 changes
 
 * Sun Jan 06 2013 Gilles Darold
 - Add man page for sa_cache.
