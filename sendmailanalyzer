@@ -1330,8 +1330,10 @@ sub parse_sendmail
 		my $to = $5;
 		my $relay = &clean_relay(lc($2));
 		my $id = &get_uniqueid();
-		$reject =~ s/^([^;]+);//;
-		my $status = $1 || '';
+		my $status = '';
+		if ($reject =~ /^([^;]+)[;]/) {
+			$status = $1;
+		}
 		$reject =~ s/^\s+//;
 		$reject =~ s/[\s;]+$//;
 		# Test PostFix DNSBL spam scan
@@ -1364,7 +1366,11 @@ sub parse_sendmail
 			}
 		} else {
 			$REJECT{$host}{$id}{relay} = $relay;
-			$REJECT{$host}{$id}{rule} = 'reject';
+			if ($reject =~ /spf/i) {
+				$REJECT{$host}{$id}{rule} = 'SPF rejection';
+			} else {
+				$REJECT{$host}{$id}{rule} = 'reject';
+			}
 			$REJECT{$host}{$id}{status} = &clear_status($status);
 			$REJECT{$host}{$id}{date} =  $time_st;
 			$REJECT{$host}{$id}{arg1} = &edecode($from);
@@ -2843,6 +2849,8 @@ sub clear_status
 		$ret =~ s/ SIZE=.*//;
 		return $ret . " attack attempt";
         } elsif ($status =~ /(User unknown)/) {
+		return $1;
+        } elsif ($status =~ /: ([^:]+): Please see .*/) {
 		return $1;
         } elsif ($status =~ /(Greylisted), see http.*/) {
 		return $1;
