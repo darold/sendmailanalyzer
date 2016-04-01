@@ -1031,7 +1031,7 @@ sub parse_sendmail
 		}
 
 	# POSTFIX To clause with origine
-	} elsif ($str =~ m#^([^:\s]+): to=([^,]+), orig_to=([^,]+), relay=([^,]+),.*status=(.*)#) {
+	} elsif ($str =~ m#^([^:\s]+): to=([^,]+), orig_to=([^,]*), relay=([^,]+),.*status=(.*)#) {
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $to = &edecode($2);
 		my $relay = &clean_relay(lc($4));
@@ -1046,6 +1046,7 @@ sub parse_sendmail
 			$t = &edecode($t);
 			return if ($t eq 'more');
 			next if ($CONFIG{EXCLUDE_TO} && ($t =~ /^$CONFIG{EXCLUDE_TO}$/));
+			push(@{$TO{$host}{$id}{date}},  $time_st);
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
 		}
