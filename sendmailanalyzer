@@ -401,7 +401,7 @@ sub start_loop
 	}
 	if ($CONFIG{JOURNALCTL_CMD}) {
 		&dprint("Opening pipe to command: $CONFIG{JOURNALCTL_CMD}$since --output=\"short-iso\" -f");
-		if (!($KID = open(SA_FILE, "$CONFIG{JOURNALCTL_CMD}$since --output=\"short-iso\" -f |"))) {
+		if (!($KID =  $SA_PIPE->open("$CONFIG{JOURNALCTL_CMD}$since --output=\"short-iso\" -f |"))) {
 			&dprint("$0: cannot read input from command: $CONFIG{JOURNALCTL_CMD}$since --output=\"short-iso\" -f, $!", 1);
 		}
 	} else {
