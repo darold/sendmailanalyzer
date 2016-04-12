@@ -20,7 +20,7 @@ After=sendmail.service
 
 [Service]
 Type=forking
-PIDFile=/tmp/sendmailanalyzer.pid
+PIDFile=/var/run/sendmailanalyzer.pid
 ExecStart=/usr/local/sendmailanalyzer/sendmailanalyzer -f
 ExecStop=/bin/bash -c "/bin/kill -TERM `/usr/bin/cat /var/run/sendmailanalyzer.pid`"
 
