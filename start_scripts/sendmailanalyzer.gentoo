@@ -1,0 +1,36 @@
+#!/sbin/runscript
+#Rudimental init script for sendmailanalyzer for Gentoo Linux (openrc)
+# by Edoardo Liverani 2016
+
+SALYZER=/usr/local/sendmailanalyzer/sendmailanalyzer
+PIDFILE=/var/run/sendmailanalyzer.pid
+
+  
+depend() {
+   use syslog net
+}
+  
+start() {
+
+	if [ ! -x  $SALYZER ]; then
+                echo "ERROR: can not execute $SALYZER" 1>&2
+                exit 1
+        fi
+        ebegin 'Starting SendmailAnalyzer Daemon...'
+        
+	#$SALYZER -f
+	
+	start-stop-daemon --start --exec $SALYZER \
+	    --pidfile $PIDFILE -- -f
+	eend $?
+
+}
+  
+stop() {
+
+	ebegin 'Stopping SendmailAnalyzer Daemon...'
+        start-stop-daemon --stop --exec $SALYZER  \
+            --pidfile $PIDFILE
+        eend $?
+
+}
