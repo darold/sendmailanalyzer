@@ -1726,7 +1726,8 @@ sub parse_amavis
 			$SPAMDETAIL{$host}{$id}{score}= $score if ($score ne '-');
 		}
 
-	} elsif ($str =~ /(Passed|Blocked) INFECTED \(([^\)]*)\)[^,]*, (.*) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*,(.*) Message-ID: [<]*([^,>]+)[>]*, /) {
+#Apr 27 21:52:40 courriel amavis[32042]: (32042-07) Blocked INFECTED (Eicar-Test-Signature) {BouncedInternal,Quarantined}, LOCAL [192.168.10.159]:49084 <root@t500u.technocentre.net> -> <jflegendre@technocentre.net>, quarantine: 8/virus-8q0BMrnZwSoe, Queue-ID: 3BEF0600460, Message-ID: <20160428015239.GA23265@t500u>, mail_id: 8q0BMrnZwSoe, Hits: -, size: 621, 107 ms
+	} elsif ($str =~ /(Passed|Blocked) INFECTED \(([^\)]*)\).*, (.*?) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*,(.*) Message-ID: [<]*([^,>]+)[>]*, /) {
 		my $virus = $2;
 		my $relay = lc($3);
 		my $from = $4;
