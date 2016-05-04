@@ -459,6 +459,10 @@ sub parse_common_fields
 	# Get current system time	
 	my $ctime = &format_time(localtime(time));
 
+	# Remove domain part of the host
+	if ($CONFIG{NO_HOST_DOMAIN}) {
+		$host =~ s/\..*//;
+	}
 	my $date = '';
 	if ($month =~ /(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)/) {
 		$date = "$1$2$3";

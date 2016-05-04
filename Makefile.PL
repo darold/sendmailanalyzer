@@ -312,6 +312,12 @@ EXCLUDE_RELAY	addr1\@domain1.com|addr2\@domain2.com
 # When enabled it allow email subjects to be shown in detailed view. Of course
 # The log file must contain this information.
 SHOW_SUBJECT	0
+
+# When activated, remove domain part of the syslog hostname. Some programme
+# use FQDN instead of the single hostname. Set it to 1 if you have two report
+# for the same hostname but one with the domain part.
+NO_HOST_DOMAIN	0
+
 };
 close(OUTCFG);
 
