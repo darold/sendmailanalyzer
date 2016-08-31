@@ -21,7 +21,7 @@ sa_start() {
 sa_stop() {
 	echo 'Stopping SendmailAnalyzer Daemon...'
 	pid=$(cat $PIDFILE)
-	kill $pid 1> /dev/null 2> /dev/null
+	kill -- -$pid 1> /dev/null 2> /dev/null
 }
 
 # Restart SendmailAnalyzer:
