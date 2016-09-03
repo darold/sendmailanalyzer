@@ -763,7 +763,7 @@ sub parse_sendmail
 			$SPAMDETAIL{$host}{$id}{spam} =~ s/,nt//g;
 		}
 	# Parse spam found by postfix/policyd-weight
-	} elsif ($str =~ m#decided action=DUNNO\s+(.*); rate: ([^;]+); <client=([^>]+)> <helo=([^>]+)> <from=([^>]+)> <to=([^>]+)>; delay.*#) {
+	} elsif ($str =~ m# action=DUNNO\s+(.*); rate: ([^;]+); <client=([^>]+)> <helo=([^>]+)> <from=([^>]+)> <to=([^>]+)>; delay.*#) {
 		my $spam = $1;
 		my $score = $2;
 		my $relay = $3;
@@ -783,7 +783,7 @@ sub parse_sendmail
 			$SPAMDETAIL{$host}{$id}{score} = $score;
 		}
 	# Parse spam found in cache by postfix/policyd-weight
-	} elsif ($str =~ m#decided action=DUNNO\s+(.*); rate: ([^;]+); <client=([^>]+)> <helo=([^>]+)> <from=([^>]+)> <to=([^>]+)>; delay.*#) {
+	} elsif ($str =~ m# action=DUNNO\s+(.*); rate: ([^;]+); <client=([^>]+)> <helo=([^>]+)> <from=([^>]+)> <to=([^>]+)>; delay.*#) {
 		my $spam = $1;
 		my $score = $2;
 		my $relay = $3;
