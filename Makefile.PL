@@ -432,9 +432,21 @@ WriteMakefile(
 		      },
     'AUTHOR'       => 'Gilles Darold (gilles@darold.net)',
     'ABSTRACT'     => 'Sendmail log analyzer',
+    'EXE_FILES'    => [ qw(sendmailanalyzer sa_cache) ],
+    'MAN3PODS'     => { 'doc/sendmailanalyzer.pod' => 'blib/man3/sendmailanalyzer.pod.3', 'doc/sa_cache.pod' => 'blib/man3/sa_cache.pod.3' },
     'DESTDIR'      => $ENV{DESTDIR},
     'INSTALLDIRS'  => $ENV{INSTALLDIRS},
-    'clean'        => {FILES => "install_all.sh sendmailanalyzer.conf sendmailanalyzer.1 sa_cache.1 changelog"}
+    'clean'        => {FILES => "install_all.sh sendmailanalyzer.conf sendmailanalyzer.1 sa_cache.1 changelog"},
+    'META_MERGE'   => {
+        resources  => {
+                homepage => 'http://sendmailanalyzer.darold.net/',
+                repository  => {
+                        type => 'git',
+                        git => 'git@github.com:darold/sendmailanalyzer.git',
+                        web => 'https://github.com/darold/sendmailanalyzer',
+                },
+        },
+    }
 );
 
 sub MY::install {
