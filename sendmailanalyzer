@@ -976,7 +976,7 @@ sub parse_sendmail
 		my $to = &edecode($2);
 		my $relay = &clean_relay(lc($3));
 		my $status = $4;
-		if ($status =~ /queued as ([^\)]+)\)/) {
+		if (!$CONFIG{NO_QUEUE_EXCLUSION} && ($status =~ /queued as ([^\)]+)\)/)) {
 			$KEEP_TEMPORARY{$1} = $id;
 			return;
 		}

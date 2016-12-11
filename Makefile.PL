@@ -318,6 +318,11 @@ SHOW_SUBJECT	0
 # for the same hostname but one with the domain part.
 NO_HOST_DOMAIN	0
 
+# On some MTA, message delivery is done outside and only queuing is logged,
+# this mean that messages are counted as incoming but not delivered. Enable
+# this directive to force sendmailanalyzer to take them as sent.
+NO_QUEUE_EXCLUSION	0
+
 };
 close(OUTCFG);
 
