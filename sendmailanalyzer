@@ -428,6 +428,7 @@ sub start_loop
 		$LAST_PARSED = $l;
 		$l = '';
 		# Only catch relevant logs
+		next if ($CONFIG{EXCLUDE_LINE} && $LAST_PARSED =~ m#$CONFIG{EXCLUDE_LINE}#); 
 		my $check_time = '';
 		if ( ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\[]/) || ($LAST_PARSED =~ $EXIM_REGEX) )  {
 			# Extract common fields and store data in memory
