@@ -105,6 +105,12 @@ DELAY		5
 # You can set multiple Syslog name as a list separated by a pipe '|'
 MTA_NAME	sm-mta|sendmail|postfix|spampd
 
+# Exclude all lines matching a regexp from being parsed, for example to
+# exclude log line reported by the randomizer script, skip line with the
+# following regex. Character # in the regex need to be escaped with a backslash.
+# Use it to prevent unwanted line to be reported in Rejection reports.
+#EXCLUDE_LINE	postfix/randomizer
+
 # Syslog name of MailScanner. Syslog write it to maillog with the pid as follow:
 # ... MailScanner[1234] ... This is required to only parse relevant logged lines
 # Can be overwritten with --mailscanner or -m
