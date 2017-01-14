@@ -26,6 +26,7 @@ use Benchmark;
 use Getopt::Long;
 use POSIX qw / strftime :sys_wait_h /;
 use Time::Local 'timelocal_nocheck';
+use DBI;
 
 
 $VERSION     = '9.2';
@@ -102,6 +103,18 @@ if (!-d $CONFIG{OUT_DIR}) {
 
 my $cgi = new CGI;
 
+# Check if we have a SQL-host configured for virtual domains
+my $dbh;
+my $db_connected = 0;
+if( exists $CONFIG{VIRTUAL_DOMAIN_DB} ) {
+	$dbh = DBI->connect(
+			$CONFIG{VIRTUAL_DOMAIN_DB},
+			$CONFIG{VIRTUAL_DOMAIN_DB_USER},
+			$CONFIG{VIRTUAL_DOMAIN_DB_PASS},
+		) or die "Couldn't connect to database: " . DBI->errstr;
+	$db_connected = 1;
+}
+
 # Add global caching
 push(@{$CONFIG{DOMAIN_REPORT}}, '');
 
@@ -129,10 +142,10 @@ my @sysloghost = grep { !/^(data|lang|[\.]+)$/ && -d "$CONFIG{OUT_DIR}/$_" } rea
 closedir(DIR);
 
 foreach my $h (@sysloghost) {
-        next if ($HOST && ($h ne $HOST));
+	next if ($HOST && ($h ne $HOST));
 	$UNIQID = 0;
 	# Dump daily statistics
-	&cache_stat($cgi, $h);
+	&cache_stat($cgi, $h );
 }
 
 # Show total run time
@@ -141,6 +154,11 @@ my $td = timediff($t1, $t0);
 print "Cache generation took:",timestr($td),"\n";
 
 unlink("$CONFIG{PID_DIR}/$PID_FILE");
+
+#disconnect from database
+if( $db_connected ) {
+	$dbh->disconnect or warn "Disconnection error: $DBI::errstr\n";
+}
 
 exit 0;
 
@@ -187,8 +205,8 @@ sub read_config
 					} elsif ($var =~ /DOMAIN_HOST_REPORT/i) {
 						my ($hst, @doms) = split(/[\t,;\s]/, $val);
 						push(@{$CONFIG{DOMAIN_HOST_REPORT}{$hst}}, @doms);
-                                        } elsif ($var =~ /DOMAIN_REPORT/i) {
-                                                push(@{$CONFIG{DOMAIN_REPORT}}, split(/[\t,;\s]/, $val));
+					} elsif ($var =~ /DOMAIN_REPORT/i) {
+						push(@{$CONFIG{DOMAIN_REPORT}}, split(/[\t,;\s]/, $val));
 					} elsif ($var =~ /LOCAL_DOMAIN/i) {
 						push(@{$CONFIG{LOCAL_DOMAIN}}, split(/[\t,;\s]/, $val));
 					} elsif ($var =~ /LOCAL_HOST_DOMAIN/i) {
@@ -247,7 +265,7 @@ our %starttls = ();
 ####
 sub cache_stat
 {
-	my ($q, $hostname) = @_;
+	my ($q, $hostname ) = @_;
 
 	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
 	$mon++;
@@ -4157,6 +4175,13 @@ sub set_direction
 				if (!grep($STATS->{$id}{sender_relay} =~ /\b$_$/i, @{$CONFIG{LOCAL_DOMAIN}})) {
 					$direction = 'Ext_';
 				}
+			} elsif( exists $CONFIG{VIRTUAL_DOMAIN_DB} ) {
+				my $sth = $dbh->prepare( $CONFIG{VIRTUAL_DOMAIN_DB_QUERY} );
+				$sth->bind_param( 1, $STATS->{$id}{sender_relay} );
+				$sth->execute;
+				if( $sth->rows == 0 ) {
+					$direction = 'Ext_';
+				}
 			} else {
 			# There's no local domain defined: impossible to know where message comes from
 			# Maybe you must review you configuration file or write som pieces of code here
@@ -4193,6 +4218,15 @@ sub set_direction
 			$direction .= 'Int';
 		} else {
 			$direction .= 'Ext';
+		}
+	} elsif( exists $CONFIG{VIRTUAL_DOMAIN_DB} ) {
+		my $sth = $dbh->prepare( $CONFIG{VIRTUAL_DOMAIN_DB_QUERY} );
+		$sth->bind_param( 1, $STATS->{$id}{rcpt_relay}[$i] );
+		$sth->execute;
+		if( $sth->rows == 0 ) {
+			$direction .= 'Ext';
+		} else {
+			$direction .= 'Int';
 		}
 	# Finally his only way is to go outside
 	} else {
