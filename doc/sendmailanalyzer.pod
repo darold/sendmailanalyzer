@@ -1082,6 +1082,8 @@ You have missed a bunch of log files or you want to rebuild your reports after
 a sendmailanalyzer bug. What's the best way to go back and (re)parse your log
 files to bring everything back upto date? 
 
+=head2 Rebuild report from scratch
+
 If you want to restart from scratch, the best way is to proceed as follow:
 
 	/etc/init.d/sendmailanalyzer stop
@@ -1092,12 +1094,19 @@ If you want to restart from scratch, the best way is to proceed as follow:
 	done
 	/etc/init.d/sendmailanalyzer start
 
-If you want to keep old data but just want to rewind for some days, you have
-to stop sendmailanalyzer then remove all data directories corresponding to
-these days and the data directories of the corresponding weeks and remove files
-cache.pm in the month and year directories.
+Of courses, this mean that you still have all the log files even if they
+have been rotated.
 
-Before reparsing all wanted log files, you need to remove history file
+=head2 Rebuild since a specific log
+
+If you want to keep old data but just want to rewind for some days, you have
+to stop sendmailanalyzer then:
+
+ * remove all data directories corresponding to days including and after the first log entry
+ * remove the data directories of the corresponding weeks
+ * remove all files cache.pm in the corresponding month and year directories.
+
+Before reparsing all necessary log files, you need to remove history file
 /usr/local/sendmailanalyzer/data/LAST_PARSED . And then:
 
 	for log in ls -tr /var/log/dmz-relays*
@@ -1105,6 +1114,9 @@ Before reparsing all wanted log files, you need to remove history file
 	    /usr/local/sendmailanalyzer/sendmailanalyzer -b -f -i -l $log
 	done
 	/etc/init.d/sendmailanalyzer start
+
+Following the interval of the cache execution in your crontab you may want to
+execute /usr/local/sendmailanalyzer/sa_cache .
 
 Data directory is build as follow for example:
 

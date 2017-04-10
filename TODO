@@ -1,1 +1,7 @@
 Things that may be done.
+
+Allow access to obsolete statistics 30 days backward and not of the current
+month only.
+
+Allow free space setting in days with default to 30 days.
+
