@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #
 #    SendmailAnalyzer: maillog parser and statistics reports tool for Sendmail
-#    Copyright (C) 2002-2016 Gilles Darold
+#    Copyright (C) 2002-2017 Gilles Darold
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ use IO::File;
 
 $VERSION     = '9.2';
 $AUTHOR = "Gilles Darold <gilles\@darold.net>";
-$COPYRIGHT = "(c) 2002-2016 - Gilles Darold <gilles\@darold.net>";
+$COPYRIGHT = "(c) 2002-2017 - Gilles Darold <gilles\@darold.net>";
 
 $SIG{'CHLD'} = 'DEFAULT';
 
@@ -952,6 +952,7 @@ sub parse_sendmail
 		$FROM{$host}{$id}{nrcpts} = $nrcpts;
 		$FROM{$host}{$id}{msgid} = $msgid;
 		$FROM{$host}{$id}{relay} = $relay;
+
 	} elsif ($str =~ m#^([^:\s]+): from=([^,]*), size=(\d+),.*, nrcpts=(\d+),.*relay=([^,]+)#) {
 		my $id = $1;
 		my $from = lc($2);
@@ -971,6 +972,21 @@ sub parse_sendmail
 		$FROM{$host}{$id}{size} = $size;
 		$FROM{$host}{$id}{nrcpts} = $nrcpts;
 		$FROM{$host}{$id}{relay} = $relay;
+
+	# Postfix cleanup entry
+	} elsif ($str =~ m#^([^:\s]+): hold: header Received: from ([^\)]*)\).* from=<([^>]+)> to=<([^>]+)>#) {
+		my $id = $1;
+		my $from = lc($3);
+		$from ||= 'empty';
+		my $to = lc($4);
+		my $relay = &clean_relay(lc($2));
+		$FROM{$host}{$id}{date} =  $time_st;
+		$FROM{$host}{$id}{from} = &edecode($from);
+		$FROM{$host}{$id}{size} = 0;
+		$FROM{$host}{$id}{nrcpts} = 1;
+		$FROM{$host}{$id}{relay} = $relay;
+		push(@{$TO{$host}{$id}{date}},  $time_st);
+		push(@{$TO{$host}{$id}{to}}, $to);
 
 	# POSTFIX To clause 
 	} elsif ($str =~ m#^([^:\s]+): to=([^,]+), relay=([^,]+),.*status=(.*)#) {
@@ -1585,13 +1601,22 @@ sub parse_mailscanner
 			$SPAM{$host}{$id}{from} = $1;
 		}
 		$SPAM{$host}{$id}{from} = &edecode($SPAM{$host}{$id}{from});
+	} elsif ($str =~ /Infected message ([^\.]+)\.[^\s]+ came from (.*)/) {
+		$VIRUS{$host}{$1}{from} = $2;
+		$VIRUS{$host}{$1}{date} =  $time_st;
 	} elsif ($str =~ /Infected message ([^\s]+) from (.*)/) {
 		$VIRUS{$host}{$1}{from} = $2;
 		$VIRUS{$host}{$1}{date} =  $time_st;
+	} elsif ($str =~ /Clamd::INFECTED::([^\s]+) :: \.\/([^\.]+)/) {
+		$VIRUS{$host}{$2}{virus} = $1;
+		$VIRUS{$host}{$2}{file} = 'message';
+		$VIRUS{$host}{$2}{date} =  $time_st;
 	} elsif ($str =~ /\.\/([^\.]+)\.message: ([^\s]+) FOUND/) {
 		$VIRUS{$host}{$1}{file} = 'message';
 		$VIRUS{$host}{$1}{virus} = $2;
 		$VIRUS{$host}{$1}{date} =  $time_st;
+	} elsif ($str =~ /Requeue: ([^\.]+)\.[^\s]+ to (.*)/) {
+		$KEEP_TEMPORARY{$2} = $1;
 	}
 }
 
