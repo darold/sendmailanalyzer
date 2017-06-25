@@ -59,6 +59,11 @@ case "$1" in
 'restart')
 	sa_restart
 	;;
+'condrestart')
+	if [ -e $LOCKFILE ]; then
+		sa_restart
+	fi
+	;;
 'status')
 	status sendmailanalyzer
 	;;
