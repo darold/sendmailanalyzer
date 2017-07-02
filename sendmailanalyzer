@@ -895,11 +895,15 @@ sub parse_sendmail
 		}
 	# Catch POSTFIX SASL AUTH method
 	} elsif ($str =~ m#^([^:\s]+): client=([^,]+), sasl_method=([^,]+), sasl_username=(.*)#) {
+		my $id = $1;
 		my $authid = $4;
+		my $relay = &clean_relay(lc($2));
 		push(@{$AUTH{$host}{$authid}{type}}, 'SASL');
 		push(@{$AUTH{$host}{$authid}{mech}}, $3);
 		push(@{$AUTH{$host}{$authid}{date}},  $time_st);
-		push(@{$AUTH{$host}{$authid}{relay}}, &clean_relay(lc($2)));
+		push(@{$AUTH{$host}{$authid}{relay}}, $relay);
+		$FROM{$host}{$id}{date} =  $time_st;
+		$FROM{$host}{$id}{relay} = $relay;
 	# POSTFIX client origin and relay
 	} elsif ($str =~ m#^([^:\s]+): client=([^,]*)#) {
 		my $id = $KEEP_TEMPORARY{$1} || $1;
@@ -1071,6 +1075,7 @@ sub parse_sendmail
 			push(@{$TO{$host}{$id}{date}},  $time_st);
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
+			push(@{$TO{$host}{$id}{relay}}, $relay);
 		}
 	# To clause queued
 	} elsif ($str =~ m#^([^:\s]+): to=(.*), delay=.* stat=queued#) {
