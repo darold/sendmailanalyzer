@@ -165,10 +165,13 @@ fi
 %attr(0644,root,root) %{webdir}/lang/ERROR_CODE
 %attr(0644,root,root) %{webdir}/lang/en_US
 %attr(0644,root,root) %{webdir}/lang/fr_FR
-%attr(0644,root,root) %{webdir}/lang/sp_SP
+%attr(0644,root,root) %{webdir}/lang/es_ES
 %attr(0644,root,root) %{webdir}/lang/bg_BG
 %attr(0644,root,root) %{webdir}/lang/de_DE
 %attr(0644,root,root) %{webdir}/lang/pt_BR
+%attr(0644,root,root) %{webdir}/lang/es_ES
+%attr(0644,root,root) %{webdir}/lang/it_IT
+%attr(0644,root,root) %{webdir}/lang/ru_RU
 %attr(0755,root,root) %{_sysconfdir}/rc.d/init.d/sendmailanalyzer
 %config(noreplace) %{_sysconfdir}/%{uname}.conf
 %config(noreplace) %{_sysconfdir}/cron.d/%{uname}
