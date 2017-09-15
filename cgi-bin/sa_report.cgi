@@ -233,13 +233,17 @@ if (!-e $CONFIG{LANG}) {
 	print $CGI->end_html() if (!$DOWNLOAD);
 	die "FATAL: Language file is not readable, $CONFIG{LANG}\n";
 } else {
-	do "$CONFIG{LANG}";
+	my $file = $CONFIG{LANG};
+	$file = './' . $CONFIG{LANG} if ($CONFIG{LANG} !~ /^\//);
+	do "$file";
 }
 $CURDATE ||= &get_curdate();
 
 # Check if smtp error code file is readable
 if (-e $CONFIG{ERROR_CODE}) {
-        do "$CONFIG{ERROR_CODE}";
+	my $file = $CONFIG{ERROR_CODE};
+	$file = './' . $CONFIG{ERROR_CODE} if ($CONFIG{ERROR_CODE} !~ /^\//);
+        do "$file";
 }
 
 # Print global header
