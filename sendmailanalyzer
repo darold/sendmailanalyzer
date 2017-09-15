@@ -1227,7 +1227,7 @@ sub parse_sendmail
 		my $reject = $5;
 		$arg1 =~ s/[<>]+//g;
 		# Test Sendmail DNSBL spam scan
-		if (($reject =~ /553 5\.3\.0/i) || ($reject =~ /550 5\.7\.1/i)) {
+		if (($reject =~ /553 5\.3\.0/i) || ($reject =~ /550 5\.7\.1/i && $reject =~ / see[:\s]| listed/i)) {
 			$SPAM{$host}{$id}{relay} = $relay;
 			$SPAM{$host}{$id}{rule} = $rule;
 			$SPAM{$host}{$id}{spam} = 'DNSBL Spam blocked';
@@ -1258,7 +1258,7 @@ sub parse_sendmail
 		$arg1 =~ s/[<>]+//g;
 		my $id = &get_uniqueid();
 		# Test Sendmail DNSBL spam scan
-		if ($reject =~ /(553 5\.3\.0|550 5\.7\.1)/i) {
+		if (($reject =~ /553 5\.3\.0/i) || ($reject =~ /550 5\.7\.1/i && $reject =~ / see[:\s]| listed/i)) {
 			$SPAM{$host}{$id}{relay} = $relay;
 			$SPAM{$host}{$id}{rule} = $rule;
 			$SPAM{$host}{$id}{spam} = 'DNSBL Spam blocked';
@@ -2052,7 +2052,6 @@ sub parse_spamd
 
 			# Some message id can be truncated in from log and full in spamd message
 			if ($SPAM{$host}{$id}{mid} =~ /^\Q$FROM{$host}{$mid}{msgid}\E/) {
-
 				$SPAM{$host}{$mid}{from} = $FROM{$host}{$mid}{sender};
 				$SPAM{$host}{$mid}{spam} = $SPAM{$host}{$id}{spam};
 				$SPAM{$host}{$mid}{date} = $SPAM{$host}{$id}{date};
@@ -2902,6 +2901,8 @@ sub clear_status
 		return $1;
         } elsif ($status =~ /(You are still greylisted)/i) {
 		return $1;
+        } elsif ($status =~ /(.*): (possible SMTP attack): (.*)/i) {
+		return "$2 from $1 ($3)";
         } elsif ($status =~ /(Domain of sender address) ([^\s]+) (.*)/i) {
 		return "$1 $3: $2";
 	} elsif ($status =~ /\d{3} \d\.\d\.\d <[^>]+>[:\s\.]*(.*)/) {
