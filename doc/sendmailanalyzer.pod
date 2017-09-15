@@ -350,21 +350,23 @@ See the configuration file and CONFIGURATION section bellow for usage.
 
 or use one of the starters script provided in the start_scripts/ directory.
 
-2. Modify your httpd.conf to allow access to CGI scripts like follow:
+2. Modify your Apache2 configuration to allow access to CGI scripts like follow:
 
 	Alias /sareport /usr/local/sendmailanalyzer/www
 	<Directory /usr/local/sendmailanalyzer/www>
-		Options ExecCGI
-		AddHandler cgi-script .cgi
-		DirectoryIndex sa_report.cgi
-		Order deny,allow
-		Deny from all
-		Allow from 127.0.0.1
-		Allow from ::1
-		# Allow from .example.com
+            Options ExecCGI
+            AddHandler cgi-script .cgi
+            DirectoryIndex sa_report.cgi
+            #-- Apache 2.2
+            #Order deny,allow
+            #Deny from all
+            #Allow from 192.168.1.0/24
+            #-- Apache 2.4
+            Require all denied
+            Require ip 192.168.1.0/24
 	</Directory>
 
-3. If necessary, give additional host access to SendmailAnalyzer in httpd.conf. Restart and ensure that httpd is running.
+3. If necessary, give additional host access to SendmailAnalyzer. Restart and ensure that httpd is running.
 
 4. Browse to http://mta.host.dom/sareport/ to ensure that things are working properly.
 
