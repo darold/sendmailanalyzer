@@ -4727,7 +4727,9 @@ sub get_sender_detail
 			next if (!exists $local_stat{$data[1]});
 			$local_stat{$data[1]}{hour} = $data[0] if (!exists $local_stat{$data[1]}{hour});
 			$local_stat{$data[1]}{sender} = $data[2] if (!exists $local_stat{$data[1]}{sender});
-			push(@{$local_stat{$data[1]}{rcpt}}, $data[3]);
+			if (!grep(/^$data[3]$/i, @{$local_stat{$data[1]}{rcpt}})) {
+				push(@{$local_stat{$data[1]}{rcpt}}, $data[3]);
+			}
 			$local_stat{$data[1]}{spam} = $data[4];
 		}
 		close(IN);
@@ -4860,7 +4862,9 @@ sub get_recipient_detail
 			next if (!exists $local_stat{$data[1]});
 			$local_stat{$data[1]}{hour} = $data[0] if (!exists $local_stat{$data[1]}{hour});
 			$local_stat{$data[1]}{sender} = $data[2] if (!exists $local_stat{$data[1]}{sender});
-			push(@{$local_stat{$data[1]}{rcpt}}, $data[3]);
+			if (!grep(/^$data[3]$/i, @{$local_stat{$data[1]}{rcpt}})) {
+				push(@{$local_stat{$data[1]}{rcpt}}, $data[3]);
+			}
 			$local_stat{$data[1]}{spam} = $data[4];
 		}
 		close(IN);
@@ -5124,9 +5128,11 @@ sub get_spaminfo_detail
 			my @data = split(/:/, $l);
 			next if (!exists $local_stat{$data[1]});
 			if ($data[4] !~ /Queued/) {
-				push(@{$local_stat{$data[1]}{rcpt}}, $data[2]);
-				push(@{$local_stat{$data[1]}{rcpt_relay}}, $data[3]);
-				push(@{$local_stat{$data[1]}{status}}, $data[4]);
+				if (!grep(/^$data[2]$/i, @{$local_stat{$data[1]}{rcpt}})) {
+					push(@{$local_stat{$data[1]}{rcpt}}, $data[2]);
+					push(@{$local_stat{$data[1]}{rcpt_relay}}, $data[3]);
+					push(@{$local_stat{$data[1]}{status}}, $data[4]);
+				}
 			}
 		}
 		close(IN);
