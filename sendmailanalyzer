@@ -1365,8 +1365,8 @@ sub parse_sendmail
 		$reject =~ s/^\s+//;
 		$reject =~ s/[\s;]+$//;
 		# Test PostFix DNSBL spam scan
-		if ($reject =~ /client .* (blocked using .*)/i) {
-			my $spamdetail = $1;
+		if ($reject =~ /(client|helo) .* (blocked using .*)/i) {
+			my $spamdetail = $2;
 			$SPAM{$host}{$id}{relay} = $relay;
 			$SPAM{$host}{$id}{rule} = 'reject';
 			$SPAM{$host}{$id}{spam} = 'DNSBL Spam blocked';

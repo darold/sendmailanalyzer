@@ -26,6 +26,7 @@ use MIME::QuotedPrint qw(decode_qp);
 use MIME::Base64 qw(decode_base64);
 use Time::Local 'timelocal_nocheck';
 use POSIX qw/ strftime /;
+use DBI;
 
 $| = 1;
 
@@ -249,6 +250,18 @@ if (-e $CONFIG{ERROR_CODE}) {
 # Print global header
 &sa_header($CGI) if (!$VIEW && !$DOWNLOAD);
 
+# Check if we have a SQL-host configured for virtual domains
+my $dbh;
+my $db_connected = 0;
+if( exists $CONFIG{VIRTUAL_DOMAIN_DB} ) {
+	$dbh = DBI->connect(
+			$CONFIG{VIRTUAL_DOMAIN_DB},
+			$CONFIG{VIRTUAL_DOMAIN_DB_USER},
+			$CONFIG{VIRTUAL_DOMAIN_DB_PASS},
+		) or die "Couldn't connect to database: " . DBI->errstr;
+	$db_connected = 1;
+}
+
 # Set default host report if there's only one host and no per domain report.
 my @syshost = get_list_host();
 if ( !$HOST && ($#syshost == 0) && ($#{$CONFIG{DOMAIN_REPORT}} == -1) && (scalar keys %{$CONFIG{DOMAIN_HOST_REPORT}} == 0) ) {
@@ -389,6 +402,11 @@ if (!$HOST) {
 &sa_footer($CGI) if (!$VIEW && !$DOWNLOAD);
 
 print $CGI->end_html() if (!$DOWNLOAD);
+
+#disconnect from database
+if( $db_connected ) {
+	$dbh->disconnect or warn "Disconnection error: $DBI::errstr\n";
+}
 
 exit 0;
 
@@ -1882,6 +1900,13 @@ sub set_direction
 		} elsif ($CONFIG{MAIL_GW} && $CONFIG{MAIL_HUB}) {
 			# If sender relay is the gateway, it comes from outside
 			$direction = 'Ext_' if (grep($STATS{$id}{sender_relay} =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_GW})));
+		} elsif( exists $CONFIG{VIRTUAL_DOMAIN_DB} ) {
+				my $sth = $dbh->prepare( $CONFIG{VIRTUAL_DOMAIN_DB_QUERY} );
+				$sth->bind_param( 1, $STATS{$id}{sender_relay} );
+				$sth->execute;
+				if( $sth->rows == 0 ) {
+					$direction = 'Ext_';
+				}
 		}
 	} else {
 		$direction = 'Unk_';
@@ -1909,6 +1934,15 @@ sub set_direction
 				$direction .= 'Int';
 			} else {
 				$direction .= 'Ext';
+			}
+		} elsif( exists $CONFIG{VIRTUAL_DOMAIN_DB} ) {
+			my $sth = $dbh->prepare( $CONFIG{VIRTUAL_DOMAIN_DB_QUERY} );
+			$sth->bind_param( 1, $STATS{$id}{rcpt_relay}[$i] );
+			$sth->execute;
+			if( $sth->rows == 0 ) {
+				$direction .= 'Ext';
+			} else {
+				$direction .= 'Int';
 			}
 		# Finally his only way is to go outside
 		} else {
