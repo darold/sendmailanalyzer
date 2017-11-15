@@ -1882,6 +1882,13 @@ sub set_direction
 		} elsif ($CONFIG{MAIL_GW} && $CONFIG{MAIL_HUB}) {
 			# If sender relay is the gateway, it comes from outside
 			$direction = 'Ext_' if (grep($STATS{$id}{sender_relay} =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_GW})));
+		} else {
+			# if message doesn't come from localhost or user defined loca relay it comes from outside 
+			if (exists $CONFIG{LOCAL_HOST_DOMAIN}{$hostname} && ($#{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}} > -1) ) {
+				$direction = 'Ext_' if (!grep($STATS{$id}{sender_relay} =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}}));
+			} elsif (exists $CONFIG{LOCAL_DOMAIN} && ($#{$CONFIG{LOCAL_DOMAIN}} > -1)) {
+				 $direction = 'Ext_' if (!grep($STATS{$id}{sender_relay} =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_DOMAIN}}));
+			}
 		}
 	} else {
 		$direction = 'Unk_';
