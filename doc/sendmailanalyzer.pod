@@ -968,6 +968,14 @@ For example:
 	LOCAL_DOMAIN	domain3.com
 	LOCAL_DOMAIN	domain4.com
 
+If you want you can also give the path to a file containing a list of
+domain, one per line. Ex:
+
+	LOCAL_DOMAIN	/usr/local/sendmailanalyzer/domain.lst
+
+if the file exist SendmailAnalyzer will load the domain list from its
+content.
+
 =item LOCAL_HOST_DOMAIN
 
 Same as above but with host distinction for use with rsyslog.

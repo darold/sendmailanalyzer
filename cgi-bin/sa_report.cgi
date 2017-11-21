@@ -485,10 +485,30 @@ sub read_config
 					} elsif ($var =~ /DOMAIN_REPORT/i) {
 						push(@{$CONFIG{DOMAIN_REPORT}}, split(/[\t,;\s]/, $val));
 					} elsif ($var =~ /LOCAL_DOMAIN/i) {
-						push(@{$CONFIG{LOCAL_DOMAIN}}, split(/[\t,;\s]/, $val));
+						if (-e $val) {
+							if (open(my $in, '<', $val)) {
+								@{$CONFIG{LOCAL_DOMAIN}} = <$in>;
+								chomp(@{$CONFIG{LOCAL_DOMAIN}});
+								close($in);
+							} else {
+								&logerror("LOCAL_DOMAIN file $val can not be read, $!");
+							}
+						} else {
+							push(@{$CONFIG{LOCAL_DOMAIN}}, split(/[\t,;\s]/, $val));
+						}
 					} elsif ($var =~ /LOCAL_HOST_DOMAIN/i) {
 						my ($hst, @doms) = split(/[\t,;\s]/, $val);
-						push(@{$CONFIG{LOCAL_HOST_DOMAIN}{$hst}}, @doms);
+						if ($#doms == 0 && -e $doms[0]) {
+							if (open(my $in, '<', $doms[0])) {
+								@{$CONFIG{LOCAL_HOST_DOMAIN}{$hst}} = <$in>;
+								chomp(@{$CONFIG{LOCAL_HOST_DOMAIN}{$hst}});
+								close($in);
+							} else {
+								&logerror("LOCAL_DOMAIN file $doms[0] can not be read, $!");
+							}
+						} else {
+							push(@{$CONFIG{LOCAL_HOST_DOMAIN}{$hst}}, @doms);
+						}
 					} elsif ($var =~ /REPLACE_HOST/i) {
 						 my ($pat, $repl) = split(/[\t,;\s]/, $val);
 						$CONFIG{REPLACE_HOST}{$pat} = $repl;

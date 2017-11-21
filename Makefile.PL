@@ -209,13 +209,13 @@ ERROR_CODE	lang/ERROR_CODE
 # what message are internal or external in this case, so the only way to know
 # if a mail come from Internet or Lan/Wan is to check the domain part of the
 # relay sender address. You can have multiple LOCAL_DOMAIN lines for better
-# reading.
+# reading. You can also give a file containing a list of domain, one per line.
 # If you are running rsyslog with multiple host use LOCAL_HOST_DOMAIN instead.
-#LOCAL_DOMAIN   domain1.com domain2.com
+#LOCAL_DOMAIN   domain1.com,domain2.com
 
 # Same as above but with host distinction for use with rsyslog.
 # You can have multiple LOCAL_HOST_DOMAIN lines, ie: one per host.
-#LOCAL_HOST_DOMAIN   sysloghost1	domain1.com domain2.com
+#LOCAL_HOST_DOMAIN   sysloghost1	domain1.com,domain2.com
 
 # Syslog name of MimeDefang. Syslog write it to maillog with the pid as follow:
 # ... mimedefang.pl[1234] ... This is required to only parse relevant logged lines
