@@ -1293,7 +1293,7 @@ sub show_stats
 
 	if ($type eq 'messageflow') {
 		&summarize_messageflow($begin, $end, %period_stats);
-		&display_messageflow($x_label);
+		&display_messageflow($hostname, $date, $hour, $x_label);
 	} elsif ($type eq 'spamflow') {
 		&summarize_spamflow($begin, $end, %period_stats);
 		&display_spamflow($x_label);
@@ -1877,37 +1877,37 @@ sub get_postgrey_stat
 
 sub set_direction
 {
-	my ($id, $i, $hostname) = @_;
+	my ($sender_relay, $recipient_relay, $hostname) = @_;
 
 	# By default all mail are considered issued from local computer.
 	my $direction = 'Int_';
 
 	###### Check for sender origine
-	if ($STATS{$id}{sender_relay}) {
+	if ($sender_relay) {
 		# This host is a gateway and it forward mails to an internal hub or outside
 		if (!$CONFIG{MAIL_GW} && $CONFIG{MAIL_HUB}) {
-			if (!grep($STATS{$id}{sender_relay} =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_HUB}))) {
+			if (!grep($sender_relay =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_HUB}))) {
 				# if message doesn't come from localhost or user defined loca relay it comes from outside 
 				if (exists $CONFIG{LOCAL_HOST_DOMAIN}{$hostname} && ($#{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}} > -1) ) {
-					$direction = 'Ext_' if (!grep($STATS{$id}{sender_relay} =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}}));
+					$direction = 'Ext_' if (!grep($sender_relay =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}}));
 				} elsif (exists $CONFIG{LOCAL_DOMAIN} && ($#{$CONFIG{LOCAL_DOMAIN}} > -1)) {
-					 $direction = 'Ext_' if (!grep($STATS{$id}{sender_relay} =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_DOMAIN}}));
+					 $direction = 'Ext_' if (!grep($sender_relay =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_DOMAIN}}));
 				}
 			}
 		# This host received all messages from a gateway
 		} elsif ($CONFIG{MAIL_GW} && !$CONFIG{MAIL_HUB}) {
 			# If sender relay is the gateway, it comes from outside
-			$direction = 'Ext_' if (grep($STATS{$id}{sender_relay} =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_GW}) ));
+			$direction = 'Ext_' if (grep($sender_relay =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_GW}) ));
 		# This host is a hub, it received all messages from a gateway and forward them to other host
 		} elsif ($CONFIG{MAIL_GW} && $CONFIG{MAIL_HUB}) {
 			# If sender relay is the gateway, it comes from outside
-			$direction = 'Ext_' if (grep($STATS{$id}{sender_relay} =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_GW})));
+			$direction = 'Ext_' if (grep($sender_relay =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_GW})));
 		} else {
 			# if message doesn't come from localhost or user defined loca relay it comes from outside 
 			if (exists $CONFIG{LOCAL_HOST_DOMAIN}{$hostname} && ($#{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}} > -1) ) {
-				$direction = 'Ext_' if (!grep($STATS{$id}{sender_relay} =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}}));
+				$direction = 'Ext_' if (!grep($sender_relay =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}}));
 			} elsif (exists $CONFIG{LOCAL_DOMAIN} && ($#{$CONFIG{LOCAL_DOMAIN}} > -1)) {
-				 $direction = 'Ext_' if (!grep($STATS{$id}{sender_relay} =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_DOMAIN}}));
+				 $direction = 'Ext_' if (!grep($sender_relay =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_DOMAIN}}));
 			}
 		}
 	} else {
@@ -1915,24 +1915,24 @@ sub set_direction
 	}
 
 	###### Now check for destination
-	if ($STATS{$id}{rcpt_relay}[$i]) {
+	if ($recipient_relay) {
 		# If the recipient relay is localhost, it should be distributed internally
-		if ($STATS{$id}{rcpt_relay}[$i] eq 'localhost') {
+		if ($recipient_relay eq 'localhost') {
 			$direction .= 'Int';
 		# If this host is a mail gateway and the recipient relay match one of
 		# our destination hub lets say it should be distributed internally
-		} elsif ($CONFIG{MAIL_HUB} && (grep($STATS{$id}{rcpt_relay}[$i] =~ /$_/, split(/[\s\t,;]/, $CONFIG{MAIL_HUB}) )) ) {
+		} elsif ($CONFIG{MAIL_HUB} && (grep($recipient_relay =~ /$_/, split(/[\s\t,;]/, $CONFIG{MAIL_HUB}) )) ) {
 			$direction .= 'Int';
 		# If the recipient relay match any of our local domain
 		# lets say the mail should be distributed internally
 		} elsif (exists $CONFIG{LOCAL_HOST_DOMAIN}{$hostname} && ($#{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}} > -1) ){
-			if (grep($STATS{$id}{rcpt_relay}[$i] =~ /\b$_$/i, @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}})) {
+			if (grep($recipient_relay =~ /\b$_$/i, @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}})) {
 				$direction .= 'Int';
 			} else {
 				$direction .= 'Ext';
 			}
 		} elsif (exists $CONFIG{LOCAL_DOMAIN} && ($#{$CONFIG{LOCAL_DOMAIN}} > -1)) {
-			if (grep($STATS{$id}{rcpt_relay}[$i] =~ /\b$_$/i, @{$CONFIG{LOCAL_DOMAIN}})) {
+			if (grep($recipient_relay =~ /\b$_$/i, @{$CONFIG{LOCAL_DOMAIN}})) {
 				$direction .= 'Int';
 			} else {
 				$direction .= 'Ext';
@@ -1978,7 +1978,7 @@ sub compute_messageflow
 				$messaging{nbsender}{"$STATS{$id}{sender}"} = '';
 				$messaging{nbrcpt}{"$STATS{$id}{rcpt}[$i]"} = '';
 				$delivery{'total'}++;
-				my $direction = &set_direction($id, $i, $hostname);
+				my $direction = &set_direction($STATS{$id}{sender_relay}, $STATS{$id}{rcpt_relay}[$i], $hostname);
 				$delivery{$direction}++;
 				$direction .= '_bytes';
 				$delivery{$direction} += $STATS{$id}{size};
@@ -2073,15 +2073,25 @@ sub summarize_messageflow
 	$delivery{'Int_Ext'} ||= 0;
 	$delivery{'Ext_Ext'} ||= 0;
 	$delivery{'Ext_Int'} ||= 0;
+	$delivery{'Int_Unk'} ||= 0;
+	$delivery{'Unk_Int'} ||= 0;
+	$delivery{'Ext_Unk'} ||= 0;
+	$delivery{'Unk_Ext'} ||= 0;
+	$delivery{'Unk_Unk'} ||= 0;
 	$delivery{'Int_Int_bytes'} = sprintf("%.2f", $delivery{'Int_Int_bytes'}/$SIZE_UNIT);
 	$delivery{'Int_Ext_bytes'} = sprintf("%.2f", $delivery{'Int_Ext_bytes'}/$SIZE_UNIT);
 	$delivery{'Ext_Ext_bytes'} = sprintf("%.2f", $delivery{'Ext_Ext_bytes'}/$SIZE_UNIT);
 	$delivery{'Ext_Int_bytes'} = sprintf("%.2f", $delivery{'Ext_Int_bytes'}/$SIZE_UNIT);
+	$delivery{'Unk_Int_bytes'} = sprintf("%.2f", $delivery{'Unk_Int_bytes'}/$SIZE_UNIT);
+	$delivery{'Unk_Ext_bytes'} = sprintf("%.2f", $delivery{'Unk_Ext_bytes'}/$SIZE_UNIT);
+	$delivery{'Int_Unk_bytes'} = sprintf("%.2f", $delivery{'Int_Unk_bytes'}/$SIZE_UNIT);
+	$delivery{'Ext_Unk_bytes'} = sprintf("%.2f", $delivery{'Ext_Unk_bytes'}/$SIZE_UNIT);
+	$delivery{'Unk_Unk_bytes'} = sprintf("%.2f", $delivery{'Unk_Unk_bytes'}/$SIZE_UNIT);
 }
 
 sub display_messageflow
 {
-	my ($x_label) = @_;
+	my ($hostname, $date, $hour, $x_label) = @_;
 
 	$messaging{inbound_mean} = sprintf("%.2f", $messaging{inbound_bytes} / ($messaging{inbound} || 1));
 	$messaging{local_inbound_mean} = sprintf("%.2f", $messaging{local_inbound_bytes} / ($messaging{local_inbound} || 1));
@@ -2144,7 +2154,6 @@ sub display_messageflow
 	my %data = ();
 	$delivery{total} = $GLOBAL_STATUS{Sent} || 1;
 	$delivery{total_bytes} = $GLOBAL_STATUS{Sent_bytes} || 1;
-	$delivery{lbls} = "$TRANSLATE{'Ext -> Int'}:$TRANSLATE{'Ext -> Ext'}:$TRANSLATE{'Int -> Int'}:$TRANSLATE{'Int -> Ext'}";
 	$delivery{'Ext_Int_percent'} = sprintf("%.2f", ($delivery{'Ext_Int'}*100) / $delivery{'total'});
 	$data{$TRANSLATE{'Ext -> Int'}} = $delivery{'Ext_Int_percent'};
 	$delivery{'Ext_Ext_percent'} = sprintf("%.2f", ($delivery{'Ext_Ext'}*100) / $delivery{'total'});
@@ -2153,6 +2162,34 @@ sub display_messageflow
 	$data{$TRANSLATE{'Int -> Int'}} = $delivery{'Int_Int_percent'};
 	$delivery{'Int_Ext_percent'} = sprintf("%.2f", ($delivery{'Int_Ext'}*100) / $delivery{'total'});
 	$data{$TRANSLATE{'Int -> Ext'}} = $delivery{'Int_Ext_percent'};
+	$delivery{lbls} = "$TRANSLATE{'Ext -> Int'}:$TRANSLATE{'Ext -> Ext'}:$TRANSLATE{'Int -> Int'}:$TRANSLATE{'Int -> Ext'}";
+
+	if ($delivery{'Unk_Int'}) {
+		$delivery{'Unk_Int_percent'} = sprintf("%.2f", ($delivery{'Unk_Int'}*100) / $delivery{'total'});
+		$data{$TRANSLATE{'Unk -> Int'}} = $delivery{'Unk_Int_percent'};
+		$delivery{lbls} .= ":$TRANSLATE{'Unk -> Int'}";
+	}
+	if ($delivery{'Unk_Ext'}) {
+		$delivery{'Unk_Ext_percent'} = sprintf("%.2f", ($delivery{'Unk_Ext'}*100) / $delivery{'total'});
+		$data{$TRANSLATE{'Unk -> Ext'}} = $delivery{'Unk_Ext_percent'};
+		$delivery{lbls} .= ":$TRANSLATE{'Unk -> Ext'}";
+	}
+	if ($delivery{'Int_Unk'}) {
+		$delivery{'Int_Unk_percent'} = sprintf("%.2f", ($delivery{'Int_Unk'}*100) / $delivery{'total'});
+		$data{$TRANSLATE{'Int -> Unk'}} = $delivery{'Int_Unk_percent'};
+		$delivery{lbls} .= ":$TRANSLATE{'Int_Unk'}";
+	}
+	if ($delivery{'Ext_Unk'}) {
+		$delivery{'Ext_Unk_percent'} = sprintf("%.2f", ($delivery{'Ext_Unk'}*100) / $delivery{'total'});
+		$data{$TRANSLATE{'Ext -> Unk'}} = $delivery{'Ext_Unk_percent'};
+		$delivery{lbls} .= ":$TRANSLATE{'Ext_Unk'}";
+	}
+	if ($delivery{'Unk_Unk'}) {
+		$delivery{'Unk_Unk_percent'} = sprintf("%.2f", ($delivery{'Unk_Unk'}*100) / $delivery{'total'});
+		$data{$TRANSLATE{'Unk -> Unk'}} = $delivery{'Unk_Unk_percent'};
+		$delivery{lbls} .= ":$TRANSLATE{'Unk_Unk'}";
+	}
+
 	my $nbsender = 0;
 	my $nbrcpt = 0;
 	if (ref $messaging{nbsender} eq 'HASH') {
@@ -2176,11 +2213,27 @@ sub display_messageflow
 <table class="counter">
 <tr><th colspan="4" class="thheadcounter">$TRANSLATE{'Message delivery flows'}</th></tr>
 <tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Percentage'}</td></tr>
-<tr><td class="tdtop" nowrap="1">$TRANSLATE{'Internet -> Internal'}</td><td class="tdtopnr">$delivery{'Ext_Int'}</td><td class="tdtopnr">$delivery{'Ext_Int_bytes'}</td><td class="tdtopnr">$delivery{'Ext_Int_percent'} %</td></tr>
-<tr><td class="tdtop" nowrap="1">$TRANSLATE{'Internet -> Internet'}</td><td class="tdtopnr">$delivery{'Ext_Ext'}</td><td class="tdtopnr">$delivery{'Ext_Ext_bytes'}</td><td class="tdtopnr">$delivery{'Ext_Ext_percent'} %</td></tr>
-<tr><td class="tdtop" nowrap="1">$TRANSLATE{'Internal -> Internal'}</td><td class="tdtopnr">$delivery{'Int_Int'}</td><td class="tdtopnr">$delivery{'Int_Int_bytes'}</td><td class="tdtopnr">$delivery{'Int_Int_percent'} %</td></tr>
-<tr><td class="tdtop" nowrap="1">$TRANSLATE{'Internal -> Internet'}</td><td class="tdtopnr">$delivery{'Int_Ext'}</td><td class="tdtopnr">$delivery{'Int_Ext_bytes'}</td><td class="tdtopnr">$delivery{'Int_Ext_percent'} %</td></tr>
-<tr><td colspan="4">&nbsp;</td></tr>
+<tr><td class="tdtop" nowrap="1"><a target="detail" href="$ENV{SCRIPT_NAME}?host=$hostname&date=$date&hour=$hour&type=flow&peri=direction&domain=$DOMAIN&search=Ext_Int">$TRANSLATE{'Internet -> Internal'}</a></td><td class="tdtopnr">$delivery{'Ext_Int'}</td><td class="tdtopnr">$delivery{'Ext_Int_bytes'}</td><td class="tdtopnr">$delivery{'Ext_Int_percent'} %</td></tr>
+<tr><td class="tdtop" nowrap="1"><a target="detail" href="$ENV{SCRIPT_NAME}?host=$hostname&date=$date&hour=$hour&type=flow&peri=direction&domain=$DOMAIN&search=Ext_Ext">$TRANSLATE{'Internet -> Internet'}</a></td><td class="tdtopnr">$delivery{'Ext_Ext'}</td><td class="tdtopnr">$delivery{'Ext_Ext_bytes'}</td><td class="tdtopnr">$delivery{'Ext_Ext_percent'} %</td></tr>
+<tr><td class="tdtop" nowrap="1"><a target="detail" href="$ENV{SCRIPT_NAME}?host=$hostname&date=$date&hour=$hour&type=flow&peri=direction&domain=$DOMAIN&search=Int_Int">$TRANSLATE{'Internal -> Internal'}</a></td><td class="tdtopnr">$delivery{'Int_Int'}</td><td class="tdtopnr">$delivery{'Int_Int_bytes'}</td><td class="tdtopnr">$delivery{'Int_Int_percent'} %</td></tr>
+<tr><td class="tdtop" nowrap="1"><a target="detail" href="$ENV{SCRIPT_NAME}?host=$hostname&date=$date&hour=$hour&type=flow&peri=direction&domain=$DOMAIN&search=Int_Ext">$TRANSLATE{'Internal -> Internet'}</a></td><td class="tdtopnr">$delivery{'Int_Ext'}</td><td class="tdtopnr">$delivery{'Int_Ext_bytes'}</td><td class="tdtopnr">$delivery{'Int_Ext_percent'} %</td></tr>
+};
+		print qq {
+<tr><td class="tdtop" nowrap="1"><a target="detail" href="$ENV{SCRIPT_NAME}?host=$hostname&date=$date&hour=$hour&type=flow&peri=direction&domain=$DOMAIN&search=Unk_Int">$TRANSLATE{'Unknown -> Internal'}</a></td><td class="tdtopnr">$delivery{'Unk_Int'}</td><td class="tdtopnr">$delivery{'Unk_Int_bytes'}</td><td class="tdtopnr">$delivery{'Unk_Int_percent'} %</td></tr>
+} if ($delivery{'Unk_Int'});
+		print qq {
+<tr><td class="tdtop" nowrap="1"><a target="detail" href="$ENV{SCRIPT_NAME}?host=$hostname&date=$date&hour=$hour&type=flow&peri=direction&domain=$DOMAIN&search=Unk_Ext">$TRANSLATE{'Unknown -> Internet'}</a></td><td class="tdtopnr">$delivery{'Unk_Ext'}</td><td class="tdtopnr">$delivery{'Unk_Ext_bytes'}</td><td class="tdtopnr">$delivery{'Unk_Ext_percent'} %</td></tr>
+} if ($delivery{'Unk_Ext'});
+		print qq {
+<tr><td class="tdtop" nowrap="1"><a target="detail" href="$ENV{SCRIPT_NAME}?host=$hostname&date=$date&hour=$hour&type=flow&peri=direction&domain=$DOMAIN&search=Int_Unk">$TRANSLATE{'Internal -> Unknown'}</a></td><td class="tdtopnr">$delivery{'Int_Unk'}</td><td class="tdtopnr">$delivery{'Int_Unk_bytes'}</td><td class="tdtopnr">$delivery{'Int_Unk_percent'} %</td></tr>
+} if ($delivery{'Int_Unk'});
+		print qq {
+<tr><td class="tdtop" nowrap="1"><a target="detail" href="$ENV{SCRIPT_NAME}?host=$hostname&date=$date&hour=$hour&type=flow&peri=direction&domain=$DOMAIN&search=Ext_Unk">$TRANSLATE{'Internet -> Unknown'}</a></td><td class="tdtopnr">$delivery{'Ext_Unk'}</td><td class="tdtopnr">$delivery{'Ext_Unk_bytes'}</td><td class="tdtopnr">$delivery{'Ext_Unk_percent'} %</td></tr>
+} if ($delivery{'Int_Unk'});
+		print qq {
+<tr><td class="tdtop" nowrap="1"><a target="detail" href="$ENV{SCRIPT_NAME}?host=$hostname&date=$date&hour=$hour&type=flow&peri=direction&domain=$DOMAIN&search=Unk_Unk">$TRANSLATE{'Unknown -> Unknown'}</a></td><td class="tdtopnr">$delivery{'Unk_Unk'}</td><td class="tdtopnr">$delivery{'Unk_Unk_bytes'}</td><td class="tdtopnr">$delivery{'Unk_Unk_percent'} %</td></tr>
+} if ($delivery{'Unk_Unk'});
+		print qq {
 </table>
 
 <table>
@@ -2246,7 +2299,7 @@ sub compute_spamflow
 			for (my $i = 0; $i <= $#{$STATS{$id}{status}}; $i++) {
 				next if ($mailbox && ($STATS{$id}{rcpt}[$i] !~ /$mailbox\@/) );
 				if ($STATS{$id}{status}[$i] eq 'Sent') {
-					my $direction = &set_direction($id, $i, $hostname);
+					my $direction = &set_direction($STATS{$id}{sender_relay}, $STATS{$id}{rcpt_relay}[$i], $hostname);
 					$spam{$direction}++;
 					$direction .= '_bytes';
 					$spam{$direction} += $STATS{$id}{size};
@@ -2376,18 +2429,18 @@ sub display_spamflow
 <table align="center">
 <tr><td align="center">
 };
-	print &grafit(  labels => $spam{lbls}, values => $spam{values},
-			title => $TRANSLATE{'Spamming Flow'},
-			x_label => $x_label, y_label => $TRANSLATE{'Number of spam'},
-			divid => 'spamflow'
-	);
-	print qq{
+print &grafit(  labels => $spam{lbls}, values => $spam{values},
+		title => $TRANSLATE{'Spamming Flow'},
+		x_label => $x_label, y_label => $TRANSLATE{'Number of spam'},
+		divid => 'spamflow'
+);
+print qq{
 </td></tr>
 </table>
 
 </table>
 };
-	}
+}
 
 print "</td></tr></table>\n";
 
@@ -2395,122 +2448,122 @@ print "</td></tr></table>\n";
 
 sub compute_virusflow
 {
-	my ($hostname, $mailbox) = @_;
+my ($hostname, $mailbox) = @_;
 
-	my %period_stat = ();
-	foreach my $id (keys %STATS) {
-		next if ($DOMAIN && ($STATS{$id}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS{$id}{rcpt}}));
-		if (exists $STATS{$id}{virus}) {
-			$period_stat{virus}{$STATS{$id}{idx_virus}}++;
-			$GLOBAL_STATUS{Virus}++;
-			$GLOBAL_STATUS{Virus_bytes} += $STATS{$id}{size};
-			if ($STATS{$id}{sender_relay} ne 'localhost') {
-				$virus{local_inbound}++;
-				$virus{local_inbound_bytes} += $STATS{$id}{size} || 0;
-			} else {
-				$virus{inbound}++;
-				$virus{inbound_bytes} += $STATS{$id}{size} || 0;
-			}
-			for (my $i = 0; $i <= $#{$STATS{$id}{status}}; $i++) {
-				next if ($mailbox && ($STATS{$id}{rcpt}[$i] !~ /$mailbox\@/) );
-				if ($STATS{$id}{status}[$i] eq 'Sent') {
-					my $direction = &set_direction($id, $i, $hostname);
-					$virus{$direction}++;
-					$direction .= '_bytes';
-					$virus{$direction} += $STATS{$id}{size};
-					if ($direction =~ /_Int/) {
-						$virus{local_outbound}++;
-						$virus{local_outbound_bytes} += $STATS{$id}{size} || 0;
-					} else {
-						$virus{outbound}++;
-						$virus{outbound_bytes} += $STATS{$id}{size} || 0;
-					}
+my %period_stat = ();
+foreach my $id (keys %STATS) {
+	next if ($DOMAIN && ($STATS{$id}{sender} !~ /$DOMAIN/) && !grep(/$DOMAIN/, @{$STATS{$id}{rcpt}}));
+	if (exists $STATS{$id}{virus}) {
+		$period_stat{virus}{$STATS{$id}{idx_virus}}++;
+		$GLOBAL_STATUS{Virus}++;
+		$GLOBAL_STATUS{Virus_bytes} += $STATS{$id}{size};
+		if ($STATS{$id}{sender_relay} ne 'localhost') {
+			$virus{local_inbound}++;
+			$virus{local_inbound_bytes} += $STATS{$id}{size} || 0;
+		} else {
+			$virus{inbound}++;
+			$virus{inbound_bytes} += $STATS{$id}{size} || 0;
+		}
+		for (my $i = 0; $i <= $#{$STATS{$id}{status}}; $i++) {
+			next if ($mailbox && ($STATS{$id}{rcpt}[$i] !~ /$mailbox\@/) );
+			if ($STATS{$id}{status}[$i] eq 'Sent') {
+				my $direction = &set_direction($STATS{$id}{sender_relay}, $STATS{$id}{rcpt_relay}[$i], $hostname);
+				$virus{$direction}++;
+				$direction .= '_bytes';
+				$virus{$direction} += $STATS{$id}{size};
+				if ($direction =~ /_Int/) {
+					$virus{local_outbound}++;
+					$virus{local_outbound_bytes} += $STATS{$id}{size} || 0;
+				} else {
+					$virus{outbound}++;
+					$virus{outbound_bytes} += $STATS{$id}{size} || 0;
 				}
 			}
 		}
 	}
-	%STATS = ();
-	return %period_stat;
+}
+%STATS = ();
+return %period_stat;
 }
 
 sub summarize_virusflow
 {
-	my ($begin, $end, %period_stat) = @_;
+my ($begin, $end, %period_stat) = @_;
 
-	$virus{inbound} ||= 0;
-	$virus{local_inbound} ||= 0;
-	$virus{outbound} ||= 0;
-	$virus{local_outbound} ||= 0;
-	$virus{total_inbound} = $virus{inbound} + $virus{local_inbound};
-	$virus{total_inbound_bytes} = $virus{inbound_bytes} + $virus{local_inbound_bytes};
-	$virus{total_outbound} = $virus{outbound} + $virus{local_outbound};
-	$virus{total_outbound_bytes} = $virus{outbound_bytes} + $virus{local_outbound_bytes};
-	$virus{total_inbound_bytes} = sprintf("%.2f", $virus{total_inbound_bytes}/$SIZE_UNIT);
-	$virus{inbound_bytes} = sprintf("%.2f", $virus{inbound_bytes}/$SIZE_UNIT);
-	$virus{local_inbound_bytes} = sprintf("%.2f", $virus{local_inbound_bytes}/$SIZE_UNIT);
-	$virus{total_outbound_bytes} = sprintf("%.2f", $virus{total_outbound_bytes}/$SIZE_UNIT);
-	$virus{outbound_bytes} = sprintf("%.2f", $virus{outbound_bytes}/$SIZE_UNIT);
-	$virus{local_outbound_bytes} = sprintf("%.2f", $virus{local_outbound_bytes}/$SIZE_UNIT);
+$virus{inbound} ||= 0;
+$virus{local_inbound} ||= 0;
+$virus{outbound} ||= 0;
+$virus{local_outbound} ||= 0;
+$virus{total_inbound} = $virus{inbound} + $virus{local_inbound};
+$virus{total_inbound_bytes} = $virus{inbound_bytes} + $virus{local_inbound_bytes};
+$virus{total_outbound} = $virus{outbound} + $virus{local_outbound};
+$virus{total_outbound_bytes} = $virus{outbound_bytes} + $virus{local_outbound_bytes};
+$virus{total_inbound_bytes} = sprintf("%.2f", $virus{total_inbound_bytes}/$SIZE_UNIT);
+$virus{inbound_bytes} = sprintf("%.2f", $virus{inbound_bytes}/$SIZE_UNIT);
+$virus{local_inbound_bytes} = sprintf("%.2f", $virus{local_inbound_bytes}/$SIZE_UNIT);
+$virus{total_outbound_bytes} = sprintf("%.2f", $virus{total_outbound_bytes}/$SIZE_UNIT);
+$virus{outbound_bytes} = sprintf("%.2f", $virus{outbound_bytes}/$SIZE_UNIT);
+$virus{local_outbound_bytes} = sprintf("%.2f", $virus{local_outbound_bytes}/$SIZE_UNIT);
 
-	if (!exists $virus{lbls}) {
-		if ($end && ($end ne '60')) {
-			foreach ("$begin" .. "$end") {
-				$virus{lbls} .= "$_:";
-				$virus{values} .= ($period_stat{virus}{"$_"} || 0) . ':';
-			}
-		} elsif ($end) {
-			for (my $i = 5; $i <= 60; $i += 5) {
-				$virus{lbls} .= sprintf("%02d", $i) . ":";
-				my $count = 0;
-				foreach my $b (keys %{$period_stat{virus}}) {
-					if ( ($b < $i) && ($b >= ($i - 5)) ) {
-						$count += $period_stat{virus}{"$b"};
-					}
+if (!exists $virus{lbls}) {
+	if ($end && ($end ne '60')) {
+		foreach ("$begin" .. "$end") {
+			$virus{lbls} .= "$_:";
+			$virus{values} .= ($period_stat{virus}{"$_"} || 0) . ':';
+		}
+	} elsif ($end) {
+		for (my $i = 5; $i <= 60; $i += 5) {
+			$virus{lbls} .= sprintf("%02d", $i) . ":";
+			my $count = 0;
+			foreach my $b (keys %{$period_stat{virus}}) {
+				if ( ($b < $i) && ($b >= ($i - 5)) ) {
+					$count += $period_stat{virus}{"$b"};
 				}
-				$virus{values} .= ($count || 0) . ':';
 			}
-		} else {
-			foreach my $b (split(/:/, $begin)) {
-				$virus{lbls} .= "$b:";
-				$virus{values} .= ($period_stat{virus}{"$b"} || 0) . ':';
-			}
+			$virus{values} .= ($count || 0) . ':';
+		}
+	} else {
+		foreach my $b (split(/:/, $begin)) {
+			$virus{lbls} .= "$b:";
+			$virus{values} .= ($period_stat{virus}{"$b"} || 0) . ':';
 		}
 	}
-	$virus{lbls} =~ s/:$//;
-	$virus{values} =~ s/:$//;
+}
+$virus{lbls} =~ s/:$//;
+$virus{values} =~ s/:$//;
 
-	$virus{'Int_Int'} ||= 0;
-	$virus{'Int_Ext'} ||= 0;
-	$virus{'Ext_Ext'} ||= 0;
-	$virus{'Ext_Int'} ||= 0;
+$virus{'Int_Int'} ||= 0;
+$virus{'Int_Ext'} ||= 0;
+$virus{'Ext_Ext'} ||= 0;
+$virus{'Ext_Int'} ||= 0;
 }
 
 sub display_virusflow
 {
-	my ($x_label) = @_;
+my ($x_label) = @_;
 
-	# Viruses flows / Viruses delivery flows / syserr flows
-	$virus{inbound_mean} = sprintf("%.2f", $virus{inbound_bytes} / ($virus{inbound} || 1));
-	$virus{local_inbound_mean} = sprintf("%.2f", $virus{local_inbound_bytes} / ($virus{local_inbound} || 1));
-	$virus{total_inbound_mean} = sprintf("%.2f", $virus{total_inbound_bytes} / ($virus{total_inbound} || 1));
-	$virus{outbound_mean} = sprintf("%.2f", $virus{outbound_bytes} / ($virus{outbound} || 1));
-	$virus{local_outbound_mean} = sprintf("%.2f", $virus{local_outbound_bytes} / ($virus{local_outbound} || 1));
-	$virus{total_outbound_mean} = sprintf("%.2f", $virus{total_outbound_bytes} / ($virus{total_outbound} || 1));
-	$virus{Ext_Int_mean} = sprintf("%.2f", $virus{Ext_Int} / ($virus{Ext_Int_bytes} || 1));
-	$virus{Int_Int_mean} = sprintf("%.2f", $virus{Int_Int} / ($virus{Int_Int_bytes} || 1));
-	$virus{Int_Ext_mean} = sprintf("%.2f", $virus{Int_Ext} / ($virus{Int_Ext_bytes} || 1));
-	$virus{Ext_Ext_mean} = sprintf("%.2f", $virus{Ext_Ext} / ($virus{Ext_Ext_bytes} || 1));
-	$virus{'Int_Int_bytes'} = sprintf("%.2f", $virus{'Int_Int_bytes'}/$SIZE_UNIT);
-	$virus{'Int_Ext_bytes'} = sprintf("%.2f", $virus{'Int_Ext_bytes'}/$SIZE_UNIT);
-	$virus{'Ext_Ext_bytes'} = sprintf("%.2f", $virus{'Ext_Ext_bytes'}/$SIZE_UNIT);
-	$virus{'Ext_Int_bytes'} = sprintf("%.2f", $virus{'Ext_Int_bytes'}/$SIZE_UNIT);
+# Viruses flows / Viruses delivery flows / syserr flows
+$virus{inbound_mean} = sprintf("%.2f", $virus{inbound_bytes} / ($virus{inbound} || 1));
+$virus{local_inbound_mean} = sprintf("%.2f", $virus{local_inbound_bytes} / ($virus{local_inbound} || 1));
+$virus{total_inbound_mean} = sprintf("%.2f", $virus{total_inbound_bytes} / ($virus{total_inbound} || 1));
+$virus{outbound_mean} = sprintf("%.2f", $virus{outbound_bytes} / ($virus{outbound} || 1));
+$virus{local_outbound_mean} = sprintf("%.2f", $virus{local_outbound_bytes} / ($virus{local_outbound} || 1));
+$virus{total_outbound_mean} = sprintf("%.2f", $virus{total_outbound_bytes} / ($virus{total_outbound} || 1));
+$virus{Ext_Int_mean} = sprintf("%.2f", $virus{Ext_Int} / ($virus{Ext_Int_bytes} || 1));
+$virus{Int_Int_mean} = sprintf("%.2f", $virus{Int_Int} / ($virus{Int_Int_bytes} || 1));
+$virus{Int_Ext_mean} = sprintf("%.2f", $virus{Int_Ext} / ($virus{Int_Ext_bytes} || 1));
+$virus{Ext_Ext_mean} = sprintf("%.2f", $virus{Ext_Ext} / ($virus{Ext_Ext_bytes} || 1));
+$virus{'Int_Int_bytes'} = sprintf("%.2f", $virus{'Int_Int_bytes'}/$SIZE_UNIT);
+$virus{'Int_Ext_bytes'} = sprintf("%.2f", $virus{'Int_Ext_bytes'}/$SIZE_UNIT);
+$virus{'Ext_Ext_bytes'} = sprintf("%.2f", $virus{'Ext_Ext_bytes'}/$SIZE_UNIT);
+$virus{'Ext_Int_bytes'} = sprintf("%.2f", $virus{'Ext_Int_bytes'}/$SIZE_UNIT);
 
-	if (!$virus{total_inbound} && !$virus{total_outbound}) {
-		print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
-		return;
-	}
+if (!$virus{total_inbound} && !$virus{total_outbound}) {
+	print qq{<table align="center"><tr><th colspan="2" class="thheadcounter">$TRANSLATE{'No dataset'}</th></tr></table>};
+	return;
+}
 
-        print qq {
+print qq {
 <table width="100%"><tr><td>
 
 <table align="center" class="counter">
@@ -2525,8 +2578,8 @@ sub display_virusflow
 <tr><td colspan="4" align="center">&nbsp;</td></tr>
 </table>
 };
-	if ($CONFIG{SHOW_DIRECTION}) {
-		print qq{
+if ($CONFIG{SHOW_DIRECTION}) {
+	print qq{
 <table class="counter">
 <tr><th colspan="4" class="thhead">$TRANSLATE{'Viruses delivery flows'}</th></tr>
 <tr><td class="tdhead">&nbsp;</td><td class="tdhead">$TRANSLATE{'Messages'}</td><td class="tdhead">$TRANSLATE{'Size'} ($TRANSLATE{$CONFIG{'SIZE_UNIT'}})</td><td class="tdhead">$TRANSLATE{'Mean'}</td></tr>
@@ -2569,7 +2622,7 @@ sub compute_dsnflow
 			for (my $i = 0; $i <= $#{$STATS{$id}{status}}; $i++) {
 				next if ($mailbox && ($STATS{$id}{rcpt}[$i] !~ /$mailbox\@/) );
 				if ($STATS{$id}{status}[$i] eq 'Sent') {
-					my $direction = &set_direction($id, $i, $hostname);
+					my $direction = &set_direction($STATS{$id}{sender_relay}, $STATS{$id}{rcpt_relay}[$i], $hostname);
 					$dsn{$direction}++;
 					if ($direction =~ /_Int$/) {
 						$dsn{local_outbound}++;
@@ -4290,6 +4343,8 @@ sub get_detail_stat
 		%lstat = &get_dsnsrc_detail($path, $peri, $search, $hour);
 	} elsif ($type eq 'postgrey') {
 		%lstat = &get_postgrey_detail($path, $peri, $search, $hour);
+	} elsif ($type eq 'flow') {
+		%lstat = &get_flow_detail($path, $peri, $search, $hour, $hostname);
 	} else {
 		print "BAD DETAIL TYPE\n";
 	}
@@ -4332,7 +4387,7 @@ sub show_detail
 	if ($type !~ /spam/) {
 		print qq{<th>$TRANSLATE{'Status'}</th>\n};
 	}
-	if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient', 'postgrey')) {
+	if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient', 'postgrey', 'flow')) {
 		if ($type eq 'spam') {
 			print qq{<th nowrap="1">$TRANSLATE{'Spam'}</th>\n};
 		} elsif ($type =~ /spam_/) {
@@ -4467,7 +4522,7 @@ sub show_detail
 			}
 			print "</td>";
 		}
-		if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient', 'postgrey')) {
+		if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient', 'postgrey', 'flow')) {
 			if ($type eq 'spam') {
 				$lstat{$id}{spam} ||= '&nbsp;';
 				print qq{<td class="tdtopn">$lstat{$id}{spam}</td>};
@@ -4528,7 +4583,7 @@ sub show_download_detail
 	if ($type !~ /spam/) {
 		print "$TRANSLATE{'Status'};";
 	}
-	if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient', 'postgrey')) {
+	if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient', 'postgrey', 'flow')) {
 		if ($type eq 'spam') {
 			print "$TRANSLATE{'Spam'};";
 		} elsif ($type =~ /spam_/) {
@@ -4636,7 +4691,7 @@ sub show_download_detail
 			}
 			print ";"
 		}
-		if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient', 'postgrey')) {
+		if (!grep(/$type/, 'dsn', 'dsnsrc', 'sender', 'recipient', 'postgrey', 'flow')) {
 			if ($type eq 'spam') {
 				print "$lstat{$id}{spam};";
 			} elsif ($type =~ /spam_/) {
@@ -5367,6 +5422,62 @@ sub get_postgrey_detail
 		}
 		close(IN);
 	}
+	return %local_stat;
+}
+
+sub get_flow_detail
+{
+	my ($path, $peri, $search, $hour, $hostname) = @_;
+
+	my %local_stat = ();
+
+	my $file = "$path/senders.dat";
+	if (open(IN, $file)) {
+		while (my $l = <IN>) { 
+			chomp($l);
+			# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
+			my @data = split(/:/, $l);
+			$data[0] =~ /^(\d{2})/;
+			next if (($hour ne '') && ($1 != $hour));
+			$data[2] ||= '<>';
+			$local_stat{$data[1]}{hour} = $data[0];
+			$local_stat{$data[1]}{sender} = $data[2];
+			$local_stat{$data[1]}{size} = $data[3];
+			$local_stat{$data[1]}{nrcpt} = $data[4];
+			$local_stat{$data[1]}{sender_relay} = $data[5];
+			for (my $i = 6; $i <= $#data; $i++) {
+				$local_stat{$data[1]}{subject} .= ($i > 6) ? ':' : '';
+				$local_stat{$data[1]}{subject} .= $data[$i];
+			}
+		}
+		close(IN);
+	}
+
+	$file = "$path/recipient.dat";
+	if (open(IN, $file)) {
+		while (my $l = <IN>) {
+			chomp($l);
+			# Format: Hour:Id:recipient:Relay:Status
+			my @data = split(/:/, $l);
+			$data[0] =~ /^(\d{2})/;
+			next if (($hour ne '') && ($1 != $hour));
+			if ($data[4] eq 'Sent') {
+				my $direction = &set_direction($local_stat{$data[1]}{sender_relay}, $data[3], $hostname);
+				if ($direction eq $search) {
+					push(@{$local_stat{$data[1]}{rcpt}}, $data[2]);
+					push(@{$local_stat{$data[1]}{rcpt_relay}}, $data[3]);
+					push(@{$local_stat{$data[1]}{status}}, $data[4]);
+				}
+			}
+		}
+		close(IN);
+
+		# Eliminate unwanted sender only entries
+		foreach my $k (keys %local_stat) {
+			delete $local_stat{$k} if (!exists $local_stat{$k}{rcpt} || $#{$local_stat{$k}{rcpt}} == -1);
+		}
+	}
+
 	return %local_stat;
 }
 
