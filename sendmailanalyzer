@@ -608,7 +608,9 @@ sub parse_sendmail
 
 	# Skip unwanted Postfix lines
 	if ($str =~ m#^([^:\s]+): .*#) {
-		return if (exists $SKIPMSG{$1});
+		my $id = $1;
+		return if ($id =~ /^(warning|(match|dns|rewrite|generic|mail|maps|ctable|smtp)_.*)$/); # Skip debug message
+		return if (exists $SKIPMSG{$id});
 	}
 
 	#### Store each relevant information per host and id
@@ -927,6 +929,7 @@ sub parse_sendmail
 		}
 	# POSTFIX message id
 	} elsif ($str =~ m#^([^:\s]+): message-id=([^,]*)#) {
+		next if ($1 eq '<>');
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $msgid = $2;
 		$msgid =~ s/[<>]//g;
@@ -1524,6 +1527,8 @@ sub parse_sendmail
 	} elsif ($str =~ m#(STARTTLS=[^,]+), error:(.*), relay=([^,]+)#) {
 		push(@{$OTHER{$host}{$time_st}}, "$1, error: $2");
 	} else {
+		# Try to avoid storing some postfix debug messages
+		return if ($str =~ /(^[><]|^[^:]+:[^:]+:|^connection|disconnect|lookup|defer_if_permit|^idle timeout|.*attr.*|Run-time|Compiled|^process|^statistics|^warning|^(before|after) |^(match|dns|rewrite|generic|rewrite|maps|mail|ctable|smtp)_)/);
 		if ($str =~ /(\d{3} \d\.\d\.\d .*)/) {
 			$str = $1;
 		}
