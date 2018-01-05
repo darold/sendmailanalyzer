@@ -1260,7 +1260,7 @@ sub compute_global_stats
 			}
                         for (my $i = 0; $i <= $#{$STATS->{$id}{status}}; $i++) {
                                 if ($STATS->{$id}{status}[$i] eq 'Sent') {
-                                        my $direction = &set_direction($STATS, $id, $i, $hostname);
+                                        my $direction = &set_direction($STATS->{$id}{sender_relay}, $STATS->{$id}{rcpt_relay}[$i], $hostname);
 					$direction =~ s/^Ext_/Int_/; # DSN are always sent by localhost
                                         $dsn{$direction}++;
                                         if ($direction =~ /_Int/) {
@@ -1299,7 +1299,7 @@ sub compute_global_stats
 					$messaging{nbsender}{"$STATS->{$id}{sender}"} = '';
 					$messaging{nbrcpt}{"$STATS->{$id}{rcpt}[$i]"} = '';
 					$delivery{'total'}++;
-					my $direction = &set_direction($STATS, $id, $i, $hostname);
+					my $direction = &set_direction($STATS->{$id}{sender_relay}, $STATS->{$id}{rcpt_relay}[$i], $hostname);
 					$delivery{$direction}++;
 					$direction .= '_bytes';
 					$delivery{$direction} += $STATS->{$id}{size};
@@ -1339,7 +1339,7 @@ sub compute_global_stats
 			}
 			for (my $i = 0; $i <= $#{$STATS->{$id}{status}}; $i++) {
 				if ($STATS->{$id}{status}[$i] eq 'Sent') {
-					my $direction = &set_direction($STATS, $id, $i, $hostname);
+					my $direction = &set_direction($STATS->{$id}{sender_relay}, $STATS->{$id}{rcpt_relay}[$i], $hostname);
 					$spam{$direction}++;
 					$direction .= '_bytes';
 					$spam{$direction} += $STATS->{$id}{size};
@@ -1374,7 +1374,7 @@ sub compute_global_stats
 			}
 			for (my $i = 0; $i <= $#{$STATS->{$id}{status}}; $i++) {
 				if ($STATS->{$id}{status}[$i] eq 'Sent') {
-					my $direction = &set_direction($STATS, $id, $i, $hostname);
+					my $direction = &set_direction($STATS->{$id}{sender_relay}, $STATS->{$id}{rcpt_relay}[$i], $hostname);
 					$virus{$direction}++;
 					$direction .= '_bytes';
 					$virus{$direction} += $STATS->{$id}{size};
@@ -4153,37 +4153,37 @@ sub do_year_cache
 
 sub set_direction
 {
-	my ($STATS, $id, $i, $hostname) = @_;
+	my ($sender_relay, $recipient_relay, $hostname) = @_;
 
 	# By default all mail are considered issued from local computer.
 	my $direction = 'Int_';
 
 	###### Check for sender origine
-	if ($STATS->{$id}{sender_relay}) {
+	if ($sender_relay) {
 		# This host is a gateway and it forward mails to an internal hub or outside
 		if (!$CONFIG{MAIL_GW} && $CONFIG{MAIL_HUB}) {
-			if (!grep($STATS->{$id}{sender_relay} =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_HUB}))) {
+			if (!grep($sender_relay =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_HUB}))) {
 				# if message doesn't come from localhost or user defined loca relay it comes from outside 
 				if (exists $CONFIG{LOCAL_HOST_DOMAIN}{$hostname} && ($#{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}} > -1) ) {
-					$direction = 'Ext_' if (!grep($STATS->{$id}{sender_relay} =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}}));
+					$direction = 'Ext_' if (!grep($sender_relay =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}}));
 				} elsif (exists $CONFIG{LOCAL_DOMAIN} && ($#{$CONFIG{LOCAL_DOMAIN}} > -1)) {
-					 $direction = 'Ext_' if (!grep($STATS->{$id}{sender_relay} =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_DOMAIN}}));
+					 $direction = 'Ext_' if (!grep($sender_relay =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_DOMAIN}}));
 				}
 			}
 		# This host received all messages from a gateway
 		} elsif ($CONFIG{MAIL_GW} && !$CONFIG{MAIL_HUB}) {
 			# If sender relay is the gateway, it comes from outside
-			$direction = 'Ext_' if (grep($STATS->{$id}{sender_relay} =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_GW}) ));
+			$direction = 'Ext_' if (grep($sender_relay =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_GW}) ));
 		# This host is a hub, it received all messages from a gateway and forward them to other host
 		} elsif ($CONFIG{MAIL_GW} && $CONFIG{MAIL_HUB}) {
 			# If sender relay is the gateway, it comes from outside
-			$direction = 'Ext_' if (grep($STATS->{$id}{sender_relay} =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_GW})));
+			$direction = 'Ext_' if (grep($sender_relay =~ /$_/i, split(/[\s\t,;]/, $CONFIG{MAIL_GW})));
 		} else {
 			# if message doesn't come from localhost or user defined loca relay it comes from outside 
 			if (exists $CONFIG{LOCAL_HOST_DOMAIN}{$hostname} && ($#{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}} > -1) ) {
-				$direction = 'Ext_' if (!grep($STATS->{$id}{sender_relay} =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}}));
+				$direction = 'Ext_' if (!grep($sender_relay =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}}));
 			} elsif (exists $CONFIG{LOCAL_DOMAIN} && ($#{$CONFIG{LOCAL_DOMAIN}} > -1)) {
-				 $direction = 'Ext_' if (!grep($STATS->{$id}{sender_relay} =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_DOMAIN}}));
+				 $direction = 'Ext_' if (!grep($sender_relay =~ /\b$_$/, 'localhost', @{$CONFIG{LOCAL_DOMAIN}}));
 			}
 		}
 	} else {
@@ -4191,24 +4191,24 @@ sub set_direction
 	}
 
 	###### Now check for destination
-	if ($STATS->{$id}{rcpt_relay}[$i]) {
+	if ($recipient_relay) {
 		# If the recipient relay is localhost, it should be distributed internally
-		if ($STATS->{$id}{rcpt_relay}[$i] eq 'localhost') {
+		if ($recipient_relay eq 'localhost') {
 			$direction .= 'Int';
 		# If this host is a mail gateway and the recipient relay match one of
 		# our destination hub lets say it should be distributed internally
-		} elsif ($CONFIG{MAIL_HUB} && (grep($STATS->{$id}{rcpt_relay}[$i] =~ /$_/, split(/[\s\t,;]/, $CONFIG{MAIL_HUB}) )) ) {
+		} elsif ($CONFIG{MAIL_HUB} && (grep($recipient_relay =~ /$_/, split(/[\s\t,;]/, $CONFIG{MAIL_HUB}) )) ) {
 			$direction .= 'Int';
 		# If the recipient relay match any of our local domain
 		# lets say the mail should be distributed internally
 		} elsif (exists $CONFIG{LOCAL_HOST_DOMAIN}{$hostname} && ($#{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}} > -1) ){
-			if (grep($STATS->{$id}{rcpt_relay}[$i] =~ /\b$_$/i, @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}})) {
+			if (grep($recipient_relay =~ /\b$_$/i, @{$CONFIG{LOCAL_HOST_DOMAIN}{$hostname}})) {
 				$direction .= 'Int';
 			} else {
 				$direction .= 'Ext';
 			}
 		} elsif (exists $CONFIG{LOCAL_DOMAIN} && ($#{$CONFIG{LOCAL_DOMAIN}} > -1)) {
-			if (grep($STATS->{$id}{rcpt_relay}[$i] =~ /\b$_$/i, @{$CONFIG{LOCAL_DOMAIN}})) {
+			if (grep($recipient_relay =~ /\b$_$/i, @{$CONFIG{LOCAL_DOMAIN}})) {
 				$direction .= 'Int';
 			} else {
 				$direction .= 'Ext';
