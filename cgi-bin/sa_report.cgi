@@ -71,7 +71,7 @@ my $DOWNLOAD= $CGI->param('download') || '';
 
 my $MAXPIECOUNT = 10;
 my $MIN_SHOW_PIE = 2;
-my $DEFAULT_CHARSET='iso-8859-1';
+my $DEFAULT_CHARSET='utf-8';
 
 # Read configuration file
 &read_config($CONFIG_FILE);
