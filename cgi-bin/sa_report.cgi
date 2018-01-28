@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #
 #    SendmailAnalyzer: maillog parser and statistics reports tool for Sendmail
-#    Copyright (C) 2002-2017 Gilles Darold
+#    Copyright (C) 2002-2018 Gilles Darold
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ my $LAST_PARSE_FILE = 'LAST_PARSED';
 $SOFTWARE  = "SendmailAnalyzer";
 $VERSION   = '9.2';
 $AUTHOR    = "Gilles Darold <gilles\@darold.net>";
-$COPYRIGHT = "&copy; 2002-2017 - Gilles Darold <gilles\@darold.net>";
+$COPYRIGHT = "&copy; 2002-2018 - Gilles Darold <gilles\@darold.net>";
 
 our %TRANSLATE = ();
 our %SMTP_ERROR_CODE = ();
