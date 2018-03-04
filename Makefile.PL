@@ -451,7 +451,7 @@ WriteMakefile(
     'MAN3PODS'     => { 'doc/sendmailanalyzer.pod' => 'blib/man3/sendmailanalyzer.pod.3', 'doc/sa_cache.pod' => 'blib/man3/sa_cache.pod.3' },
     'DESTDIR'      => $ENV{DESTDIR},
     'INSTALLDIRS'  => $ENV{INSTALLDIRS},
-    'clean'        => {FILES => "install_all.sh sendmailanalyzer.conf sendmailanalyzer.1 sa_cache.1 changelog"},
+    'clean'        => {FILES => "install_all.sh sendmailanalyzer.conf doc/sendmailanalyzer.3 doc/sa_cache.3"},
     'META_MERGE'   => {
         resources  => {
                 homepage => 'http://sendmailanalyzer.darold.net/',
