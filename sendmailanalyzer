@@ -1465,6 +1465,27 @@ sub parse_sendmail
 				$status =~ s/ \(.*//;
 				#push(@{$TO{$host}{$id}{status}}, &clear_status($status));
 			}
+		} elsif ($status =~ /Spam message rejected/) {
+			$SPAM{$host}{$id}{relay} = $relay;
+			$SPAM{$host}{$id}{rule} = 'reject';
+			$SPAM{$host}{$id}{spam} = $status;
+			$SPAM{$host}{$id}{date} =  $time_st;
+			$SPAM{$host}{$id}{from} = $from;
+			$SPAM{$host}{$id}{to} = $to;
+			$SPAM{$host}{$id}{status} = $status;
+			if (!exists $FROM{$host}{$id}{date}) {
+				$FROM{$host}{$id}{date} =  $time_st;
+				$FROM{$host}{$id}{from} = $from;
+				$FROM{$host}{$id}{size} = 0;
+				$FROM{$host}{$id}{nrcpts} = 1;
+				$FROM{$host}{$id}{relay} = $relay;
+			}
+			if (!exists $TO{$host}{$id}{date}) {
+				push(@{$TO{$host}{$id}{date}},  $time_st);
+				push(@{$TO{$host}{$id}{to}}, $to);
+				$status =~ s/ \(.*//;
+				#push(@{$TO{$host}{$id}{status}}, &clear_status($status));
+			}
 		} else {
 			$REJECT{$host}{$id}{relay} = $relay;
 			$REJECT{$host}{$id}{date} =  $time_st;
