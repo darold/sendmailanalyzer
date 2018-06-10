@@ -1951,7 +1951,7 @@ sub parse_postgrey
 		my $id = &get_uniqueid();
 		$status =~ s/ \(.*//;
 		$POSTGREY{$host}{$id}{action} = $action;
-		$POSTGREY{$host}{$id}{relay} = $relay_name || $relay_ip;
+		$POSTGREY{$host}{$id}{relay} = &clean_relay($relay_name || $relay_ip);
 		$POSTGREY{$host}{$id}{from} = &edecode($sender);
 		$POSTGREY{$host}{$id}{to} = &edecode($to);
 		$POSTGREY{$host}{$id}{status} = $status;
@@ -1965,7 +1965,6 @@ sub parse_postgrey
 
 		&parse_sqlgrey_spam($date,$time_st,$host,$str);
 	}
-	
 
 }
 
@@ -2013,27 +2012,27 @@ sub parse_sqlgrey
 	} elsif ($str =~ /^from awl match: updating ([^,]+), ([^\(]+)/) {
 		$POSTGREY{$host}{$id}{status} = 'passed from awl match';
 		$POSTGREY{$host}{$id}{action} = 'passed';
-		$POSTGREY{$host}{$id}{relay} = $1;
+		$POSTGREY{$host}{$id}{relay} = &clean_relay($1);
 		$POSTGREY{$host}{$id}{from} = &edecode($2);
 		$POSTGREY{$host}{$id}{date} =  $time_st;
 	} elsif ($str =~ /^early reconnect: ([^,]+), (.*) -> (.*)/) {
 		$POSTGREY{$host}{$id}{status} = 'early reconnect';
 		$POSTGREY{$host}{$id}{action} = 'early';
-		$POSTGREY{$host}{$id}{relay} = $1;
+		$POSTGREY{$host}{$id}{relay} = &clean_relay($1);
 		$POSTGREY{$host}{$id}{from} = &edecode($2);
 		$POSTGREY{$host}{$id}{to} = &edecode($3);
 		$POSTGREY{$host}{$id}{date} =  $time_st;
 	} elsif ($str =~ /^reconnect ok: ([^,]+), (.*) -> (.*) \((.*)\)/) {
 		$POSTGREY{$host}{$id}{status} = 'passed reconnect ok';
 		$POSTGREY{$host}{$id}{action} = 'passed';
-		$POSTGREY{$host}{$id}{relay} = $1;
+		$POSTGREY{$host}{$id}{relay} = &clean_relay($1);
 		$POSTGREY{$host}{$id}{from} = &edecode($2);
 		$POSTGREY{$host}{$id}{to} = &edecode($3);
 		$POSTGREY{$host}{$id}{date} =  $time_st;
 	} elsif ($str =~ /^new: ([^,]+), (.*) -> (.*)/) {
 		$POSTGREY{$host}{$id}{status} = 'new delayed';
 		$POSTGREY{$host}{$id}{action} = 'delayed';
-		$POSTGREY{$host}{$id}{relay} = $1;
+		$POSTGREY{$host}{$id}{relay} = &clean_relay($1);
 		$POSTGREY{$host}{$id}{from} = &edecode($2);
 		$POSTGREY{$host}{$id}{to} = &edecode($3);
 		$POSTGREY{$host}{$id}{date} =  $time_st;
