@@ -2165,7 +2165,7 @@ sub clean_relay
 	my ($relay) = @_;
 
 	if ($relay =~ m#\b([a-fA-F0-9\.\:]+) \(may be forged#) {
-		return $1;
+		$relay = $1;
 	} elsif ($relay =~ m#localhost|127\.0\.0\.1#) {
 		return 'localhost';
 	} elsif ( $relay =~ s/\[([^\]]+)\]// ) {
@@ -2173,19 +2173,20 @@ sub clean_relay
 		my $ip = $1;
 		$fqdn =~ s#:.*##;
 		if (!$fqdn || ($fqdn eq 'unknown')) {
-			return $ip;
+			$relay = $ip;
 		} elsif ($fqdn =~ /[\s,]/) {
-			return $ip;
+			$relay = $ip;
 		} else {
-			return $fqdn;
+			$relay = $fqdn;
 		}
 	} elsif ( $relay =~ s/\(([a-fA-F0-9\.\:]+)\)// ) {
-		return $1;
+		$relay = $1;
 	}
 	$relay =~ s#^\s+##;
 	$relay =~ s#\s+.*##;
 	$relay =~ s#\.$##;
 	$relay =~ s#\s.*##;
+	$relay =~ s/:/_/g; # fix ipv6 to remove data field separator
 
 	return $relay;
 }
