@@ -422,12 +422,12 @@ sub do_hour_cache
 				chomp($l);
 				# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
 				@data = split(/:/, $l);
+				$data[0] =~ /^(\d{2})/;
+				next if ($1 ne $hour);
 				if ($#data > 6) {
 					@data = $l =~ m/^([^:]+):([^:]+):([^:]+):([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+)$/;
 				}
 				$data[5] = &clean_relay($data[5]);
-				$data[0] =~ /^(\d{2})/;
-				next if ($1 ne $hour);
 				$localstat{$data[1]}{idx_sender} = "$1";
 				$localstat{$data[1]}{hour} = $data[0];
 				$data[2] ||= '<>';
@@ -452,12 +452,12 @@ sub do_hour_cache
 				chomp($l);
 				# Format: Hour:Id:recipient:Relay:Status
 				@data = split(/:/, $l);
+				$data[0] =~ /^(\d{2})/;
+				next if ($1 ne $hour);
 				if ($#data > 4) {
 					@data = $l =~ m/^([^:]+):([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+)$/;
 				}
 				$data[3] = &clean_relay($data[3]);
-				$data[0] =~ /^(\d{2})/;
-				next if ($1 ne $hour);
 				$localstat{$data[1]}{idx_rcpt} = "$1";
 				push(@{$localstat{$data[1]}{rcpt}}, $data[2]);
 				push(@{$localstat{$data[1]}{hour}}, $data[0]);
@@ -466,7 +466,6 @@ sub do_hour_cache
 				if (exists $sourceid{$data[1]} && ($data[4] ne 'Sent')) {
 					push(@{$localstat{TOPDSN}{$sourceid{$data[1]}}{rcpt}}, $data[2]);
 				}
-
 			}
 			close(IN);
 		}
@@ -478,12 +477,12 @@ sub do_hour_cache
 				chomp($l);
 				# Format: Hour:Id:Rule:Relay:Arg1:Status
 				@data = split(/:/, $l);
+				$data[0] =~ /^(\d{2})/;
+				next if ($1 ne $hour);
 				if ($#data > 5) {
 					@data = $l =~ m/^([^:]+):([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+):([^:]+)$/;
 				}
 				$data[3] = &clean_relay($data[3]);
-				$data[0] =~ /^(\d{2})/;
-				next if ($1 ne $hour);
 				$localstat{$data[1]}{idx_reject} = "$1";
 				$localstat{$data[1]}{rule} = $data[2];
 				$localstat{$data[1]}{hour} = $data[0] if (!exists $localstat{$data[1]}{hour});
@@ -597,6 +596,8 @@ sub do_hour_cache
 				chomp($l);
 				# Format: Hour:Id:Relay:From:To:Action:Reason
 				@data = split(/:/, $l);
+				$data[0] =~ /^(\d{2})/;
+				next if ($1 ne $hour);
 				if ($#data > 6) {
 					@data = $l =~ m/^([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+):([^:]*):([^:]+):([^:]+)$/;
 					# Fix a possible bug corruption of the data files
@@ -604,8 +605,6 @@ sub do_hour_cache
 					$data[4] =~ s/(.*\@.*)\@localhost/$1/;
 				}
 				$data[2] = &clean_relay($data[2]);
-				$data[0] =~ /^(\d{2})/;
-				next if ($1 ne $hour);
 				$localstat{$data[1]}{idx_postgrey} = "$1";
 				$localstat{$data[1]}{hour} = $data[0] if (!exists $localstat{$data[1]}{hour});
 				$localstat{$data[1]}{sender_relay} = $data[2];
@@ -644,12 +643,12 @@ sub do_hour_cache
 				chomp($l);
 				# Format: Hour:Id:Relay:Mech:Type
 				@data = split(/:/, $l);
+				$data[0] =~ /^(\d{2})(\d{2})/;
+				next if ($1 ne $hour);
 				if ($#data > 4) {
 					@data = $l =~ m/^([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+):([^:]+)$/;
 				}
 				$data[2] = &clean_relay($data[2]);
-				$data[0] =~ /^(\d{2})(\d{2})/;
-				next if ($1 ne $hour);
 				push(@{$localstat{$data[1]}{idx_auth}}, "$1");
 				push(@{$localstat{$data[1]}{auth_hour}}, $data[0]);
 				push(@{$localstat{$data[1]}{auth_relay}}, $data[2]);
