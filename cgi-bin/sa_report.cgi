@@ -1361,6 +1361,10 @@ sub get_sender_stat
 		my @data = split(/:/, $l);
 		$data[0] =~ /^(\d{2})/;
 		next if (($hour ne '') && ($1 != $hour));
+		if ($#data > 6) {
+			@data = $l =~ m/^([^:]+):([^:]+):([^:]+):([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+)$/;
+		}
+		$data[5] = &clean_relay($data[5]);
 		$data[2] ||= '<>';
 		$STATS{$data[1]}{hour} = $data[0];
 		$STATS{$data[1]}{sender} = $data[2];
@@ -1402,6 +1406,10 @@ sub get_recipient_stat
 		my @data = split(/:/, $l);
 		$data[0] =~ /^(\d{2})/;
 		next if (($hour ne '') && ($1 != $hour));
+		if ($#data > 4) {
+			@data = $l =~ m/^([^:]+):([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+)$/;
+		}
+		$data[3] = &clean_relay($data[3]);
 		next if ($data[4] =~ /Queued/);
 		push(@{$STATS{$data[1]}{rcpt}}, $data[2]);
 		push(@{$STATS{$data[1]}{rcpt_relay}}, $data[3]);
@@ -1428,6 +1436,10 @@ sub get_recipient_stat
 			my @data = split(/:/, $l);
 			$data[0] =~ /^(\d{2})/;
 			next if (($hour ne '') && ($1 != $hour));
+			if ($#data > 4) {
+				@data = $l =~ m/^([^:]+):([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+)$/;
+			}
+			$data[3] = &clean_relay($data[3]);
 			next if (exists $STATS{$data[1]}{rcpt} || ($data[4] !~ /Queued/));
 			push(@{$STATS{$data[1]}{rcpt}}, $data[2]);
 			push(@{$STATS{$data[1]}{rcpt_relay}}, $data[3]);
@@ -1464,8 +1476,14 @@ sub get_rejected_stat
 		my @data = split(/:/, $l);
 		$data[0] =~ /^(\d{2})/;
 		next if (($hour ne '') && ($1 != $hour));
+		if ($#data > 5) {
+			@data = $l =~ m/^([^:]+):([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+):([^:]+)$/;
+		}
+		$data[3] = &clean_relay($data[3]);
 		$STATS{$data[1]}{rule} = $data[2];
-		$STATS{$data[1]}{sender_relay} = $data[3] if (!$STATS{$data[1]}{sender_relay});
+		if (!$STATS{$data[1]}{sender_relay}) {
+			$STATS{$data[1]}{sender_relay} = $data[3];
+		}
 		if ($#data > 4) {
 			if ($data[2] eq 'check_relay') {
 				$STATS{$data[1]}{sender_relay} = $data[4];
@@ -1534,8 +1552,13 @@ sub get_dsn_stat
 			my @data = split(/:/, $l);
 			$data[0] =~ /^(\d{2})/;
 			next if (($hour ne '') && ($1 != $hour));
+			if ($#data > 6) {
+				@data = $l =~ m/^([^:]+):([^:]+):([^:]+):([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+)$/;
+			}
+			$data[5] = &clean_relay($data[5]);
 			$data[2] ||= '<>';
 			next if (!exists $STATS{$data[1]});
+
 			$STATS{$data[1]}{hour} = $data[0];
 			$STATS{$data[1]}{sender} = $data[2];
 			$STATS{$data[1]}{size} = $data[3];
@@ -1557,6 +1580,10 @@ sub get_dsn_stat
 			my @data = split(/:/, $l);
 			$data[0] =~ /^(\d{2})/;
 			next if (($hour ne '') && ($1 != $hour));
+			if ($#data > 4) {
+				@data = $l =~ m/^([^:]+):([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+)$/;
+			}
+			$data[3] = &clean_relay($data[3]);
 			next if (!exists $STATS{$data[1]});
 			next if ($data[4] =~ /Queued/);
 			push(@{$STATS{$data[1]}{rcpt}}, $data[2]);
@@ -1605,9 +1632,12 @@ sub get_dsn_top_stat
 			chomp($l);
 			# Format: Hour:Id:Sender:Size:Nrcpts:Relay:Subject
 			my @data = split(/:/, $l);
-			$data[0] =~ /^(\d{2})/;
-			$data[2] ||= '<>';
 			next if (!exists $STATS{$data[1]});
+			if ($#data > 6) {
+				@data = $l =~ m/^([^:]+):([^:]+):([^:]+):([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+)$/;
+			}
+			$data[5] = &clean_relay($data[5]);
+			$data[2] ||= '<>';
 			$STATS{$data[1]}{sender} = $data[2];
 			$STATS{$data[1]}{sender_relay} = $data[5];
 			for (my $i = 6; $i <= $#data; $i++) {
@@ -1624,8 +1654,11 @@ sub get_dsn_top_stat
 			chomp($l);
 			# Format: Hour:Id:recipient:Relay:Status
 			my @data = split(/:/, $l);
-			$data[0] =~ /^(\d{2})/;
 			next if (!exists $STATS{$data[1]});
+			if ($#data > 4) {
+				@data = $l =~ m/^([^:]+):([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+)$/;
+			}
+			$data[3] = &clean_relay($data[3]);
 			next if ($data[4] eq 'Sent');
 			next if ($data[4] =~ /Queued/);
 			push(@{$STATS{$data[1]}{rcpt}}, $data[2]);
@@ -1796,7 +1829,6 @@ sub get_spamdetail_stat
 		chomp($l);
 		# Format: Hour:Id:From:To:Spam
 		my @data = split(/:/, $l, 5);
-		$data[0] =~ /^(\d{2})/;
 		next if (!exists $STATS{$data[1]});
 		$STATS{$data[1]}{sender} = $data[2] if (!exists $STATS{$data[1]}{sender});
 		push(@{$STATS{$data[1]}{rcpt}}, $data[3]);
@@ -1819,6 +1851,11 @@ sub get_auth_stat
 		my @data = split(/:/, $l);
 		$data[0] =~ /^(\d{2})/;
 		next if (($hour ne '') && ($1 != $hour));
+		@data = split(/:/, $l);
+		if ($#data > 4) {
+			@data = $l =~ m/^([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+):([^:]+)$/;
+		}
+		$data[2] = &clean_relay($data[2]);
 		push(@{$AUTH{$data[1]}{relay}}, $data[2]);
 		push(@{$AUTH{$data[1]}{mech}}, $data[3]);
 		push(@{$AUTH{$data[1]}{type}}, $data[4]);
@@ -1853,6 +1890,14 @@ sub get_postgrey_stat
 		my @data = split(/:/, $l);
 		$data[0] =~ /^(\d{2})/;
 		next if (($hour ne '') && ($1 != $hour));
+		@data = split(/:/, $l);
+		if ($#data > 6) {
+			@data = $l =~ m/^([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+):([^:]*):([^:]+):([^:]+)$/;
+			# Fix a possible bug corruption of the data files
+			$data[3] =~ s/(.*\@.*)\@localhost/$1/;
+			$data[4] =~ s/(.*\@.*)\@localhost/$1/;
+		}
+		$data[2] = &clean_relay($data[2]);
 		$STATS{$data[1]}{sender_relay} = $data[2] || '';
 		$STATS{$data[1]}{sender} = $data[3] || '';
 		push(@{$STATS{$data[1]}{rcpt}}, $data[4]) if ($data[4]);
