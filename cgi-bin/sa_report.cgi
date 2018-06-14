@@ -5860,4 +5860,17 @@ EOF
 
 }
 
+####
+# Fix relay not sanityzed in sendmailanalyzer script
+####
+sub clean_relay
+{
+	my $relay = shift;
 
+	if ( $relay =~ s/\(([a-fA-F0-9\.\:]+)\)// ) {
+		$relay = $1;
+	}
+	$relay =~ s/:/_/g; # fix ipv6 to remove data field separator
+
+	return $relay;
+}
