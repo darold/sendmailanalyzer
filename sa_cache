@@ -2493,6 +2493,7 @@ sub do_day_cache
                 }
                 print OUT "},\n";
                 delete $localtoppostgrey{sender};
+
                 $top = 0;
                 print OUT "'sender_relay' => {";
                 foreach my $d (sort { $localtoppostgrey{sender_relay}{$b} <=> $localtoppostgrey{sender_relay}{$a} } keys %{$localtoppostgrey{sender_relay}}) {
@@ -2584,7 +2585,6 @@ sub do_day_cache
 
 }
 
-
 ####
 # Month cache statistics
 ####
@@ -2625,6 +2625,7 @@ sub do_month_cache
 	my %localtopauth = ();
 	my %localpostgrey = ();
 	my %localtoppostgrey = ();
+	my %localstarttls = ();
 	my $lbls = '';
 	foreach my $day ("01" .. "31") {
 		$lbls .= "$day:";
@@ -2790,6 +2791,11 @@ sub do_month_cache
 				}
 			}
 			%topauth = ();
+
+			foreach my $k (keys %starttls) {
+			       $localstarttls{$k} += $starttls{$k};
+			}
+			%starttls = ();
 		}
 	}
 	my %authval = ();
@@ -2965,6 +2971,15 @@ sub do_month_cache
 		}
 		print OUT ");\n\n";
 		%localGLOBAL_STATUS = ();
+
+		print OUT "\%::starttls = (\n";
+		foreach my $v (sort keys %localstarttls) {
+			my $slbl = $v;
+			$slbl =~ s/'/\\'/g;
+			print OUT "'$slbl' => '$localstarttls{$v}',\n";
+		}
+		print OUT ");\n\n";
+		%localstarttls = ();
 
 		my $elbls = 'Ext -> Int:Ext -> Ext:Int -> Int:Int -> Ext';
 		print OUT "\%::delivery = (\n";
@@ -3418,6 +3433,7 @@ sub do_year_cache
 	my %localtopauth = ();
 	my %localpostgrey = ();
 	my %localtoppostgrey = ();
+	my %localstarttls = ();
 	my $lbls = '';
 
 	foreach my $month ("01" .. "12") {
@@ -3583,6 +3599,11 @@ sub do_year_cache
 				}
 			}
 			%topauth = ();
+
+			foreach my $k (keys %starttls) {
+			       $localstarttls{$k} += $starttls{$k};
+			}
+			%starttls = ();
 		}
 	}
 
@@ -3761,6 +3782,15 @@ sub do_year_cache
 		}
 		print OUT ");\n\n";
 		%localGLOBAL_STATUS = ();
+
+		print OUT "\%::starttls = (\n";
+		foreach my $v (sort keys %localstarttls) {
+			my $slbl = $v;
+			$slbl =~ s/'/\\'/g;
+			print OUT "'$slbl' => '$localstarttls{$v}',\n";
+		}
+		print OUT ");\n\n";
+		%localstarttls = ();
 
 		my $elbls = 'Ext -> Int:Ext -> Ext:Int -> Int:Int -> Ext';
 		print OUT "\%::delivery = (\n";
@@ -4325,6 +4355,8 @@ sub do_week_cache
 	my %localtopspamdetail = ();
 	my %localauth = ();
 	my %localtopauth = ();
+	my %localpostgrey = ();
+	my %localtoppostgrey = ();
 	my %localstarttls = ();
 	my $lbls = '';
 	my %authval = ();
@@ -4394,6 +4426,10 @@ sub do_week_cache
 			       }
 			}
 			%reject = ();
+			foreach my $k (keys %{$postgrey{reason}}) {
+			       $localpostgrey{reason}{$k} += $postgrey{reason}{$k};
+			}
+			%postgrey = ();
 			foreach my $k (keys %virus) {
 				if (!grep(/^$k$/, 'lbls','x_label','values')) {
 				       $localvirus{$k} += $virus{$k};
@@ -4450,6 +4486,13 @@ sub do_week_cache
 				}
 			}
 			%topreject = ();
+
+			foreach my $k (keys %toppostgrey) {
+				foreach my $d (keys %{$toppostgrey{$k}}) {
+					$localtoppostgrey{$k}{$d} += $toppostgrey{$k}{$d} || 0;
+				}
+			}
+			%toppostgrey = ();
 
 			foreach my $k (keys %topvirus) {
 				foreach my $d (keys %{$topvirus{$k}}) {
@@ -4602,6 +4645,15 @@ sub do_week_cache
 		print OUT "'total_inbound_bytes' => '$localreject{total_inbound_bytes}',\n";
 		print OUT ");\n\n";
 		%localreject = ();
+
+		print OUT "\%::postgrey = (\n";
+		print OUT "'reason' => {";
+		foreach my $k (keys %{$localpostgrey{reason}}) {
+			print OUT "\t'$k' => '$localpostgrey{reason}{$k}',";
+		}
+		print OUT "},\n";
+		print OUT ");\n\n";
+		%localpostgrey = ();
 		
 		print OUT "\%::virus = (\n";
 		print OUT "'inbound' => '$localvirus{inbound}',\n";
@@ -4834,6 +4886,57 @@ sub do_week_cache
 		print OUT ");\n\n";
 		%localtopreject = ();
 
+                # Top postgrey statistics
+                $top = 0;
+                print OUT "\%::toppostgrey = (\n";
+                print OUT "'sender' => {";
+                foreach my $d (sort { $localtoppostgrey{sender}{$b} <=> $localtoppostgrey{sender}{$a} } keys %{$localtoppostgrey{sender}}) {
+                        last if ($top == $CONFIG{TOP});
+                        print OUT "'$d' => '$localtoppostgrey{sender}{$d}',";
+                        $top++;
+                }
+                print OUT "},\n";
+                delete $localtoppostgrey{sender};
+
+                $top = 0;
+                print OUT "'sender_relay' => {";
+                foreach my $d (sort { $localtoppostgrey{sender_relay}{$b} <=> $localtoppostgrey{sender_relay}{$a} } keys %{$localtoppostgrey{sender_relay}}) {
+                        last if ($top == $CONFIG{TOP});
+                        print OUT "'$d' => '$localtoppostgrey{sender_relay}{$d}',";
+                        $top++;
+                }
+                print OUT "},\n";
+                delete $localtoppostgrey{sender_relay};
+                $top= 0;
+                print OUT "'domain' => {";
+                foreach my $d (sort { $localtoppostgrey{domain}{$b} <=> $localtoppostgrey{domain}{$a} } keys %{$localtoppostgrey{domain}}) {
+                        last if ($top == $CONFIG{TOP});
+                        print OUT "'$d' => '$localtoppostgrey{domain}{$d}',";
+                        $top++;
+                }
+                print OUT "},\n";
+                delete $localtoppostgrey{domain};
+                $top= 0;
+                print OUT "'reason' => {";
+                foreach my $d (sort { $localtoppostgrey{reason}{$b} <=> $localtoppostgrey{reason}{$a} } keys %{$localtoppostgrey{reason}}) {
+                        last if ($top == $CONFIG{TOP});
+                        print OUT "'$d' => '$localtoppostgrey{reason}{$d}',";
+                        $top++;
+                }
+                print OUT "},\n";
+                delete $localtoppostgrey{reason};
+                $top= 0;
+                print OUT "'rcpt' => {";
+                foreach my $d (sort { $localtoppostgrey{rcpt}{$b} <=> $localtoppostgrey{rcpt}{$a} } keys %{$localtoppostgrey{rcpt}}) {
+                        last if ($top == $CONFIG{TOP});
+                        print OUT "'$d' => '$localtoppostgrey{rcpt}{$d}',";
+                        $top++;
+                }
+                print OUT "},\n";
+                print OUT ");\n\n";
+                %localtoppostgrey = ();
+
+
 		# Top virus statistics
 		$top = 0;
 		print OUT "\%::topvirus = (\n";
@@ -5039,7 +5142,6 @@ sub do_week_cache
 	} else {
 		&logerror("can't write cache file $file: $!");
 	}
-
 }
 
 ####
