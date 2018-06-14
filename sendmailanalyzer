@@ -330,6 +330,32 @@ sub start_loop
 					seek(SA_FILE, 0, 0);
 					$OLD_OFFSET = 0;
 				}
+				# Exceptionnal case of a file with same size, read the first line
+				# to see if the data has changed, otherwise this is the same file
+				my $curpos = tell(SA_FILE);
+				if ($curpos == $OLD_OFFSET) {
+					seek(SA_FILE, 0, 0);
+					while (my $l = <SA_FILE>) {
+						chomp($l);
+						$l =~ s/ ID \d+ mail.\w//;
+						next if ($l =~ /policy-spf|You are still greylisted/);
+						my $tmp_last_parsed = $l;
+						# Only catch relevant logs
+						next if ($CONFIG{EXCLUDE_LINE} && $tmp_last_parsed =~ m#$CONFIG{EXCLUDE_LINE}#);
+						if ( ($tmp_last_parsed =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME}|$CONFIG{CLAMSMTPD_NAME})[\/\[:]/) || ($LAST_PARSED =~ $EXIM_REGEX) ) {
+							if ($tmp_last_parsed ne $OLD_LAST_PARSED) {
+								&dprint("Size is identique but data are more recent than the one at old offset. Rereading from start of the log file.") if ($CONFIG{DEBUG} > 0);
+								seek(SA_FILE, 0, 0);
+								$OLD_OFFSET = 0;
+								$OLD_LAST_PARSED = '';
+							} else {
+								# Go back to current offset
+								seek(SA_FILE, $OLD_OFFSET, 0);
+							}
+							last;
+						}
+					}
+				}
 			}
 		} else {
 			$OLD_OFFSET = 0;
