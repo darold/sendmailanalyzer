@@ -102,6 +102,7 @@ td {padding:0px;font-family:sans-serif;font-size:8pt;color:#000000;background-co
 .tdtopn {vertical-align: top; padding:2px;font-family:sans-serif;font-size:8pt; font-weight: normal; color:#4179a1;background-color:#ffffff; border: 1px solid #4179a1; text-align: left;}
 .tdtopnr {vertical-align: top; padding:2px;font-family:sans-serif;font-size:8pt; font-weight: normal; color:#4179a1;background-color:#ffffff; border: 1px solid #4179a1; text-align: right;}
 .tdtopnc {vertical-align: top; padding:2px;font-family:sans-serif;font-size:8pt; font-weight: normal; color:#4179a1;background-color:#ffffff; border: 1px solid #4179a1; text-align: center;}
+.hbar {vertical-align: top; text-align: right; padding:2px; font-family:sans-serif; font-size: 9pt; font-weight: normal; color: #4179a1;}
 th {padding:0px;font-family:sans-serif;font-size:8pt;color:#ffffff;background-color:#4179a1; border: solid thin #4179a1;}
 .thhead2 {padding:0px;font-family:sans-serif;font-size:12pt;color:#CC6600;background-color:#ffffff; border: solid thin #4179a1; text-align: center;}
 .thhead {padding:0px;font-family:sans-serif;font-size:10pt;color:#ffffff;background-color:#4179a1; border: solid thin #4179a1; text-align: center;}
@@ -3354,8 +3355,8 @@ sub display_top_sender
 <table align="center">
 <tr><td align="center">
 };
-	print &grafit_pie(	values => \%relays, title => $TRANSLATE{'Top Sender Relay'},
-				divid => 'topsenderrelay', width => 800, height => 300
+	print &grafit_hbar(	values => \%relays, title => $TRANSLATE{'Top Sender Relay'},
+				divid => 'topsenderrelay', width => 900, height => 250
 	);
 	print qq{
 </td></tr>
@@ -3495,16 +3496,21 @@ sub display_top_recipient
 	$top = 0;
 	my %relays = ();
 	my $piecount = 0;
+	my $percent_total = 0; 
 	foreach my $d (sort { $toprcpt{relay}{$b} <=> $toprcpt{relay}{$a} } keys %{$toprcpt{relay}}) {
 		last if ($top == $CONFIG{TOP});
-		my $percent = sprintf("%.2f", ($toprcpt{relay}{$d}*100)/$totalrelay);
+		my $percent = sprintf("%.2f", ($toprcpt{relay}{$d}*100)/($totalrelay||1));
 		$toprelay .= &detail_link($hostname,$date,'recipient','relay',$d,$hour) . " ($toprcpt{relay}{$d})<br>";
 		if ( ($piecount < $MAXPIECOUNT) && ($percent > $MIN_SHOW_PIE)) {
-			$relays{"$d ($percent %)"} = $percent;
+			$relays{"$d"} = $percent;
+			$percent_total += $toprcpt{relay}{$d};
 			$piecount++;
 		}
 		$top++;
 	}
+        my $other_percent = 100 - sprintf("%.2f", ($percent_total*100)/($totalrelay||1));
+        $relays{"Others"} = $other_percent if ($other_percent > 0);
+
 	delete $toprcpt{relay};
 	if (exists $CONFIG{REPLACE_HOST}) {
 		foreach my $pat (keys %{$CONFIG{REPLACE_HOST}}) {
@@ -3532,8 +3538,8 @@ sub display_top_recipient
 <table align="center">
 <tr><td align="center">
 };
-	print &grafit_pie(	values => \%relays, title => $TRANSLATE{'Top Recipient Relay'},
-				divid => 'toprecipientrelay', width => 800, height => 300
+	print &grafit_hbar(	values => \%relays, title => $TRANSLATE{'Top Recipient Relay'},
+				divid => 'toprecipientrelay', width => 900, height => 250
 	);
 	print qq{
 </td></tr>
@@ -5961,3 +5967,42 @@ sub clean_relay
 
 	return $relay;
 }
+
+
+sub grafit_hbar
+{
+	my (%params) = @_;
+
+	my $hbar_graph = '';
+	foreach my $k (sort {$params{values}->{$b} <=> $params{values}->{$a}} keys %{$params{values}}) {
+		my $name = $k || '<>';
+		$hbar_graph .= "<tr><td class=\"hbar\" >$name</td><td class=\"hbar\">$params{values}->{$k} %</td><td style=\"text-align: left; color: grey;\">" . ("&block;" x int($params{values}->{$k})) . "</td></tr>\n";
+	}
+	$params{width}  ||= 400;
+	$params{height} ||= 200;
+
+	return <<EOF;
+<style type="text/css">
+#$params{divid}
+{
+     width : $params{width}px;
+     height: $params{height}px;
+     background:#F3F2ED;
+     border:10px solid white;
+     padding:0 10px;
+     margin:30px 10px 30px 10px;
+     border-radius:10px;
+     -moz-border-radius:10px;
+     -webkit-border-radius:10px;
+     box-shadow:3px 3px 6px 2px #A9A9A9;
+     -moz-box-shadow:3px 3px 6px 2px #A9A9A9;
+     -webkit-box-shadow:3px 3px 6px #A9A9A9;
+}
+</style>
+<div id="$params{divid}"><table width="100%"><tr><th colspan="3">$params{title}</th></tr><tr><td colspan=3>&nbsp;</td></tr>$hbar_graph</table><p>Others: sum of relays representing less than $MIN_SHOW_PIE %</p></div>
+</script>
+EOF
+
+}
+
+
