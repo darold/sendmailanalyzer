@@ -105,6 +105,24 @@ my $cgi = new CGI;
 # Add global caching
 push(@{$CONFIG{DOMAIN_REPORT}}, '');
 
+# Check if we have a SQL-host configured for virtual domains
+if ( $CONFIG{VIRTUAL_DOMAIN_DB} && $CONFIG{VIRTUAL_DOMAIN_DB_QUERY} ) {
+	eval("use DBI;");
+	my $dbh = DBI->connect(
+			$CONFIG{VIRTUAL_DOMAIN_DB},
+			$CONFIG{VIRTUAL_DOMAIN_DB_USER},
+			$CONFIG{VIRTUAL_DOMAIN_DB_PASS},
+		) or die "Couldn't connect to database: " . DBI->errstr;
+	# Get all virtual domains and stores them in $CONFIG{LOCAL_DOMAIN} array
+	my $sth = $dbh->prepare( $CONFIG{VIRTUAL_DOMAIN_DB_QUERY} );
+	$sth->execute();
+	while (my @row = $sth->fetchrow_array) {
+		push(@{ $CONFIG{LOCAL_DOMAIN} }, $row[0]);
+	}
+	$sth->finish();
+	$dbh->disconnect() if (defined $dbh);
+}
+
 my $UNIQID = 0;
 
 if (-e "$CONFIG{PID_DIR}/$PID_FILE") {

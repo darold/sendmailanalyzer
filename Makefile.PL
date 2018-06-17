@@ -211,11 +211,35 @@ ERROR_CODE	lang/ERROR_CODE
 # relay sender address. You can have multiple LOCAL_DOMAIN lines for better
 # reading. You can also give a file containing a list of domain, one per line.
 # If you are running rsyslog with multiple host use LOCAL_HOST_DOMAIN instead.
+# See VIRTUAL_DOMAIN_DB bellow if your virtual domains are stored in a database.
 #LOCAL_DOMAIN   domain1.com,domain2.com
 
 # Same as above but with host distinction for use with rsyslog.
 # You can have multiple LOCAL_HOST_DOMAIN lines, ie: one per host.
 #LOCAL_HOST_DOMAIN   sysloghost1	domain1.com,domain2.com
+
+# If you're running a mailserver with virtual domains in a database this option
+# will allow sendmailanalyzer to perform domain-lookups in the database to
+# determine whether this domain is external or internal (like the LOCAL_DOMAIN
+# option above. This will come with decent database load depending on how much
+# traffic your mailserver experiences as every domain will be matched against
+# your database.
+# Leave this unconfigured if you don't have virtual domains in a database set up
+# otherwise sendmailanalyzer will exit with an error.
+#VIRTUAL_DOMAIN_DB	DBI:mysql:database=mailserver:host=localhost
+#VIRTUAL_DOMAIN_DB	DBI:Pg:dbname=mailserver;host=localhost;port=5432
+
+# Username for the database connection
+#VIRTUAL_DOMAIN_DB_USER	username
+
+# Password for the database connection
+#VIRTUAL_DOMAIN_DB_PASS	secret
+
+# Query to select the list of domain from the database. Sendmailanalyzer will
+# load the list into the LOCAL_DOMAIN array. This list will be checked against
+# sender or recipient relay to determine the email direction.
+#VIRTUAL_DOMAIN_DB_QUERY	SELECT name FROM virtual_domains
+
 
 # Syslog name of MimeDefang. Syslog write it to maillog with the pid as follow:
 # ... mimedefang.pl[1234] ... This is required to only parse relevant logged lines

@@ -250,6 +250,24 @@ if (-e $CONFIG{ERROR_CODE}) {
 # Print global header
 &sa_header($CGI) if (!$VIEW && !$DOWNLOAD);
 
+# Check if we have a SQL-host configured for virtual domains
+if ( $CONFIG{VIRTUAL_DOMAIN_DB} && $CONFIG{VIRTUAL_DOMAIN_DB_QUERY} ) {
+	eval("use DBI;");
+	my $dbh = DBI->connect(
+			$CONFIG{VIRTUAL_DOMAIN_DB},
+			$CONFIG{VIRTUAL_DOMAIN_DB_USER},
+			$CONFIG{VIRTUAL_DOMAIN_DB_PASS},
+		) or die "Couldn't connect to database: " . DBI->errstr;
+	# Get all virtual domains and stores them in $CONFIG{LOCAL_DOMAIN} array
+	my $sth = $dbh->prepare( $CONFIG{VIRTUAL_DOMAIN_DB_QUERY} );
+	$sth->execute();
+	while (my @row = $sth->fetchrow_array) {
+		push(@{ $CONFIG{LOCAL_DOMAIN} }, $row[0]);
+	}
+	$sth->finish();
+	$dbh->disconnect() if (defined $dbh);
+}
+
 # Set default host report if there's only one host and no per domain report.
 my @syshost = get_list_host();
 if ( !$HOST && ($#syshost == 0) && ($#{$CONFIG{DOMAIN_REPORT}} == -1) && (scalar keys %{$CONFIG{DOMAIN_HOST_REPORT}} == 0) ) {
