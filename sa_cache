@@ -278,6 +278,7 @@ our %topauth = ();
 our %postgrey = ();
 our %toppostgrey = ();
 our %starttls = ();
+our %spf_dkim = ();
 
 
 ####
@@ -634,6 +635,27 @@ sub do_hour_cache
 			close(IN);
 		}
 
+		$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/spf_dkim.dat";
+		if (open(IN, $file)) {
+			while (my $l = <IN>) { 
+				chomp($l);
+				# Format: Hour:Id:Type:Rule:Domain:Status
+				@data = split(/:/, $l);
+				$data[0] =~ /^(\d{2})/;
+				next if ($1 ne $hour);
+				if ($data[2] eq 'spf') {
+					$localstat{$data[1]}{$data[2]}{$data[3]}{hour} = $data[0] if (!exists $localstat{$data[1]}{$data[2]}{$data[3]}{hour});
+					#$localstat{$data[1]}{$data[2]}{$data[3]}{domain}{$data[4]}++;
+					$localstat{$data[1]}{$data[2]}{$data[3]}{status}{$data[5]}++;
+				} elsif ($data[2] eq 'dkim') {
+					$localstat{$data[1]}{$data[2]}{hour} = $data[0] if (!exists $localstat{$data[1]}{$data[2]}{hour});
+					#$localstat{$data[1]}{$data[2]}{domain}{$data[4]}++;
+					$localstat{$data[1]}{$data[2]}{status}{$data[5]}++;
+				}
+			}
+			close(IN);
+		}
+
 		for my $typ (sort keys %ANTISPAM_NAME) {
 			$file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/$typ.dat";
 			if (open(IN, $file)) {
@@ -816,8 +838,6 @@ sub compute_top_stats
 					$toppostgrey{rcpt}{$STATS->{$id}{rcpt}[$i]}++;
 				}
 				$toppostgrey{reason}{$STATS->{$id}{reason}}++;
-
-
 			}
 
 			if (exists $STATS->{$id}{spamtype} && grep(/^$STATS->{$id}{spamtype}$/, keys %ANTISPAM_NAME)) {
@@ -1475,6 +1495,25 @@ sub compute_global_stats
 			$postgrey{reason}{$STATS->{$id}{reason}}++;
 		}
 
+		if (exists $STATS->{$id}{spf}) {
+			foreach my $r (keys %{ $STATS->{$id}{spf} }) {
+				#foreach my $k (keys %{ $STATS->{$id}{spf}{$r}{domain} }) {
+				#	$spf_dkim{spf}{$r}{domain}{$k} += $STATS->{$id}{spf}{$r}{domain}{$k};
+				#}
+				foreach my $k (keys %{ $STATS->{$id}{spf}{$r}{status} }) {
+					$spf_dkim{spf}{$r}{status}{$k} += $STATS->{$id}{spf}{$r}{status}{$k};
+				}
+			}
+		}
+		if (exists $STATS->{$id}{dkim}) {
+			foreach my $k (keys %{ $STATS->{$id}{dkim}{status} }) {
+				$spf_dkim{dkim}{status}{$k} += $STATS->{$id}{dkim}{status}{$k};
+			}
+			#foreach my $k (keys %{ $STATS->{$id}{dkim}{domain} }) {
+			#	$spf_dkim{dkim}{domain}{$k} += $STATS->{$id}{dkim}{domain}{$k};
+			#}
+		}
+
 	}
 
 	# Top STARTTLS stats
@@ -1637,6 +1676,32 @@ sub compute_global_stats
 		print OUT "},\n";
 		print OUT ");\n\n";
 		%postgrey = ();
+	
+		print OUT "\%::spf_dkim = (\n";
+		print OUT "'spf' => {\n";
+		foreach my $r (keys %{$spf_dkim{spf}}) {
+			print OUT "\t'$r' => {\n";
+			foreach my $s (keys %{$spf_dkim{spf}{$r}}) {
+				print OUT "\t\t'$s' => { ";
+				foreach my $v (keys %{$spf_dkim{spf}{$r}{$s}}) {
+					print OUT "'$v' => '$spf_dkim{spf}{$r}{$s}{$v}',";
+				}
+				print OUT " },\n";
+			}
+			print OUT "\t},\n";
+		}
+		print OUT "},\n";
+		print OUT "'dkim' => {\n";
+		foreach my $r (keys %{$spf_dkim{dkim}}) {
+			print OUT "\t'$r' => {\n";
+			foreach my $s (keys %{$spf_dkim{dkim}{$r}}) {
+				print OUT "\t\t'$s' => '$spf_dkim{dkim}{$r}{$s}',\n";
+			}
+			print OUT "\t},\n";
+		}
+		print OUT "},\n";
+		print OUT ");\n\n";
+		%spf_dkim = ();
 
 		# Viruses flows / Viruses delivery flows / syserr flows
 		print OUT "\%::virus = (\n";
@@ -1831,6 +1896,7 @@ sub do_day_cache
 	my %localpostgrey = ();
 	my %localtoppostgrey = ();
 	my %localstarttls = ();
+	my %localspf_dkim = ();
 	my $lbls = '';
 	my %authval = ();
 	foreach my $hour ("00" .. "23") {
@@ -1899,6 +1965,20 @@ sub do_day_cache
 			       $localpostgrey{reason}{$k} += $postgrey{reason}{$k};
 			}
 			%postgrey = ();
+
+			foreach my $r (keys %{$spf_dkim{spf}}) {
+				foreach my $k (keys %{$spf_dkim{spf}{$r}{status}}) {
+				       $localspf_dkim{spf}{$r}{status}{$k} += $spf_dkim{spf}{$r}{status}{$k};
+				}
+				foreach my $k (keys %{$spf_dkim{spf}{$r}{domain}}) {
+				       $localspf_dkim{spf}{$r}{domain}{$k} += $spf_dkim{spf}{$r}{domain}{$k};
+				}
+			}
+			foreach my $r (keys %{$spf_dkim{dkim}{status}}) {
+			       $localspf_dkim{dkim}{status}{$r} += $spf_dkim{dkim}{status}{$r};
+			}
+			%spf_dkim = ();
+
 			foreach my $k (keys %virus) {
 				if (!grep(/^$k$/, 'lbls','x_label','values')) {
 				       $localvirus{$k} += $virus{$k};
@@ -2114,6 +2194,32 @@ sub do_day_cache
 		print OUT ");\n\n";
 		%localpostgrey = ();
 	
+		print OUT "\%::spf_dkim = (\n";
+		print OUT "'spf' => {\n";
+		foreach my $r (keys %{$localspf_dkim{spf}}) {
+			print OUT "\t'$r' => {\n";
+			foreach my $s (keys %{$localspf_dkim{spf}{$r}}) {
+				print OUT "\t\t'$s' => { ";
+				foreach my $v (keys %{$localspf_dkim{spf}{$r}{$s}}) {
+					print OUT "'$v' => '$localspf_dkim{spf}{$r}{$s}{$v}',";
+				}
+				print OUT " },\n";
+			}
+			print OUT "\t},\n";
+		}
+		print OUT "},\n";
+		print OUT "'dkim' => {\n";
+		foreach my $r (keys %{$localspf_dkim{dkim}}) {
+			print OUT "\t'$r' => {\n";
+			foreach my $s (keys %{$localspf_dkim{dkim}{$r}}) {
+				print OUT "\t\t'$s' => '$localspf_dkim{dkim}{$r}{$s}',\n";
+			}
+			print OUT "\t},\n";
+		}
+		print OUT "},\n";
+		print OUT ");\n\n";
+		%localspf_dkim = ();
+
 		print OUT "\%::virus = (\n";
 		print OUT "'inbound' => '$localvirus{inbound}',\n";
 		print OUT "'inbound_bytes' => '$localvirus{inbound_bytes}',\n";
@@ -2644,6 +2750,7 @@ sub do_month_cache
 	my %localpostgrey = ();
 	my %localtoppostgrey = ();
 	my %localstarttls = ();
+	my %localspf_dkim = ();
 	my $lbls = '';
 	foreach my $day ("01" .. "31") {
 		$lbls .= "$day:";
@@ -2712,6 +2819,20 @@ sub do_month_cache
 			       $localpostgrey{reason}{$k} += $postgrey{reason}{$k};
 			}
 			%postgrey = ();
+
+			foreach my $r (keys %{$spf_dkim{spf}}) {
+				foreach my $k (keys %{$spf_dkim{spf}{$r}{status}}) {
+				       $localspf_dkim{spf}{$r}{status}{$k} += $spf_dkim{spf}{$r}{status}{$k};
+				}
+				foreach my $k (keys %{$spf_dkim{spf}{$r}{domain}}) {
+				       $localspf_dkim{spf}{$r}{domain}{$k} += $spf_dkim{spf}{$r}{domain}{$k};
+				}
+			}
+			foreach my $r (keys %{$spf_dkim{dkim}{status}}) {
+			       $localspf_dkim{dkim}{status}{$r} += $spf_dkim{dkim}{status}{$r};
+			}
+			%spf_dkim = ();
+
 			foreach my $k (keys %virus) {
 				if (!grep(/^$k$/, 'lbls','x_label','values')) {
 				       $localvirus{$k} += $virus{$k};
@@ -2928,6 +3049,32 @@ sub do_month_cache
 		print OUT "},\n";
 		print OUT ");\n\n";
 		%localpostgrey = ();
+	
+		print OUT "\%::spf_dkim = (\n";
+		print OUT "'spf' => {\n";
+		foreach my $r (keys %{$localspf_dkim{spf}}) {
+			print OUT "\t'$r' => {\n";
+			foreach my $s (keys %{$localspf_dkim{spf}{$r}}) {
+				print OUT "\t\t'$s' => { ";
+				foreach my $v (keys %{$localspf_dkim{spf}{$r}{$s}}) {
+					print OUT "'$v' => '$localspf_dkim{spf}{$r}{$s}{$v}',";
+				}
+				print OUT " },\n";
+			}
+			print OUT "\t},\n";
+		}
+		print OUT "},\n";
+		print OUT "'dkim' => {\n";
+		foreach my $r (keys %{$localspf_dkim{dkim}}) {
+			print OUT "\t'$r' => {\n";
+			foreach my $s (keys %{$localspf_dkim{dkim}{$r}}) {
+				print OUT "\t\t'$s' => '$localspf_dkim{dkim}{$r}{$s}',\n";
+			}
+			print OUT "\t},\n";
+		}
+		print OUT "},\n";
+		print OUT ");\n\n";
+		%localspf_dkim = ();
 
 		print OUT "\%::virus = (\n";
 		print OUT "'inbound' => '$localvirus{inbound}',\n";
@@ -3452,6 +3599,7 @@ sub do_year_cache
 	my %localpostgrey = ();
 	my %localtoppostgrey = ();
 	my %localstarttls = ();
+	my %localspf_dkim = ();
 	my $lbls = '';
 
 	foreach my $month ("01" .. "12") {
@@ -3520,6 +3668,20 @@ sub do_year_cache
 			       $localpostgrey{reason}{$k} += $postgrey{reason}{$k};
 			}
 			%postgrey = ();
+
+			foreach my $r (keys %{$spf_dkim{spf}}) {
+				foreach my $k (keys %{$spf_dkim{spf}{$r}{status}}) {
+				       $localspf_dkim{spf}{$r}{status}{$k} += $spf_dkim{spf}{$r}{status}{$k};
+				}
+				foreach my $k (keys %{$spf_dkim{spf}{$r}{domain}}) {
+				       $localspf_dkim{spf}{$r}{domain}{$k} += $spf_dkim{spf}{$r}{domain}{$k};
+				}
+			}
+			foreach my $r (keys %{$spf_dkim{dkim}{status}}) {
+			       $localspf_dkim{dkim}{status}{$r} += $spf_dkim{dkim}{status}{$r};
+			}
+			%spf_dkim = ();
+
 			foreach my $k (keys %virus) {
 				if (!grep(/^$k$/, 'lbls','x_label','values')) {
 				       $localvirus{$k} += $virus{$k};
@@ -3739,7 +3901,33 @@ sub do_year_cache
 		print OUT "},\n";
 		print OUT ");\n\n";
 		%localpostgrey = ();
-		
+	
+		print OUT "\%::spf_dkim = (\n";
+		print OUT "'spf' => {\n";
+		foreach my $r (keys %{$localspf_dkim{spf}}) {
+			print OUT "\t'$r' => {\n";
+			foreach my $s (keys %{$localspf_dkim{spf}{$r}}) {
+				print OUT "\t\t'$s' => { ";
+				foreach my $v (keys %{$localspf_dkim{spf}{$r}{$s}}) {
+					print OUT "'$v' => '$localspf_dkim{spf}{$r}{$s}{$v}',";
+				}
+				print OUT " },\n";
+			}
+			print OUT "\t},\n";
+		}
+		print OUT "},\n";
+		print OUT "'dkim' => {\n";
+		foreach my $r (keys %{$localspf_dkim{dkim}}) {
+			print OUT "\t'$r' => {\n";
+			foreach my $s (keys %{$localspf_dkim{dkim}{$r}}) {
+				print OUT "\t\t'$s' => '$localspf_dkim{dkim}{$r}{$s}',\n";
+			}
+			print OUT "\t},\n";
+		}
+		print OUT "},\n";
+		print OUT ");\n\n";
+		%localspf_dkim = ();
+
 		print OUT "\%::virus = (\n";
 		print OUT "'inbound' => '$localvirus{inbound}',\n";
 		print OUT "'inbound_bytes' => '$localvirus{inbound_bytes}',\n";
@@ -4376,6 +4564,7 @@ sub do_week_cache
 	my %localpostgrey = ();
 	my %localtoppostgrey = ();
 	my %localstarttls = ();
+	my %localspf_dkim = ();
 	my $lbls = '';
 	my %authval = ();
 	&clean_globals();
@@ -4448,6 +4637,20 @@ sub do_week_cache
 			       $localpostgrey{reason}{$k} += $postgrey{reason}{$k};
 			}
 			%postgrey = ();
+
+			foreach my $r (keys %{$spf_dkim{spf}}) {
+				foreach my $k (keys %{$spf_dkim{spf}{$r}{status}}) {
+				       $localspf_dkim{spf}{$r}{status}{$k} += $spf_dkim{spf}{$r}{status}{$k};
+				}
+				foreach my $k (keys %{$spf_dkim{spf}{$r}{domain}}) {
+				       $localspf_dkim{spf}{$r}{domain}{$k} += $spf_dkim{spf}{$r}{domain}{$k};
+				}
+			}
+			foreach my $r (keys %{$spf_dkim{dkim}{status}}) {
+			       $localspf_dkim{dkim}{status}{$r} += $spf_dkim{dkim}{status}{$r};
+			}
+			%spf_dkim = ();
+
 			foreach my $k (keys %virus) {
 				if (!grep(/^$k$/, 'lbls','x_label','values')) {
 				       $localvirus{$k} += $virus{$k};
@@ -4673,6 +4876,32 @@ sub do_week_cache
 		print OUT ");\n\n";
 		%localpostgrey = ();
 		
+		print OUT "\%::spf_dkim = (\n";
+		print OUT "'spf' => {\n";
+		foreach my $r (keys %{$localspf_dkim{spf}}) {
+			print OUT "\t'$r' => {\n";
+			foreach my $s (keys %{$localspf_dkim{spf}{$r}}) {
+				print OUT "\t\t'$s' => { ";
+				foreach my $v (keys %{$localspf_dkim{spf}{$r}{$s}}) {
+					print OUT "'$v' => '$localspf_dkim{spf}{$r}{$s}{$v}',";
+				}
+				print OUT " },\n";
+			}
+			print OUT "\t},\n";
+		}
+		print OUT "},\n";
+		print OUT "'dkim' => {\n";
+		foreach my $r (keys %{$localspf_dkim{dkim}}) {
+			print OUT "\t'$r' => {\n";
+			foreach my $s (keys %{$localspf_dkim{dkim}{$r}}) {
+				print OUT "\t\t'$s' => '$localspf_dkim{dkim}{$r}{$s}',\n";
+			}
+			print OUT "\t},\n";
+		}
+		print OUT "},\n";
+		print OUT ");\n\n";
+		%localspf_dkim = ();
+
 		print OUT "\%::virus = (\n";
 		print OUT "'inbound' => '$localvirus{inbound}',\n";
 		print OUT "'inbound_bytes' => '$localvirus{inbound_bytes}',\n";
@@ -4953,7 +5182,6 @@ sub do_week_cache
                 print OUT "},\n";
                 print OUT ");\n\n";
                 %localtoppostgrey = ();
-
 
 		# Top virus statistics
 		$top = 0;

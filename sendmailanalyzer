@@ -91,6 +91,7 @@ my %AMAVIS_ID = ();
 my %STARTTLS = ();
 my %SPAMPD = ();
 my %KEEP_TEMPORARY = ();
+my %SPF_DKIM = ();
 
 # Collect command line arguments
 GetOptions (
@@ -116,6 +117,7 @@ GetOptions (
 	'z|zcat=s' => \$CONFIG{ZCAT_PROG},
 	'y|year=s' => \$CONFIG{DEFAULT_YEAR},
 	'spamd=s' => \$CONFIG{SPAMD_NAME},
+	'spf=s' => \$CONFIG{SPF_DKIM_NAME},
 	'hostname=s' => \$HOSTNAME,
 );
 
@@ -250,6 +252,8 @@ sendmailanalyzer v$VERSION usage:
                          Default /usr/bin/zcat.
      --spamd  name     : syslog Spamd program name. Default: spamd.
      --hostname name   : set a hostname for exim logs. Default: unknown.
+     --spf  name       : syslog SPF and DKIM program name list.
+                         Default: opendmarc|opendkim.
 };
 	exit 0;
 }
@@ -350,7 +354,7 @@ sub start_loop
 							my $tmp_last_parsed = $l;
 							# Only catch relevant logs
 							next if ($CONFIG{EXCLUDE_LINE} && $tmp_last_parsed =~ m#$CONFIG{EXCLUDE_LINE}#);
-							if ( ($tmp_last_parsed =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME}|$CONFIG{CLAMSMTPD_NAME})[\/\[:]/) || ($LAST_PARSED =~ $EXIM_REGEX) ) {
+							if ( ($tmp_last_parsed =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME}|$CONFIG{CLAMSMTPD_NAME}|$CONFIG{SPF_DKIM_NAME})[\/\[:]/) || ($LAST_PARSED =~ $EXIM_REGEX) ) {
 								if ($tmp_last_parsed ne $OLD_LAST_PARSED) {
 									&dprint("Size is identique but data are more recent than the one at old offset. Rereading from start of the log file.") if ($CONFIG{DEBUG} > 0);
 									seek(SA_FILE, 0, 0);
@@ -381,7 +385,7 @@ sub start_loop
 			$l = '';
 			# Only catch relevant logs
 			next if ($CONFIG{EXCLUDE_LINE} && $LAST_PARSED =~ m#$CONFIG{EXCLUDE_LINE}#); 
-			if ( ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME}|$CONFIG{CLAMSMTPD_NAME})[\/\[:]/) || ($LAST_PARSED =~ $EXIM_REGEX) ) {
+			if ( ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME}|$CONFIG{CLAMSMTPD_NAME}|$CONFIG{SPF_DKIM_NAME})[\/\[:]/) || ($LAST_PARSED =~ $EXIM_REGEX) ) {
 				my $tmpos = tell(SA_FILE);
 				if ($OLD_LAST_PARSED) {
 					# Store the last position in the log
@@ -469,7 +473,7 @@ sub start_loop
 		# Only catch relevant logs
 		next if ($CONFIG{EXCLUDE_LINE} && $LAST_PARSED =~ m#$CONFIG{EXCLUDE_LINE}#); 
 		my $check_time = '';
-		if ( ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME})[\/\[]/) || ($LAST_PARSED =~ $EXIM_REGEX) )  {
+		if ( ($LAST_PARSED =~ /($CONFIG{MTA_NAME}|$CONFIG{MAILSCAN_NAME}|$CONFIG{AMAVIS_NAME}|$CONFIG{MD_NAME}|$CONFIG{CLAMD_NAME}|$CONFIG{POSTGREY_NAME}|$CONFIG{SPAMD_NAME}|$CONFIG{CLAMSMTPD_NAME}|$CONFIG{SPF_DKIM_NAME})[\/\[]/) || ($LAST_PARSED =~ $EXIM_REGEX) )  {
 			# Extract common fields and store data in memory
 			$check_time = &store_data(&parse_common_fields(split(/\s+/, $LAST_PARSED)));
 		} else {
@@ -574,6 +578,8 @@ sub store_data
 		&parse_postgrey("$date","$time",$host,$other);
 	} elsif ($CONFIG{SPAMD_NAME} && ($type =~ /^$CONFIG{SPAMD_NAME}/i)) {
 		&parse_spamd("$date","$time",$host,$other);
+	} elsif ($CONFIG{SPF_DKIM_NAME} && ($type =~ /^$CONFIG{SPF_DKIM_NAME}/i)) {
+		&parse_spf_dkim("$date","$time",$host,$other);
 	} else {
 		&dprint("Skipping unknown syslog report => $date $time $host [$type]: $other") if ($CONFIG{DEBUG} > 1);
 	}
@@ -2138,6 +2144,44 @@ sub parse_spamd
 }
 
 ####
+# Parse DKIM/SPF syslog output
+####
+sub parse_spf_dkim
+{
+	my ($date,$time,$host,$str) = @_;
+
+	my $time_st = "$date$time";
+
+	#Jun  7 06:22:58 server opendmarc[980]: 2693E3640260: news.vendita--flash.com none
+	if ($str =~ /^([^:]+): SPF\(([^\)]+)\): ([^\s]+) ([^\s]+)$/) {
+
+		my $id = $1;
+		$SPF_DKIM{$host}{spf}{$id}{rule} = $2;
+		$SPF_DKIM{$host}{spf}{$id}{status} = $4;
+		$SPF_DKIM{$host}{spf}{$id}{domain} = &clean_relay($3);
+		$SPF_DKIM{$host}{spf}{$id}{date} =  $time_st;
+
+	#Jun  7 06:22:58 server opendkim[953]: 2693E3640260: DKIM verification successful
+	} elsif ($str =~ /^([^:]+): DKIM (.*)$/) {
+
+		my $id = $1;
+		$SPF_DKIM{$host}{dkim}{$id}{status} = $2;
+		$SPF_DKIM{$host}{dkim}{$id}{date} =  $time_st;
+
+	#Jun  7 08:43:51 server opendkim[953]: 07EE63640A96: DKIM-Signature field added (s=default, d=mydomain.com)
+	} elsif ($str =~ /^([^:]+): DKIM-([^\(]+) \(s=([^,]+), d=([^\)]+)\)$/) {
+
+		my $id = $1;
+		$SPF_DKIM{$host}{dkim}{$id}{status} = $2;
+		$SPF_DKIM{$host}{dkim}{$id}{rule} = $3;
+		$SPF_DKIM{$host}{dkim}{$id}{domain} = $4;
+		$SPF_DKIM{$host}{dkim}{$id}{date} =  $time_st;
+	}
+
+}
+
+
+####
 # Decode email address and keep only email part
 ####
 sub edecode
@@ -2568,6 +2612,42 @@ sub flush_data
 	# clear all postgrey memory storage
 	%POSTGREY = ();
 
+	# SaveSPF/DKIM objects
+	&dprint("Writing SPF/DKIM detail data to disk...");
+	$nobj = 0;
+	foreach my $host (keys %SPF_DKIM) {
+		my %spf_dkims = ();
+		foreach my $kind (keys %{$SPF_DKIM{$host}}) {
+			foreach my $id (keys %{$SPF_DKIM{$host}{$kind}}) {
+				if (exists $EXCLUDED{$id}) {
+					delete $SPF_DKIM{$host}{$kind}{$id};
+					next;
+				}
+				next if ($SPF_DKIM{$host}{$kind}{$id}{date} !~ /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+				# Key: year/month/day, Format: Hour:Id:type:rule:domain:status
+				$spf_dkims{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $kind . ':' . $SPF_DKIM{$host}{$kind}{$id}{rule} . ':' . $SPF_DKIM{$host}{$kind}{$id}{domain} . ':' . $SPF_DKIM{$host}{$kind}{$id}{status} . "\n";
+				$nobj++;
+			}
+		}
+		foreach my $dir (keys %spf_dkims) {
+			if (!-d "$CONFIG{OUT_DIR}/$host/$dir") {
+				&create_directory("$host/$dir");
+			}
+			if (not open(OUT, ">>$CONFIG{OUT_DIR}/$host/$dir/spf_dkim.dat") ) {
+				&logerror("Can't write to file $CONFIG{OUT_DIR}/$host/$dir/spf_dkim.dat: $!");
+				&logerror("Data will be lost.");
+				next;
+			} else {
+				print OUT $spf_dkims{$dir};
+				close(OUT);
+			}
+		}
+	}
+	&dprint("\tWrote $nobj spf/dkim object.");
+	# clear all spf/dkim memory storage
+	%SPF_DKIM = ();
+
+
 	# Save Virus objects
 	&dprint("Writing Virus data to disk...");
 	$nobj = 0;
@@ -2840,6 +2920,7 @@ sub read_config
 	$CONFIG{PID_DIR} ||= '/var/run';
 	$CONFIG{POSTGREY_NAME} ||= 'postgrey|sqlgrey';
 	$CONFIG{SPAMD_NAME} ||= 'spamd';
+	$CONFIG{SPF_DKIM_NAME} ||= 'opendmarc|opendkim';
 }
 
 ####
@@ -3105,6 +3186,7 @@ sub clean_globals
 	%STARTTLS = ();
 	%SPAMPD = ();
 	%KEEP_TEMPORARY = ();
+	%SPF_DKIM = ();
 }
 
 
