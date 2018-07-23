@@ -275,6 +275,7 @@ INSTALLATION
     when maillog is rotated or create a cron job.
 
   Log rotate case
+   Without systemd
     If you use real time mode and you have logrotate installed on you
     maillog file you must restart SendmailAnalyzer each time logrotate is
     used. To install it edit the /etc/logrotate.d/syslog file and add a line
@@ -297,14 +298,32 @@ INSTALLATION
                 /bin/kill -HUP `cat /var/run/sendmailanalyzer.pid`  2>/dev/null || true
             endscript
 
-    And if you have an operating system that use systemd, you can set the
-    following in the service file:
+   With systemd
+    New Linux distributions have replaced the standard init SysV by the new
+    systemd linux centrics startup system. If you are using this system here
+    is the service file definition to use:
 
-            ExecStop=/usr/bin/pkill -TERM sendmailanalyzer
+            sendmailanalyzer.service
 
-    and in /etc/logrotate.d/syslog adding this to postrotate section:
+    just copy it under /usr/lib/systemd/system/sendmailanalyzer.service as
+    root. Edit it to change the path to the sendmailanalyzer program and
+    change Requires/After directives whether you are running sendmail or
+    postfix. Then reload systemd with the following command as root:
 
-            /usr/bin/systemctl restart sendmailanalyzer.service > /dev/null 2>&1 || true
+            systemctl --system daemon-reload
+
+    To start/stop sendmailanalyer use the following commands:
+
+            systemctl start sendmailanalyzer.service
+            systemctl stop sendmailanalyzer.service
+
+    If you want sendmailanalyzer to be run at boot time and stopped at
+    poweroff, you have to run the following command:
+
+            systemctl enable sendmailanalyzer.service
+
+    This will create the symlinks for you into the /etc/systemd/system/
+    directory.
 
   Package install
     In the packaging/ directory you will find all scripts and files to
@@ -807,6 +826,14 @@ CONFIGURATION
                 LOCAL_DOMAIN    domain1.com,domain2.com,...
                 LOCAL_DOMAIN    domain3.com
                 LOCAL_DOMAIN    domain4.com
+
+        If you want you can also give the path to a file containing a list
+        of domain, one per line. Ex:
+
+                LOCAL_DOMAIN    /usr/local/sendmailanalyzer/domain.lst
+
+        if the file exist SendmailAnalyzer will load the domain list from
+        its content.
 
     LOCAL_HOST_DOMAIN
         Same as above but with host distinction for use with rsyslog. You
