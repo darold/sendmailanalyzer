@@ -381,6 +381,8 @@ or use one of the starters script provided in the start_scripts/ directory.
 
 =head2 Log rotate case
 
+=head3 Without systemd
+
 If you use real time mode and you have logrotate installed on you maillog
 file you must restart SendmailAnalyzer each time logrotate is used.
 To install it edit the /etc/logrotate.d/syslog file and add a line
@@ -403,15 +405,34 @@ must be written differently, but not so much. For example:
             /bin/kill -HUP `cat /var/run/sendmailanalyzer.pid`  2>/dev/null || true
         endscript
 
-And if you have an operating system that use systemd, you can set the following
-in the service file:
+=head3 With systemd
 
-	ExecStop=/usr/bin/pkill -TERM sendmailanalyzer
+New Linux distributions have replaced the standard init SysV by the new
+systemd linux centrics startup system. If you are using this system here
+is the service file definition to use:
 
-and in /etc/logrotate.d/syslog adding this to postrotate section:
+	sendmailanalyzer.service
 
-	/usr/bin/systemctl restart sendmailanalyzer.service > /dev/null 2>&1 || true
+just copy it under /usr/lib/systemd/system/sendmailanalyzer.service
+as root. Edit it to change the path to the sendmailanalyzer program
+and change Requires/After directives whether you are running sendmail
+or postfix. Then reload systemd with the following command as root:
 
+
+	systemctl --system daemon-reload
+
+To start/stop sendmailanalyer use the following commands:
+
+	systemctl start sendmailanalyzer.service
+	systemctl stop sendmailanalyzer.service
+
+If you want sendmailanalyzer to be run at boot time and stopped at
+poweroff, you have to run the following command:
+
+	systemctl enable sendmailanalyzer.service
+
+This will create the symlinks for you into the /etc/systemd/system/
+directory.
 
 =head2 Package install
 

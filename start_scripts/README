@@ -21,15 +21,16 @@ command:
 
 	chkconfig --add sendmailanalyzer
 
-Some new distributions like last version of Fedora have replaced the
-standard init SysV by the new systemd linux centrics startup system.
-If you are using this system here is the service definition to use:
+New Linux distributions have replaced the standard init SysV by the new
+systemd linux centrics startup system. If you are using this system here
+is the service file definition to use:
 
 	sendmailanalyzer.service
 
 just copy it under /usr/lib/systemd/system/sendmailanalyzer.service
 as root. Edit it to change the path to the sendmailanalyzer program
-and reload systemd with the following command as root:
+and change Requires/After directives whether you are running sendmail
+or postfix. Then reload systemd with the following command as root:
 
 	systemctl --system daemon-reload
 
