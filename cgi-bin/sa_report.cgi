@@ -1703,7 +1703,11 @@ sub get_spam_stat
 		next if (($hour ne '') && ($1 != $hour));
 		$STATS{$data[1]}{hour} = $data[0] if (!exists $STATS{$data[1]}{hour});
 		$STATS{$data[1]}{sender} = $data[2] if (!exists $STATS{$data[1]}{sender});
-		push(@{$STATS{$data[1]}{rcpt}}, $data[3]);
+		foreach my $a (split(/,/, $data[3])) {
+			if (!grep(/^$a$/i, @{$STATS{$data[1]}{rcpt}})) {
+				push(@{$STATS{$data[1]}{rcpt}}, $a);
+			}
+		}
 		$STATS{$data[1]}{spam} = $data[4];
 		my $idx = $month;
 		if ($hour ne '') {
@@ -1850,7 +1854,11 @@ sub get_spamdetail_stat
 		my @data = split(/:/, $l, 5);
 		next if (!exists $STATS{$data[1]});
 		$STATS{$data[1]}{sender} = $data[2] if (!exists $STATS{$data[1]}{sender});
-		push(@{$STATS{$data[1]}{rcpt}}, $data[3]);
+		foreach my $a (split(/,/, $data[3])) {
+			if (!grep(/^$a$/i, @{$STATS{$data[1]}{rcpt}})) {
+				push(@{$STATS{$data[1]}{rcpt}}, $a);
+			}
+		}
 	}
 	close(IN);
 }
@@ -4897,8 +4905,10 @@ sub get_sender_detail
 			next if (!exists $local_stat{$data[1]});
 			$local_stat{$data[1]}{hour} = $data[0] if (!exists $local_stat{$data[1]}{hour});
 			$local_stat{$data[1]}{sender} = $data[2] if (!exists $local_stat{$data[1]}{sender});
-			if (!grep(/^$data[3]$/i, @{$local_stat{$data[1]}{rcpt}})) {
-				push(@{$local_stat{$data[1]}{rcpt}}, $data[3]);
+			foreach my $a (split(/,/, $data[3])) {
+				if (!grep(/^$a$/i, @{$local_stat{$data[1]}{rcpt}})) {
+					push(@{$local_stat{$data[1]}{rcpt}}, $a);
+				}
 			}
 			$local_stat{$data[1]}{spam} = $data[4];
 		}
@@ -5044,8 +5054,10 @@ sub get_recipient_detail
 			next if (!exists $local_stat{$data[1]});
 			$local_stat{$data[1]}{hour} = $data[0] if (!exists $local_stat{$data[1]}{hour});
 			$local_stat{$data[1]}{sender} = $data[2] if (!exists $local_stat{$data[1]}{sender});
-			if (!grep(/^$data[3]$/i, @{$local_stat{$data[1]}{rcpt}})) {
-				push(@{$local_stat{$data[1]}{rcpt}}, $data[3]);
+			foreach my $a (split(/,/, $data[3])) {
+				if (!grep(/^$a$/i, @{$local_stat{$data[1]}{rcpt}})) {
+					push(@{$local_stat{$data[1]}{rcpt}}, $a);
+				}
 			}
 			$local_stat{$data[1]}{spam} = $data[4];
 		}
@@ -5204,7 +5216,11 @@ sub get_spam_detail
 			$local_stat{$data[1]}{hour} = $data[0] if (!exists $local_stat{$data[1]}{hour});
 			$local_stat{$data[1]}{sender} = $data[2] if (!exists $local_stat{$data[1]}{sender});
 			$local_stat{$data[1]}{spam} = $data[4];
-			push(@{$local_stat{$data[1]}{rcpt}}, $data[3]);
+			foreach my $a (split(/,/, $data[3])) {
+				if (!grep(/^$a$/i, @{$local_stat{$data[1]}{rcpt}})) {
+					push(@{$local_stat{$data[1]}{rcpt}}, $a);
+				}
+			}
 		}
 		close(IN);
 	}
@@ -5315,7 +5331,11 @@ sub get_spaminfo_detail
 			next if (!exists $local_stat{$data[1]});
 			$local_stat{$data[1]}{sender} = $data[2];
 			$local_stat{$data[1]}{spam} = "$data[4]: " . $local_stat{$data[1]}{spam};
-			push(@{$local_stat{$data[1]}{rcpt}}, $data[3]);
+			foreach my $a (split(/,/, $data[3])) {
+				if (!grep(/^$a$/i, @{$local_stat{$data[1]}{rcpt}})) {
+					push(@{$local_stat{$data[1]}{rcpt}}, $a);
+				}
+			}
 		}
 		close(IN);
 	}

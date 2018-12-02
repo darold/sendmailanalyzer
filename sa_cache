@@ -534,7 +534,11 @@ sub do_hour_cache
 				$localstat{$data[1]}{idx_spam} = "$1";
 				$localstat{$data[1]}{hour} = $data[0] if (!exists $localstat{$data[1]}{hour});
 				$localstat{$data[1]}{sender} = $data[2] if (!exists $localstat{$data[1]}{sender});
-				push(@{$localstat{$data[1]}{rcpt}}, $data[3]);
+				foreach my $a (split(/,/, $data[3])) {
+					if (!grep(/^$a$/i, @{$localstat{$data[1]}{rcpt}})) {
+						push(@{$localstat{$data[1]}{rcpt}}, $a);
+					}
+				}
 				$localstat{$data[1]}{spam} = $data[4];
 			}
 			close(IN);
