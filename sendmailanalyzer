@@ -2290,18 +2290,22 @@ sub clean_relay
 
 	if ($relay =~ m#\b([a-fA-F0-9\.\:]+) \(may be forged#) {
 		$relay = $1;
-	} elsif ($relay =~ m#localhost|127\.0\.0\.1#) {
+	} elsif ($relay =~ m#localhost|127\.0\.0\.1|::1#) {
 		return 'localhost';
 	} elsif ( $relay =~ s/\[([^\]]+)\]// ) {
 		my $fqdn = $relay;
 		my $ip = $1;
-		$fqdn =~ s#:.*##;
-		if (!$fqdn || ($fqdn eq 'unknown')) {
-			$relay = $ip;
-		} elsif ($fqdn =~ /[\s,]/) {
+		if ($CONFIG{RELAY_IP_ONLY}) {
 			$relay = $ip;
 		} else {
-			$relay = $fqdn;
+			$fqdn =~ s#:.*##;
+			if (!$fqdn || ($fqdn eq 'unknown')) {
+				$relay = $ip;
+			} elsif ($fqdn =~ /[\s,]/) {
+				$relay = $ip;
+			} else {
+				$relay = $fqdn;
+			}
 		}
 	} elsif ( $relay =~ s/\(([a-fA-F0-9\.\:]+)\)// ) {
 		$relay = $1;
@@ -2964,6 +2968,7 @@ sub read_config
 	$CONFIG{POSTGREY_NAME} ||= 'postgrey|sqlgrey';
 	$CONFIG{SPAMD_NAME} ||= 'spamd';
 	$CONFIG{SPF_DKIM_NAME} ||= 'opendmarc|opendkim';
+	$CONFIG{RELAY_IP_ONLY} ||= 0;
 }
 
 ####

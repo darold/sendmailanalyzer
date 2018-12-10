@@ -356,6 +356,10 @@ NO_HOST_DOMAIN	0
 # this directive to force sendmailanalyzer to take them as sent.
 NO_QUEUE_EXCLUSION	0
 
+# When possible sendmailanalyzer extract the fqdn part of the sender or
+# recipient relay. Enable this directive if you just want Ip addresses.
+RELAY_IP_ONLY	0
+
 };
 close(OUTCFG);
 

@@ -1070,6 +1070,11 @@ in all destination adresses with $TO =~ /^$EXCLUDE_TO$/. For example:
 will exclude from report all recipient statistics sent to bcc-addr1@domain1.com
 and bcc-addr2@domain2.com
 
+=item RELAY_IP_ONLY
+
+When possible sendmailanalyzer extract the fqdn part of the sender or
+recipient relay. Enable this directive if you just want Ip addresses.
+
 =back
 
 =head2 Domain / user views options
