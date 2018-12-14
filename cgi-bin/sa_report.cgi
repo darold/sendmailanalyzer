@@ -6014,6 +6014,7 @@ sub grafit_hbar
 	my $hbar_graph = '';
 	foreach my $k (sort {$params{values}->{$b} <=> $params{values}->{$a}} keys %{$params{values}}) {
 		my $name = $k || '<>';
+		$params{values}->{$k} = sprintf("%.2f", $params{values}->{$k});
 		$hbar_graph .= "<tr><td class=\"hbar\" >$name</td><td class=\"hbar\">$params{values}->{$k} %</td><td style=\"text-align: left; color: grey;\">" . ("&block;" x int($params{values}->{$k})) . "</td></tr>\n";
 	}
 	$params{width}  ||= 400;
