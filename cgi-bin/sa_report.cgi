@@ -73,6 +73,8 @@ my $MAXPIECOUNT = 10;
 my $MIN_SHOW_PIE = 2;
 my $DEFAULT_CHARSET='utf-8';
 
+my $WEEK_START_MONDAY = 1;
+
 # Read configuration file
 &read_config($CONFIG_FILE);
 
@@ -784,6 +786,10 @@ sub hour_link
 	return $str;
 }
 
+sub IsLeapYear
+{
+	return ((($_[0] & 3) == 0) && (($_[0] % 100 != 0) || ($_[0] % 400 == 0)));
+}
 
 ####
 # Display day navigator
@@ -809,40 +815,53 @@ sub day_link
 	$str .= "<tr><td>&nbsp;</td>";
 	map { $str .= '<td align="center">' . $day_lbl{$_} . '</td>'; } @wday;
 	$str .= "</tr>\n";
-	my @currow = ('','','','','','','');
-	my $old_week = 0;
-	my $d = '';
-	for $d ("01" .. "31") {
-		my $wd = &get_day_of_week($year,$month,$d);
-		my $wn =  &get_week_number($year,$month,$d);
-		next if ($wn == -1);
-		$old_week = $wn;
-		my $date = $year . $month . $d;
+
+        my @currow = ('','','','','','','');
+        my $wd = 0;
+        my $wn = 0;
+	my $date = '';
+        for my $d ("01" .. "31") {
+                last if (($d == 31) && grep(/^$month$/, '04','06','09','11'));
+                last if (($d == 30) && ($month eq '02'));
+                last if (($d == 29) && ($month eq '02') && !&IsLeapYear($year));
+                $wd = &get_day_of_week($year,$month,$d);
+                $wn =  &get_week_number($year,$month,$d);
+                next if ($wn == -1);
+		$date = $year . $month . $d;
 		if ( !-d "$CONFIG{OUT_DIR}/$hostname/$year/$month/$d" ) {
-			$currow[$wd-1] = "<td>$d</td>";
-		} else {
-			my $tag = 'td';
-			$tag = 'th' if ($d eq $day);
+                        $currow[$wd] = "<td>$d</td>";
+                } else {
 			my $type = '';
 			$type = $SELCURRENT if ($d eq $day);
-			$currow[$wd-1] = "<$tag><a$type href=\"javascript:\" onclick=\"document.location.href='$ENV{SCRIPT_NAME}?host=$hostname&date=$date&domain=$domain&lang=$LANG&update='+window.frames['info'].document.forms['viewname'].elements['view'].value; return false;\">$d</a></$tag>";
+                        $currow[$wd] = "<td><a$type href=\"javascript:\" onclick=\"document.location.href='$ENV{SCRIPT_NAME}?host=$hostname&date=$date&domain=$domain&lang=$LANG&update='+window.frames['info'].document.forms['viewname'].elements['view'].value; return false;\">$d</a></td>";
+                }
+                if ($wd == 6) {
+                        my $week = sprintf("%02d", $wn);
+			if (grep(/href/, @currow)) {
+				$week = "<th><a href=\"javascript:\" onclick=\"document.location.href='$ENV{SCRIPT_NAME}?host=$hostname&date=$date&week=" . ($week - 1) . "&domain=$domain&lang=$LANG&update='+window.frames['info'].document.forms['viewname'].elements['view'].value; return false;\">$week</a></th>";
+			} else {
+				$week = "<th>$week</th>"
+			}
+                        for (my $i = 0; $i <= $#currow; $i++) {
+                                $currow[$i] = "<td>&nbsp;</td>" if ($currow[$i] eq '');
+                        }
+                        $str .= "<tr>$week" . join('', @currow) . "</tr>\n";
+                        @currow = ('','','','','','','');
+                }
+        }
+        if ( ($wd != 6) || ($currow[0] ne '') ) {
+                my $week = sprintf("%02d", $wn);
+		if (grep(/href/, @currow)) {
+			$week = "<th><a href=\"javascript:\" onclick=\"document.location.href='$ENV{SCRIPT_NAME}?host=$hostname&date=$date&week=" . ($week - 1) . "&domain=$domain&lang=$LANG&update='+window.frames['info'].document.forms['viewname'].elements['view'].value; return false;\">$week</a></th>";
+		} else {
+			$week = "<th>$week</th>"
 		}
-		if ($wd == 7) {
-			my $week = "<th>" . ($wn+1) . "</th>";
-			$week = "<th><a href=\"javascript:\" onclick=\"document.location.href='$ENV{SCRIPT_NAME}?host=$hostname&date=$date&week=$wn&domain=$domain&lang=$LANG&update='+window.frames['info'].document.forms['viewname'].elements['view'].value; return false;\">".($wn+1)."</a></th>" if (grep(/href/, @currow));
-			map { $_ = "<td>&nbsp;</td>" if ($_ eq ''); } @currow;
-			$str .= "<tr>$week" . join('', @currow) . "</tr>\n";
-			@currow = ('','','','','','','');
-		}
-	}
-	map { $_ = "<td>&nbsp;</td>" if ($_ eq ''); } @currow;
-	my $date = $year . $month . $d;
-	my $wn = &get_week_number($year,$month,28);
-	if (($wn == ($old_week + 1)) || grep(/href/, @currow)) {
-		my $week = "<th>" . ($wn+1) . "</th>";
-		$week = "<th><a href=\"javascript:\" onclick=\"document.location.href='$ENV{SCRIPT_NAME}?host=$hostname&date=$date&week=$wn&domain=$domain&lang=$LANG&update='+window.frames['info'].document.forms['viewname'].elements['view'].value; return false;\">" . ($wn+1) . "</a></th>" if (grep(/href/, @currow));
-		$str .= "<tr>$week" . join('', @currow) . "</tr>\n";
-	}
+                for (my $i = 0; $i <= $#currow; $i++) {
+                        $currow[$i] = "<td>&nbsp;</td>" if ($currow[$i] eq '');
+                }
+                $str .= "<tr>$week" . join('', @currow) . "</tr>\n";
+                @currow = ('','','','','','','');
+        }
 	$str .=  "</table>\n";
 
 	return $str;
@@ -858,8 +877,15 @@ sub get_day_of_week
 #       %u     The day of the week as a decimal, range 1 to 7, Monday being 1.
 #       %w     The day of the week as a decimal, range 0 to 6, Sunday being 0.
 
-	#my $weekDay = POSIX::strftime("%u", gmtime timelocal_nocheck(0,0,0,$day,--$month,$year));
-	my $weekDay = POSIX::strftime("%u", 1,1,1,$day,--$month,$year-1900);
+        my $weekDay = '';
+        if (!$WEEK_START_MONDAY) {
+                # Start on sunday = 0
+                $weekDay = POSIX::strftime("%w", 1,1,1,$day,--$month,$year-1900);
+        } else {
+                # Start on monday = 1
+                $weekDay = POSIX::strftime("%u", 1,1,1,$day,--$month,$year-1900);
+                $weekDay--;
+        }
 
 	return $weekDay;
 }
@@ -878,14 +904,19 @@ sub get_week_number
 #       %W     The week number of the current year as a decimal number, range 00 to 53, starting with the first
 #              Monday as the first day of week 01.
 
-	# Check if the date is valide first
-	my $datefmt = POSIX::strftime("%F", 1, 1, 1, $day, $month - 1, $year - 1900);
+	# Check if the date is valid first
+	my $datefmt = POSIX::strftime("%Y-%m-%d", 1, 1, 1, $day, $month - 1, $year - 1900);
 	if ($datefmt ne "$year-$month-$day") {
 		return -1;
 	}
-	my $weekNumber = POSIX::strftime("%W", 1, 1, 1, $day, $month - 1, $year - 1900);
+	my $weekNumber = '';
+	if (!$WEEK_START_MONDAY) {
+		$weekNumber = POSIX::strftime("%U", 1, 1, 1, $day, $month - 1, $year - 1900);
+	} else {
+		$weekNumber = POSIX::strftime("%W", 1, 1, 1, $day, $month - 1, $year - 1900);
+	}
 
-	return $weekNumber;
+	return sprintf("%02d", $weekNumber+1);
 }
 
 
@@ -6014,8 +6045,7 @@ sub grafit_hbar
 	my $hbar_graph = '';
 	foreach my $k (sort {$params{values}->{$b} <=> $params{values}->{$a}} keys %{$params{values}}) {
 		my $name = $k || '<>';
-		$params{values}->{$k} = sprintf("%.2f", $params{values}->{$k});
-		$hbar_graph .= "<tr><td class=\"hbar\" >$name</td><td class=\"hbar\">$params{values}->{$k} %</td><td style=\"text-align: left; color: grey;\">" . ("&block;" x int($params{values}->{$k})) . "</td></tr>\n";
+		$hbar_graph .= "<tr><td class=\"hbar\" >$name</td><td class=\"hbar\">" . sprintf("%.2f", $params{values}->{$k}) . " %</td><td style=\"text-align: left; color: grey;\">" . ("&block;" x int($params{values}->{$k})) . "</td></tr>\n";
 	}
 	$params{width}  ||= 400;
 	$params{height} ||= 200;
