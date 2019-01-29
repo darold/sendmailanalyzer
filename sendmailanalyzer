@@ -1413,7 +1413,7 @@ sub parse_sendmail
 		$reject =~ s/^\s+//;
 		$reject =~ s/[\s;]+$//;
 		# Test PostFix DNSBL spam scan
-		if ($reject =~ /(?:client|helo) .* (blocked using .*)/i) {
+		if ($reject =~ /(?:client|helo) (?:.*?) (blocked using [^;]+)/i) {
 			my $spamdetail = $1;
 			$SPAM{$host}{$id}{relay} = $relay;
 			$SPAM{$host}{$id}{rule} = 'reject';
