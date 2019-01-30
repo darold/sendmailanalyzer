@@ -1061,7 +1061,9 @@ sub parse_sendmail
 			if ($CONFIG{SPAM_DETAIL}) {
 				$SPAMDETAIL{$host}{$id}{date} =  $time_st;
 				$SPAMDETAIL{$host}{$id}{type} = 'amavis';
-				$SPAMDETAIL{$host}{$id}{spam} = $status;
+				if (not defined $SPAMDETAIL{$host}{$id}{spam}) {
+					$SPAMDETAIL{$host}{$id}{spam} = $status;
+				}
 			}
 			return;
 		}
@@ -1806,10 +1808,16 @@ sub parse_amavis
 			}
 			$SPAMDETAIL{$host}{$id}{type} = 'amavis';
 			$SPAMDETAIL{$host}{$id}{date} = $timest;
-			$SPAMDETAIL{$host}{$id}{spam} = $SPAM{$host}{$id}{spam};
 			if ($str =~ / Hits: ([\d\.]+)/) {
 				$SPAMDETAIL{$host}{$id}{score} = $1;
 			}
+			if ($str =~ / Tests: (.*), autolearn=([^\s]+),/) {
+				$SPAMDETAIL{$host}{$id}{spam} = $1;
+				$SPAMDETAIL{$host}{$id}{autolearn} = $2;
+			} else {
+				$SPAMDETAIL{$host}{$id}{spam} = $SPAM{$host}{$id}{spam};
+			}
+
 		}
 
 	} elsif ($str =~ /\(([^\)]+)\) (Passed|Blocked) SPAM(.*?) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*, Hits: ([^,]+), (.*)/) {
