@@ -1453,6 +1453,7 @@ sub parse_sendmail
 			$REJECT{$host}{$id}{date} =  $time_st;
 			$REJECT{$host}{$id}{arg1} = &edecode($from);
 			$REJECT{$host}{$id}{to} = $to;
+			next;
 		}
 		if (!exists $FROM{$host}{$id}{date}) {
 			$FROM{$host}{$id}{date} =  $time_st;
