@@ -1454,6 +1454,13 @@ sub parse_sendmail
 			$REJECT{$host}{$id}{arg1} = &edecode($from);
 			$REJECT{$host}{$id}{to} = $to;
 		}
+		if (!exists $FROM{$host}{$id}{date}) {
+			$FROM{$host}{$id}{date} =  $time_st;
+			$FROM{$host}{$id}{from} = &edecode($from);
+			$FROM{$host}{$id}{size} = 0;
+			$FROM{$host}{$id}{nrcpts} = 1;
+			$FROM{$host}{$id}{relay} = $relay;
+		}
 
 	# POSTFIX spampd reject
 	} elsif ($str =~ m#^([^:\s]+): reject: header X-Spam-Flag: YES from ([^;]+); from=<([^>]*)> to=<([^>]+)> [^:]+: (.*)#) {
