@@ -1770,7 +1770,7 @@ sub parse_amavis
 			$SPAMDETAIL{$host}{$id}{spam} = $SPAM{$host}{$id}{spam};
 		}
 
-	} elsif ($str =~ /\(([^\)]+)\) (Passed|Blocked) SPAM(.*?) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*,(.*) Message-ID: [<]*([^,>]+)[>]*, (.*)/) {
+	} elsif ($str =~ /\(([^\)]+)\) (Passed|Blocked) SPAM(.*?) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*, (Queue-ID: .*?), (.*)/) {
 
 		my $pid = $1;
 		my $status = $2;
@@ -1779,7 +1779,7 @@ sub parse_amavis
 		my $queueid = $6;
 		my $sender = &edecode($4);
 		my $to = &edecode($5);
-		my $other = $8;
+		my $other = $7;
 		if ($queueid =~ /Queue-ID: ([^,]+)/) {
 			$id = $1;
 		} elsif ($other =~ /queued_as: ([^,]+)/) {
