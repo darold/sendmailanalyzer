@@ -1777,17 +1777,10 @@ sub parse_amavis
 		my $status = $2;
 		my $relay = lc($3);
 		my $queueid = $6;
+		$id = $queueid;
 		my $sender = &edecode($4);
 		my $to = &edecode($5);
 		my $other = $7;
-		if ($queueid =~ /Queue-ID: ([^,]+)/) {
-			$id = $1;
-		} elsif ($other =~ /queued_as: ([^,]+)/) {
-			$id = $1;
-		} elsif ($str =~ /mail_id: ([^,]+)/) {
-			# Quarantine id
-			$id = $1;
-		}
 		$SPAM{$host}{$id}{from} = $sender;
 		push(@{$SPAM{$host}{$id}{to}}, $to);
 		$SPAM{$host}{$id}{spam} = "Amavis $status Spam";
