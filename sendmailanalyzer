@@ -1771,24 +1771,16 @@ sub parse_amavis
 			$SPAMDETAIL{$host}{$id}{spam} = $SPAM{$host}{$id}{spam};
 		}
 
-	} elsif ($str =~ /\(([^\)]+)\) (Passed|Blocked) SPAM(.*?) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*,(.*) Message-ID: [<]*([^,>]+)[>]*, (.*)/) {
+	} elsif ($str =~ /\(([^\)]+)\) (Passed|Blocked) SPAM(.*?) [<]*([^\s>]*)[>]* -> [<]*([^,>]*)[>]*, Queue-ID: (.*?), (.*)/) {
 
 		my $pid = $1;
 		my $status = $2;
 		my $relay = lc($3);
-		$id = $7;
 		my $queueid = $6;
+		$id = $queueid;
 		my $sender = &edecode($4);
 		my $to = &edecode($5);
-		my $other = $8;
-		if ($queueid =~ /Queue-ID: ([^,]+)/) {
-			$id = $1;
-		} elsif ($other =~ /queued_as: ([^,]+)/) {
-			$id = $1;
-		} elsif ($str =~ /mail_id: ([^,]+)/) {
-			# Quarantine id
-			$id = $1;
-		}
+		my $other = $7;
 		$SPAM{$host}{$id}{from} = $sender;
 		push(@{$SPAM{$host}{$id}{to}}, $to);
 		$SPAM{$host}{$id}{spam} = "Amavis $status Spam";
