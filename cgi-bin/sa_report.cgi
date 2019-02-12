@@ -619,7 +619,6 @@ sub sa_footer
 	my $q = shift;
 
 	print qq{
-</FORM>	
 <pre>
 Powered by <a href="http://sendmailanalyzer.darold.net/" target="_blank">$SOFTWARE v$VERSION</a> (GPLv3)
 $TRANSLATE{'Acknowledgement'}
@@ -1724,7 +1723,9 @@ sub get_spam_stat
 {
 	my ($hostname, $year, $month, $day, $mon, $mday, $hour) = @_;
 
-	my $file = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day/spam.dat";
+	my $path = "$CONFIG{OUT_DIR}/$hostname/$year/$month/$day";
+
+	my $file = "$path/spam.dat";
 	open(IN, $file) || return;
 	while (my $l = <IN>) { 
 		chomp($l);
@@ -5280,6 +5281,7 @@ sub get_spam_detail
 		}
 		close(IN);
 	}
+
 	$file = "$path/senders.dat";
 	if (open(IN, $file)) {
 		my $i = 0;
@@ -5290,7 +5292,6 @@ sub get_spam_detail
 			$data[0] =~ /^(\d{2})/;
 			next if (($hour ne '') && ($1 != $hour));
 			next if (!exists $local_stat{$data[1]});
-			next if ($1 ne $hour);
 			if ($#data > 6) {
 				@data = $l =~ m/^([^:]+):([^:]+):([^:]+):([^:]+):([^:]+):([a-zA-Z0-9\-\.]+|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\d{1,3}\.\d{1,3}\.\d{1,3}\(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\)|[0-9a-fA-F:\(\)]+)?:([^:]+)$/;
 			}
