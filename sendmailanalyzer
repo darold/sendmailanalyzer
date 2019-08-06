@@ -37,6 +37,8 @@ $SIG{'CHLD'} = 'DEFAULT';
 $PROGRAM = $0;
 push(@ARGS, @ARGV);
 
+my $LINE_DEBUG = 0;
+
 # Month translation
 my %MONTH_TO_NUM = (
 	'Jan' => '01',
@@ -642,6 +644,17 @@ sub parse_exim
 	}
 }
 
+sub debug_rule
+{
+	my $id = shift;
+	my $str = shift;
+
+	if ($LINE_DEBUG) {
+		my ($package, $filename, $line) = caller;
+		print STDERR "DEBUG_RULE: line: $line => id=$id, line: $str\n";
+	}
+}
+
 ####
 # Parse Sendmail syslog output
 ####
@@ -665,6 +678,7 @@ sub parse_sendmail
 
 	# Parse MTA system error
 	if ($str =~ m#^([^:\s]+): SYSERR[^:]+: (.*)# ) {
+		#debug_rule($1);
 		$SYSERR{$host}{$1}{date} =  $time_st;
 		$SYSERR{$host}{$1}{message} = &clear_status($2);
 	# Skip message related to MCI caching module
@@ -717,10 +731,12 @@ sub parse_sendmail
 		$SYSERR{$host}{"$date$time"}{message} = $1;
 	# Sendmail Milter change subject
 	} elsif ($str =~ m#^([^:\s]+): Milter change: header Subject: from (.*?) to (.*)$#) {
+		#debug_rule($1);
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		$FROM{$host}{$id}{subject} = &decode_subject($2);
 	# Postfix subject information
 	} elsif ($str =~ m#^([^:\s]+): (warning|info): header Subject: (.*?) from ([^;]+);#) {
+		#debug_rule($1);
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		$FROM{$host}{$id}{subject} = &decode_subject($3);
 	} elsif ($str =~ m#^warning: .*#) {
@@ -728,6 +744,7 @@ sub parse_sendmail
 		$SYSERR{$host}{"$date$time"}{message} = &clear_status($str);
 	# POSTFIX spampd pass
 	} elsif ($str =~ m#identified spam (<[^>]+>) \(([^\)]+)\) from ([^\s]+) for ([^\s]+) .* (\d+) bytes.#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $rule = 'spampd';
 		my $from = &edecode($3);
@@ -752,6 +769,7 @@ sub parse_sendmail
 
 	# POSTFIX spampd pass
 	} elsif ($str =~ m#identified spam \(([^\)]+)\) \(([^\)]+)\) from ([^\s]+) for ([^\s]+) .* (\d+) bytes.#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $rule = 'spampd';
 		my $from = &edecode($3);
@@ -771,6 +789,7 @@ sub parse_sendmail
 		return;
 	# POSTFIX remove message id
 	} elsif ($str =~ m#^([^:\s]+): removed$#) {
+		#debug_rule($1);
 		my $id = $1;
 		foreach (keys %MSGID) {
 			delete $MSGID{$_} if ($MSGID{$_}{id} eq $id);
@@ -780,23 +799,40 @@ sub parse_sendmail
 		return;
 	# Sendmail subject information
 	} elsif ($str =~ m#^([^:\s]+): Subject:(.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		$FROM{$host}{$id}{subject} =  &decode_subject($2);
 	# Parse protocole error
 	} elsif ($str =~ m#^([^:\s]+): ([^:\s]+): (.*protocol error:.*)#) {
+		#debug_rule($1);
 		$SYSERR{$host}{$1}{date} =  $time_st;
 		$SYSERR{$host}{$1}{message} = $3;
 	# Parse virus found by clamav-milter
 	} elsif ($str =~ m#^([^:\s]+): Milter add: header: X-Virus-Status: Infected with (.*)#) {
+		#debug_rule($1);
 		$VIRUS{$host}{$1}{virus} = $2;
 		$VIRUS{$host}{$1}{file} = 'Inline';
 		$VIRUS{$host}{$1}{date} =  $time_st;
 	} elsif ($str =~ m#^([^:\s]+): Milter [^:]+: header: X-Virus-Status: Infected \((.*)\)#) {
+		#debug_rule($1);
 		$VIRUS{$host}{$1}{virus} = $2;
 		$VIRUS{$host}{$1}{file} = 'Inline';
 		$VIRUS{$host}{$1}{date} =  $time_st;
-	# Parse spam found by spamd-milter
+	# Parse Spam found by ESET
+	} elsif ($str =~ m#^([^:\s]+): Milter change \([^\)]+\): header: X-Eset-AntiSpam: SPAM#) {
+		#debug_rule($1);
+		$SPAM{$host}{$1}{spam} = 'eset';
+		$SPAM{$host}{$1}{date} =  $time_st;
+		$SPAM{$host}{$1}{from} =  $FROM{$host}{$1}{sender} if (exists $FROM{$host}{$1}{sender});
+		$SPAM{$host}{$1}{relay} =  $FROM{$host}{$1}{relay} if (exists $FROM{$host}{$1}{relay});
+	# Parse Virus found by ESET
+	} elsif ($str =~ m#^([^:\s]+): Milter: data, reject=.* Rejected by ESETS_SMFI \((.*)\)#) {
+		#debug_rule($1);
+		$VIRUS{$host}{$1}{virus} = 'Eset, '.$2;
+		$VIRUS{$host}{$1}{file} = 'Inline';
+		$VIRUS{$host}{$1}{date} =  $time_st;
 	} elsif ($str =~ m#^([^:\s]+): Milter (add|change): header: X-Spam-Status: Yes, score=([^\s]+) required=([^\s]+) tests=([^\s]+)#) {
+		#debug_rule($1);
 		my $id = $1;
 		$SPAM{$host}{$id}{spam} = 'spamdmilter';
 		$SPAM{$host}{$id}{date} =  $time_st;
@@ -852,6 +888,7 @@ sub parse_sendmail
 		}
 	# Parse spam found by dnsbl-milter
 	} elsif ($str =~ m#^([^:\s]+): Milter: from=([^,]+), reject=(.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $spam = $3;
 		$spam =~ s/ See .*//;
@@ -866,6 +903,7 @@ sub parse_sendmail
 		}
 	# Parse spam found by jchkmail
 	} elsif ($str =~ m#^([^:\s]+): Milter (add|change): header: X-j-chkmail-Status: (Spam|Unsure)(.*)#) {
+		#debug_rule($1);
 		$SPAM{$host}{$1}{spam} = 'jchkmail';
 		$SPAM{$host}{$1}{date} =  $time_st;
 		if ($CONFIG{SPAM_DETAIL}) {
@@ -874,23 +912,29 @@ sub parse_sendmail
 			$SPAMDETAIL{$host}{$1}{date} =  $time_st;
 		}
 	} elsif ($str =~ m#^([^:\s]+): Milter (add|change): header: X-j-chkmail-Score: .*> S=(.*)#) {
+		#debug_rule($1);
 		if ($CONFIG{SPAM_DETAIL}) {
 			$SPAMDETAIL{$host}{$1}{type} = 'jchkmail';
 			$SPAMDETAIL{$host}{$1}{score} = $3;
 		}
 	} elsif ($str =~ m#^([^:\s]+): Milter (delete|add|change): #) {
+		#debug_rule($1);
 		# Skip other milter header modication notice
 		return;
 	} elsif ($str =~ m#^([^:\s]+): Milter insert \(\d+\): #) {
+		#debug_rule($1);
 		# Skip other milter header insertion notice
 		return;
 	} elsif ($str =~ m#^([^:\s]+): Milter: connect: .*, ([^,]*)#) {
+		#debug_rule($1);
 		$SYSERR{$host}{$1}{date} =  $time_st;
 		$SYSERR{$host}{$1}{message} = &clear_status($2);
 	} elsif ($str =~ m#^([^:\s]+): Milter (delete|add|change) #) {
+		#debug_rule($1);
 		# Skip other milter modication notice
 		return;
 	} elsif ($str =~ m#^([^:\s]+): Milter: data, reject=(.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $status = $2;
 		if ($status =~ /Blocked by SpamAssassin/) {
@@ -900,14 +944,17 @@ sub parse_sendmail
 		} elsif ($status =~ /550 5\.7\.0 (.*) id=/) {
 			$SPAM{$host}{$id}{spam} = "eXpurGate $1"
 		} elsif ($status =~ /554 5\.7\.1 Command rejected/) {
-			return # Already handle at Clamav virus report
+			return; # Already handle at Clamav virus report
 		} elsif ($status =~ /Please try again later/) {
 			return; # Skip greylist rejection
+		} elsif ($status =~ /Rejected by ESETS/) {
+			return; # handled above
 		} else {
 			$SPAM{$host}{$id}{spam} = $status;
 		}
 	# Local failure
 	} elsif ($str =~ m#^([^:\s]+): <([^>]+)>\.\.\. (.*)#) {
+		#debug_rule($1);
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $to = $2;
 		my $status = &clear_status($3);
@@ -920,6 +967,7 @@ sub parse_sendmail
 		push(@{$TO{$host}{$id}{status}}, $status);
 	# POSTFIX queue From clause
 	} elsif ($str =~ m#^([^:\s]+): from=([^,]*), size=(\d+), nrcpt=(\d+).*#) {
+		#debug_rule($1);
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $from = lc($2);
 		$from ||= 'empty';
@@ -931,7 +979,6 @@ sub parse_sendmail
 		$FROM{$host}{$id}{nrcpts} = $nrcpts;
 		if (exists $SPAMPD{$host}{$from}) {
 			foreach my $to (keys %{$SPAMPD{$host}{$from}}) {
-
 				$SPAM{$host}{$id}{relay} = $FROM{$host}{$id}{relay};
 				$SPAM{$host}{$id}{rule} = $SPAMPD{$host}{$from}{$to}{rule};
 				$SPAM{$host}{$id}{spam} = $SPAMPD{$host}{$from}{$to}{spam};
@@ -942,6 +989,7 @@ sub parse_sendmail
 		}
 	# Catch POSTFIX SASL AUTH method
 	} elsif ($str =~ m#^([^:\s]+): client=([^,]+), sasl_method=([^,]+), sasl_username=(.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $authid = $4;
 		my $relay = &clean_relay(lc($2));
@@ -953,6 +1001,7 @@ sub parse_sendmail
 		$FROM{$host}{$id}{relay} = $relay;
 	# POSTFIX client origin and relay
 	} elsif ($str =~ m#^([^:\s]+): client=([^,]*)#) {
+		#debug_rule($1);
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $relay = &clean_relay(lc($2));
 
@@ -974,6 +1023,7 @@ sub parse_sendmail
 		}
 	# POSTFIX message id
 	} elsif ($str =~ m#^([^:\s]+): message-id=([^,]*)#) {
+		#debug_rule($1);
 		next if ($1 eq '<>');
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $msgid = $2;
@@ -986,10 +1036,12 @@ sub parse_sendmail
 		return;
 	# POSTFIX local relay
 	} elsif ($str =~ m#^([^:\s]+): uid=\d+ from=#) {
+		#debug_rule($1);
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		$FROM{$host}{$id}{relay} = 'localhost';
 	# From clause
 	} elsif ($str =~ m#^([^:\s]+): from=([^,]*), size=(\d+),.*, nrcpts=(\d+), msgid=([^,]+),.*relay=([^,]+)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $from = lc($2);
 		$from ||= 'empty';
@@ -1006,6 +1058,7 @@ sub parse_sendmail
 		$FROM{$host}{$id}{relay} = $relay;
 
 	} elsif ($str =~ m#^([^:\s]+): from=([^,]*), size=(\d+),.*, nrcpts=(\d+),.*relay=([^,]+)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $from = lc($2);
 		$from ||= 'empty';
@@ -1027,6 +1080,7 @@ sub parse_sendmail
 
 	# Postfix cleanup entry
 	} elsif ($str =~ m#^([^:\s]+): hold: header Received: from ([^\)]*)\).* from=<([^>]+)> to=<([^>]+)>#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $from = lc($3);
 		$from ||= 'empty';
@@ -1042,6 +1096,7 @@ sub parse_sendmail
 
 	# POSTFIX To clause 
 	} elsif ($str =~ m#^([^:\s]+): to=([^,]+), relay=([^,]+),.*status=(.*)#) {
+		#debug_rule($1);
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $to = &edecode($2);
 		my $relay = &clean_relay(lc($3));
@@ -1108,6 +1163,7 @@ sub parse_sendmail
 
 	# POSTFIX To clause with origine
 	} elsif ($str =~ m#^([^:\s]+): to=([^,]+), orig_to=([^,]*), relay=([^,]+),.*status=(.*)#) {
+		#debug_rule($1);
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $to = &edecode($2);
 		my $relay = &clean_relay(lc($4));
@@ -1129,6 +1185,7 @@ sub parse_sendmail
 		}
 	# To clause queued
 	} elsif ($str =~ m#^([^:\s]+): to=(.*), delay=.* stat=queued#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $to = &edecode($2);
 		return if ($CONFIG{EXCLUDE_TO} && ($to =~ /^$CONFIG{EXCLUDE_TO}$/));
@@ -1136,6 +1193,7 @@ sub parse_sendmail
 		push(@{$TO{$host}{$id}{queue_to}}, $to);
 	# To clause generated by a mailing list
 	} elsif ($str =~ m#^([^:\s]+): to=(.*), ctladdr=([^\s]+).*, mailer=prog,.*stat=(.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $prog = lc($2);
 		my $ctladdr = &edecode($3);
@@ -1151,6 +1209,7 @@ sub parse_sendmail
 		push(@{$TO{$host}{$id}{to}}, $ctladdr);
 		push(@{$TO{$host}{$id}{status}}, $status);
 	} elsif ($str =~ m#^([^:\s]+): to=(.*), ctladdr=([^\s]+).*, mailer=\*file\*,.*, stat=(.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $prog = lc($2);
 		my $ctladdr = &edecode($3);
@@ -1163,6 +1222,7 @@ sub parse_sendmail
 		push(@{$TO{$host}{$id}{to}}, $ctladdr);
 		push(@{$TO{$host}{$id}{status}}, $status);
 	} elsif ($str =~ m#^([^:\s]+): to=(.*), ctladdr=([^\s]+).*, mailer=local, .*, stat=(.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $to = &edecode($2);
 		my $ctladdr = &edecode($3);
@@ -1181,6 +1241,7 @@ sub parse_sendmail
 
 	# To clause generated by a redirection
 	} elsif ($str =~ m#^([^:\s]+): to=(.*), ctladdr=([^\s]+).*, mailer=.*, relay=([^,]+),.*stat=(.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $to = &edecode($2);
 		my $ctladdr = &edecode($3);
@@ -1202,6 +1263,7 @@ sub parse_sendmail
 		}
 	# To close of intercepted virus by clamav-milter
 	} elsif ($str =~ m#^([^:\s]+): to=(.*), delay=.*, stat=(virus .*) detected by#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $to = $2;
 		my $status = &clear_status($3);
@@ -1217,6 +1279,7 @@ sub parse_sendmail
 		}
 	# To clause with local distribution
 	} elsif ($str =~ m#^([^:\s]+): to=(.*), delay=.*, mailer=local,.*, stat=(.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $to = $2;
 		my $status = &clear_status($3);
@@ -1233,6 +1296,7 @@ sub parse_sendmail
 		}
 	# To clause
 	} elsif ($str =~ m#^([^:\s]+): to=(.*), delay=.*, relay=([^,]+),.*stat=(.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $to = $2;
 		my $relay = &clean_relay(lc($3));
@@ -1253,6 +1317,7 @@ sub parse_sendmail
 		}
 	# To clause with no delivery. Most of the time follow a reject.
 	} elsif ($str =~ m#^([^:\s]+): to=(.*), delay=.*, pri=([^,]+), stat=(.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $to = $2;
 		my $status = &clear_status($4);
@@ -1270,6 +1335,7 @@ sub parse_sendmail
 
 	# Ruleset reject clause
 	} elsif ($str =~ m#^([^:\s]+): ruleset=([^,]+), arg1=([^,]+), relay=([^,]+),.*reject=(.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $rule = $2;
 		my $arg1 = $3;
@@ -1301,6 +1367,7 @@ sub parse_sendmail
 
 	# Ruleset reject clause
 	} elsif ($str =~ m#^ruleset=([^,]+), arg1=([^,]+),.* relay=([^,]+),.*reject=(.*)#) {
+		#debug_rule($1);
 		my $rule = $1;
 		my $arg1 = &clean_relay(lc($2));
 		my $relay = &clean_relay(lc($3));
@@ -1331,6 +1398,7 @@ sub parse_sendmail
 
 	# Add support to milter recipient rejection report
 	} elsif ($str =~ m#^([^:\s]+): Milter: to=(.*), reject=(\d+ \d+\.\d+\.\d+\s+.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $status = $3;
 		my $to = &edecode($2);
@@ -1348,6 +1416,7 @@ sub parse_sendmail
 		$REJECT{$host}{$id}{date} =  $time_st;
 	# Add support to milter sender rejection
 	} elsif ($str =~ m#^([^:\s]+): Milter: from=(.*), reject=(\d+ \d+\.\d+\.\d+\s+.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $arg1 = $2;
 		my $reject = $3;
@@ -1364,6 +1433,7 @@ sub parse_sendmail
 
 	# Parse virus quarantined by clamav-milter
 	} elsif ($str =~ m#^([^:\s]+): milter=clamav-milter, quarantine=quarantined by clamav-milter#) {
+		#debug_rule($1);
 		if (!exists $VIRUS{$host}{$1}{virus}) {
 			$VIRUS{$host}{$1}{virus} = 'Quarantined by clamav-milter';
 			$VIRUS{$host}{$1}{file} = 'Inline';
@@ -1374,6 +1444,7 @@ sub parse_sendmail
 
 	# Try to find milter rejection rule (other fields will be overriden by the condition above)
 	} elsif ($str =~ m#^([^:\s]+): milter=([^,]+), action=([^,]+), reject=(\d+ \d+\.\d+\.\d+\s+.*)#) {
+		#debug_rule($1);
 		my $id = $1;
 		my $reject = $4;
 		$REJECT{$host}{$id}{rule} = $2;
@@ -1387,6 +1458,7 @@ sub parse_sendmail
 
 	# Store DSN id mapping
 	} elsif ($str =~ m#^([^:\s]+): ([^:\s]+): (DSN|return to sender|sender notify|postmaster notify): (.*)# ) {
+		#debug_rule($1);
 		my $previd = $1;
 		my $id = $2;
 		my $type = $3;
@@ -1403,6 +1475,7 @@ sub parse_sendmail
 		$FROM{$host}{$id}{relay} = 'localhost';
 	# POSTFIX reject messages
 	} elsif ($str =~ m#^([^:\s]+): reject: RCPT from ([^\s]+) (.*) from=<([^>]*)>[,]* to=<([^>]+)>#) {
+		#debug_rule($1);
 		my $reject = $3;
 		my $from = $4;
 		my $to = $5;
@@ -1465,6 +1538,7 @@ sub parse_sendmail
 
 	# POSTFIX spampd reject
 	} elsif ($str =~ m#^([^:\s]+): reject: header X-Spam-Flag: YES from ([^;]+); from=<([^>]*)> to=<([^>]+)> [^:]+: (.*)#) {
+		#debug_rule($1);
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $relay = &clean_relay(lc($2));
 		my $rule = 'spampd';
@@ -1493,6 +1567,7 @@ sub parse_sendmail
 
 	# POSTFIX milter reject message
 	} elsif ($str =~ m#^([^:\s]+): milter-reject: END-OF-MESSAGE from ([^\s]+) ([^;]+); from=<([^>]*)>[,]* to=<([^>]+)>#) {
+		#debug_rule($1);
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $relay = &clean_relay(lc($2));
 		my $rule = 'milter-reject';
@@ -1559,6 +1634,7 @@ sub parse_sendmail
 		}
 	# POSTFIX some error messages
 	} elsif ($str =~ m#^([^:\s]+): ([^=]+)\.\.\. (.*)#) {
+		#debug_rule($1);
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $to = $2;
 		my $status = &clear_status($3);
@@ -1573,7 +1649,8 @@ sub parse_sendmail
 		my $err = $2 || '';
 		return if (length($id) != 14); # Skip debug lines
 		return if ($err =~ /clone|owner/); # Skip mailling list clone
-		return if ($err =~ /^(addr|Milter) /); # Skeep milter information
+		return if ($err =~ /^(?:addr|Milter) /); # Skeep milter information
+		#debug_rule($1, $str);
 		# Do not store if we already have it
 		return if (exists $SYSERR{$host}{$id} || exists $SPAM{$host}{$id} || exists $REJECT{$host}{$id} || exists $TO{$host}{$id}{status});
 		my $status = &clear_status($err);
@@ -1582,6 +1659,7 @@ sub parse_sendmail
 		$SYSERR{$host}{$id}{message} = &clear_status($status);
 	# Catch SMTP AUTH
 	} elsif ($str =~ m#AUTH=([^,]+), relay=([^,]+), authid=([^,]+), mech=([^,]+), bits=#) {
+		#debug_rule($3);
 		my $authid = $3;
 		push(@{$AUTH{$host}{$authid}{type}}, $1);
 		push(@{$AUTH{$host}{$authid}{mech}}, $4);
@@ -2172,11 +2250,13 @@ sub parse_spamd
 			# Some message id can be truncated in from log and full in spamd message
 			if ($SPAM{$host}{$id}{mid} =~ /^\Q$FROM{$host}{$mid}{msgid}\E/) {
 				$SPAM{$host}{$mid}{from} = $FROM{$host}{$mid}{sender};
-				$SPAM{$host}{$mid}{spam} = $SPAM{$host}{$id}{spam};
-				$SPAM{$host}{$mid}{date} = $SPAM{$host}{$id}{date};
-				$SPAM{$host}{$mid}{mid}  = $SPAM{$host}{$id}{mid};
-				$FROM{$host}{$mid}{msgid} = $SPAM{$host}{$id}{mid};
-				delete $SPAM{$host}{$id};
+				if (exists $SPAM{$host}{$id}) {
+					$SPAM{$host}{$mid}{spam} = $SPAM{$host}{$id}{spam};
+					$SPAM{$host}{$mid}{date} = $SPAM{$host}{$id}{date};
+					$SPAM{$host}{$mid}{mid}  = $SPAM{$host}{$id}{mid};
+					$FROM{$host}{$mid}{msgid} = $SPAM{$host}{$id}{mid};
+					delete $SPAM{$host}{$id};
+				}
 				if ($CONFIG{SPAM_DETAIL}) {
 					$SPAMDETAIL{$host}{$mid}{type} = 'spamdmilter';
 					$SPAMDETAIL{$host}{$mid}{score} = $SPAMDETAIL{$host}{$id}{score};
