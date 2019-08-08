@@ -1,3 +1,174 @@
+2019-08-08 Version 9.3
+
+This release fixes some bugs reported since last release and adds several
+additional milters and useful features.
+
+New features:
+
+  - Add support to Eset Mail Security reporting Virus and Spam detection.
+  - Add report of sender relay for RBL Check detailed report.
+  - parse amavisd-new spam detail and autolearn
+  - Add support to MimeDefang filter_check_header that discard message
+    following mail header score.
+  - Add report of all recipients addresses for spam with multiple recipients
+    as when messages are discarded they all have the same ID. This was
+    resulting in the right count of senders but wrong count of recipients.
+    Note that in this case the spam received counter is still related to
+    senders count as they are not sent. Thanks to Hans Mayer for the report.
+  - Add parsing of SPF/DKIM log entries.
+  - Added database lookup of virtual domains, so sendmailanalyzer is not
+    limited to the LOCAL_DOMAIN configuration directive. This is useful
+    for mail servers which have virtual users and domains in their database
+    and therefor no static configuration.
+  - Change pie graph to bar graph for top senders and recipient.
+  - Allow file path as value for LOCAL_DOMAIN configuration directive.
+   
+New configuration directives:
+
+  - Add new configuration directive RELAY_IP_ONLY to only store recipient or
+    sender relay as Ip addresses. Actually when possible sendmailanalyzer
+    extract the fqdn part of the relay not the Ip address. Enable this
+    directive if you just want Ip addresses.
+  - Add three new configuration directives to the sendmailanalyzer configuration
+    file:
+    
+      - VIRTUAL_DOMAIN_DB   DBI:mysql:database=mailserver:host=localhost
+    
+    Leave this unconfigured if you don't have virtual domains in a database
+    set up or set the value to a valid Perl DBI DSN (data source name). Here
+    this is a connection to a MySQL database so it require that Perl module
+    DBI and DBD::MySQL are installed on your system.
+    
+      - VIRTUAL_DOMAIN_DB_USER and VIRTUAL_DOMAIN_DB_PASS
+    
+    The user and password to use to connect to the database.
+    
+      - VIRTUAL_DOMAIN_DB_QUERY     SELECT name FROM virtual_domains
+    
+    The SQL query to use to retrieve the list of virtual domain that will
+    be appended to the LOCAL_DOMAIN array. See LOCAL_DOMAIN for more
+    information.
+  - Add EXCLUDE_LINE configuration directive to exclude all lines matching a
+    regexp from being parsed. Character # in the regex need to be escaped with
+    a backslash. Use it to prevent unwanted line to be reported in Rejection reports.
+  - Add NO_HOST_DOMAIN configuration directive. When activated, remove domain part
+    of the syslog hostname. Some programme use FQDN instead of the single hostname.
+    Set it to 1 if you have two report for the same hostname but one with the domain
+    part.
+  - On some MTA, message delivery is done outside and only queuing is logged,
+    this mean that messages are counted as incoming but not delivered. Enable
+    new directive NO_QUEUE_EXCLUSION to force sendmailanalyzer to take them
+    as sent.
+
+Complete list of change and credits:
+
+  -  Add support to Eset Mail Security reporting Virus and Spam detection.
+    Thanks to Peter Mares for the feature request.
+  - Fix bug on extracting subject starting with Fwd: or Re:
+  - Remove code for parsing ipv6 addresses in data files, it should be no
+    more used as character : is replaced by _ in ipv6 address at storage
+    time.
+  - Fix Top Spam statistic when click to open detail sender relay was not
+    shown. Thanks to biji for the report.
+  - Fix for postfix amavis log that contains no Message-ID. Thanks to biji
+    for the patch.
+  - Add report of sender relay for RBL Check detailed report. Thanks to
+    biji for the patch.
+  - Parse amavisd-new spam detail and autolearn. Thanks to biji for the
+    patch.
+  - Fix parsing of barracudacentral.org rbl. Thanks to biji for the patch.
+  - Fix calendar that was not displaying last week. Thanks to Pete Sherwin
+    Villanueva for the report.
+  - Fix percent values of hbar graphs
+  - Add new configuration directive RELAY_IP_ONLY to only store recipient or
+    sender relay as Ip addresses. Actually when possible sendmailanalyzer
+    extract the fqdn part of the relay not the Ip address. Enable this
+    directive if you just want Ip addresses.
+  - Add support to MimeDefang filter_check_header that discard message
+    following mail header score. Thanks to Hans Mayer,for the report.
+  - Add report of all recipients addresses for spam with multiple recipients
+    as when messages are discarded they all have the same ID. This was
+    resulting in the right count of senders but wrong count of recipients.
+    Note that in this case the spam received counter is still related to
+    senders count as they are not sent. Thanks to Hans Mayer for the report.
+  - Update README using: pod2text doc/sendmailanalyzer README.
+  - Fix documentation about systemd start script. Thanks to Kenneth Fribert
+    for the report.
+  - Add parsing of SPF/DKIM log entries. Thanks to r-sherwood for the feature
+    request.
+  - Added database lookup of virtual domains, so sendmailanalyzer is not
+    limited to the LOCAL_DOMAIN configuration directive. Thanks to
+    thinksilicon for the patch.
+  - Change pie graph to bar graph for top senders and recipient. Thanks to
+    Jonathan Baker-Bates for the feature request.
+  - Fix ipv6 placeholder in top reports and csv export.
+  - Fix code to handle the exceptional case where a new log has the same size
+    of the old one.
+  - Fix top postgrey week caching.
+  - Fix new log file with the exact same size than the previous one that was
+    not parsed.
+  - Change clean_relay() function to handle ipv6 addresses.
+  - Fix relay cleaning on postgrey logs.
+  - Fix postfix parsing of spam reject.
+  - Fix make clean to remove autogenerated man files.
+  - Update copyright year.
+  - Change default HTML charset to utf-8 instead of iso-8859-1. Thanks to
+    Philippe Schlumpf for the report.
+  - Add translation for delivery flow with new Unknow direction.
+  - Improve set_direction() function.
+  - Try to automatically skip verbose mode in postfix that pollute the log
+    and generate lot of wrong SysErr. Thanks to Kenneth Fribert for the report.
+  - Allow file path as value for LOCAL_DOMAIN configuration directive.
+    The file must contain the list of domain name that must be checked
+    against the sender/recipient relays, one perl line. Thanks to Steffan
+    Noord for the feature request.
+  - Fix case where a message was stored as not delivered, now a message that
+    is not queued on localhost is considered as delivered. Thanks to enekux
+    for the report.
+  - Fix delivery direction when only LOCAL_DOMAIN was set. Thanks to enekux
+    for the report.
+  - Fix direction in cache, changes from sendmailanalyzer was not reported
+    into set_direction() function.
+  - Fix duplicate of recipient entries in detailed view when the message sent
+    was also been registered as spam. Thanks to Paul Cantle for the report.
+  - Fix wrong report of DNSBL Spam blocked that was including all 550 5.7.1
+    messages even those not related to RBL. It now attempts to find keywords
+    "see" or "listed" in the rejection status.
+  - Fix missing translation and empty links in main menu, Perl since 5.26 does
+    not include current directory . into the @INC array. Thanks to Enrico Morelli
+    for the report.
+  - Update Apache configuration information and set default to 2.4 configuration.
+  - Fix spec file on lang files. Thanks to Steve Jones for the patch.
+  - Fix storage of sender relay for postfix MTA. Thanks to Stephe Jones for the
+    report.
+  - Add condrestart to start script. Thanks to Steve Jones for the patch.
+  - Add information about rebuilding report.
+  - Fix unparsed line of MailScanner+Clamd. Thanks to Johan Glenac for the report.
+  - Apply patch to exclude line that match a regex in the real time parsing.
+  - On some MTA, message delivery is done outside and only queuing is logged,
+    this mean that messages are counted as incoming but not delivered. Enable
+    new directive NO_QUEUE_EXCLUSION to force sendmailanalyzer to take them
+    as sent. Thanks to Cedric Saunier for the report.
+  - Allow policyd-weight "Policy action=DUNNO" to be parsed like "decided action=DUNNO".
+  - Fix start script to kill all pids of the GPID to stop sendmailanalyzer
+    processes. Thanks to sirydog81 for the report.
+  - Fix regexp in AMAVIS_NAME to detect amavis log lines. Thanks to enekux for
+    the report.
+  - Fix a possible non detected amavis log line.
+  - Update Spanish translation to proper es_ES, using UTF-8 charset.
+  - Fix parsing of amavis virus detection. Thanks to Jean-Francois Legendre
+    for the report.
+  - Rename and update spanish locale to es_ES, not sp_SP which does not exist.
+    Thanks to Jesus Guardon for the report.
+  - Add start script for gentoo. Thanks to Edoardo Liverani for the file.
+  - Fix bug that prevent sendmailanalyzer to follow the systemd journal in
+    background. Thanks to James xuxd for the report.
+  - Change path to PID file from /tmp to /var/run. Thanks to James xuxd for the
+    report.
+  - Fix postfix log entry with to=+orig_to= that was not storing the date and in
+    consequences was not added to data file. Thanks to kpal38 for the report.
+  - Fix SPF rejection. Thanks to Erik for the report.
+
 2016-01-17 Version 9.2
 
 This release fixes some bugs reported since last release and adds several
