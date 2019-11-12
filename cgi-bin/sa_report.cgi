@@ -1526,6 +1526,8 @@ sub get_rejected_stat
 				$STATS{$data[1]}{sender_relay} = $data[4];
 			} elsif ($data[2] eq 'check_rcpt') {
 				push(@{$STATS{$data[1]}{chck_rcpt}}, $data[4]);
+			} elsif ($data[5] eq 'postscreen reject') {
+				$data[5] .= " (score: $data[4])";
 			} else {
 				# $data[2] eq 'check_mail' or POSTFIX
 				$STATS{$data[1]}{sender} = $data[4];
@@ -5113,6 +5115,8 @@ sub get_reject_detail
 					$local_stat{$data[1]}{sender_relay} = $data[4];
 				} elsif ($data[2] eq 'check_rcpt') {
 					push(@{$local_stat{$data[1]}{chck_rcpt}}, $data[4]);
+				} elsif ($data[5] eq 'postscreen reject' && $data[4] ne '') {
+					$data[5] .= " (score: $data[4])";
 				} else {
 					# $data[2] eq 'check_mail' or POSTFIX
 					$local_stat{$data[1]}{sender} = $data[4];

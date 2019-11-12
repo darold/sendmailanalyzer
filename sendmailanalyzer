@@ -700,7 +700,15 @@ sub parse_sendmail
 	} elsif ($str =~ m#^(PREGREET|HANGUP)#i) {
 		return;
 	# POSTFIX dnsbl message
-	} elsif ($str =~ m#^DNSBL rank#i) {
+	# Aug 30 10:15:29 mail postfix/postscreen[1474]: DNSBL rank 19 for [103.207.38.153]:51622
+	} elsif ($str =~ m#^DNSBL rank (\d+) for \[(.*)\]:\d+#) {
+		return if ($CONFIG{POSTSCREEN_DNSBL_THRESHOLD} > $1);
+		my $id = &get_uniqueid();
+		$REJECT{$host}{$id}{relay} = $2;
+		$REJECT{$host}{$id}{rule} = 'RBL checks';
+		$REJECT{$host}{$id}{status} = 'postscreen reject';
+		$REJECT{$host}{$id}{date} =  $time_st;
+		$REJECT{$host}{$id}{arg1} = $1;
 		return;
 	# Debug and info messages from POSTFIX
 	} elsif  ($str =~ /^(DEBUG|INFO) /) {

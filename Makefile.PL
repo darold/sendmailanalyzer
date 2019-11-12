@@ -103,7 +103,7 @@ DELAY		5
 # ... sendmail[1234] ... This is required to only parse relevant logged lines
 # Can be overwritten with --sendmail or -s
 # You can set multiple Syslog name as a list separated by a pipe '|'
-MTA_NAME	sm-mta|sendmail|postfix|spampd
+MTA_NAME	sm-mta|sendmail|postfix|spampd|postscreen
 
 # Exclude all lines matching a regexp from being parsed, for example to
 # exclude log line reported by the randomizer script, skip line with the
@@ -360,6 +360,10 @@ NO_QUEUE_EXCLUSION	0
 # recipient relay. Enable this directive if you just want Ip addresses.
 RELAY_IP_ONLY	0
 
+# Threshold to detect case where postscreen reject an ip address. By
+# default  reject: RCPT from ... are not logged by postfix, we mark the
+# message as DNSBL rejected when DNSBL rank value is upper or equal.
+POSTSCREEN_DNSBL_THRESHOLD	3
 };
 close(OUTCFG);
 
