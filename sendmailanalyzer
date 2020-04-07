@@ -2610,17 +2610,23 @@ sub flush_data
 				delete $TO{$host}{$id};
 				next;
 			}
-			for (my $i = 0; $i <= $#{$TO{$host}{$id}{date}}; $i++) { 
-				# Key: year/month/day, Format: Hour:Id:Rcpt:Relay:Status
-				next if ($TO{$host}{$id}{date}[$i] !~ /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
-				$rcpts{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $TO{$host}{$id}{to}[$i] . ':' . $TO{$host}{$id}{relay}[$i] . ':' . $TO{$host}{$id}{status}[$i] . "\n";
-				$nobj++;
+			if (exists $TO{$host}{$id}{date})
+			{
+				for (my $i = 0; $i <= $#{$TO{$host}{$id}{date}}; $i++) { 
+					# Key: year/month/day, Format: Hour:Id:Rcpt:Relay:Status
+					next if ($TO{$host}{$id}{date}[$i] !~ /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+					$rcpts{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $TO{$host}{$id}{to}[$i] . ':' . $TO{$host}{$id}{relay}[$i] . ':' . $TO{$host}{$id}{status}[$i] . "\n";
+					$nobj++;
+				}
 			}
-			for (my $i = 0; $i <= $#{$TO{$host}{$id}{queue_date}}; $i++) { 
-				# Key: year/month/day, Format: Hour:Id:Rcpt:Relay:Status
-				next if ($TO{$host}{$id}{queue_date}[$i] !~ /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
-				$rcpts{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $TO{$host}{$id}{queue_to}[$i] . ":none:Queued\n";
-				$nobj++;
+			if (exists $TO{$host}{$id}{queue_date})
+			{
+				for (my $i = 0; $i <= $#{$TO{$host}{$id}{queue_date}}; $i++) { 
+					# Key: year/month/day, Format: Hour:Id:Rcpt:Relay:Status
+					next if ($TO{$host}{$id}{queue_date}[$i] !~ /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/);
+					$rcpts{"$1/$2/$3"} .= "$4$5$6" . ':' . $id . ':' . $TO{$host}{$id}{queue_to}[$i] . ":none:Queued\n";
+					$nobj++;
+				}
 			}
 			# Complete Spam information
 			if (exists $SPAM{$host}{$id} && !exists $SPAM{$host}{$id}{to}) {
