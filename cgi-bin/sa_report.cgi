@@ -75,6 +75,9 @@ my $DEFAULT_CHARSET='utf-8';
 
 my $WEEK_START_MONDAY = 1;
 
+# Format the week number
+$WEEK = sprintf("%02d", $WEEK) if ($WEEK);
+
 # Read configuration file
 &read_config($CONFIG_FILE);
 
