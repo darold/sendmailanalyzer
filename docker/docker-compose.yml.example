@@ -1,0 +1,11 @@
+version: '2'
+services:
+  sma:
+    restart: always
+    build: .
+    expose: 
+      - 80
+    volumes:
+      - /path/to/mail.log:/var/log/mail.log:ro
+      - /path/to/data:/usr/local/sendmailanalyzer/data
+      - /path/to/sendmailanalyzer.conf:/usr/local/sendmailanalyzer/sendmailanalyzer.conf
