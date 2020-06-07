@@ -2325,6 +2325,9 @@ sub edecode
 {
 	my ($addr) = @_;
 
+	# First remove any bounce address tag validation if any
+	$addr =~ s/^prvs=[^=]+=//;
+
 	if ($addr =~ /=\?[^\?]+\?(.)\?(.*)?=/s) {
 		if (uc($1) eq 'B') {
 			$addr = decode_base64($1);
