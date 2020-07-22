@@ -310,14 +310,27 @@ SendmailAnalyzer can work in any platform where Sendmail and Perl could run.
 What you need is a modern Perl distribution - 5.8.x or more is good, but older
 versions should also work.
 
+You need the Apache Web server to be installed and running
+
+	sudo apt install apache2
+or
+	sudo yum install httpd
+
 You need the following Perl modules. If they are not yet include in your
 OS distribution you can always find them at http://search.cpan.org/
 
+	CGI
 	MIME::Base64;
 	MIME::QuotedPrint;
 
 Those modules are normaly already included in Perl core modules on modern
-distributions.
+distributions. On Debian like distributions:
+
+	sudo apt install libcgi-pm-perl
+
+On RPM based distribution:
+
+	sudo yum install perl-CGI
 
 The graph output is generated using the flotr2 javascript library so no need
 to install additional library or package, you just need a modern browser.
