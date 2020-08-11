@@ -2632,7 +2632,7 @@ sub flush_data
 				}
 			}
 			# Complete Spam information
-			if (exists $SPAM{$host}{$id} && !exists $SPAM{$host}{$id}{to}) {
+			if (exists $SPAM{$host}{$id} && !exists $SPAM{$host}{$id}{to} && exists $TO{$host}{$id}{to}) {
 				push(@{$SPAM{$host}{$id}{to}}, @{$TO{$host}{$id}{to}});
 			}
 		}
