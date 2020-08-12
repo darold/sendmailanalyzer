@@ -923,6 +923,12 @@ CONFIGURATION
         or recipient relay. Enable this directive if you just want Ip
         addresses.
 
+    POSTSCREEN_DNSBL_THRESHOLD
+        Threshold to detect case where postscreen reject an ip address. By
+        default "reject: RCPT from ..." are not logged by postfix, we mark
+        the message as DNSBL rejected when DNSBL rank value is upper or
+        equal than this threshold value. Default value: 3
+
   Domain / user views options
     LOW_LIMIT, MEDIUM_LIMIT, HIGH_LIMIT (NO MORE USED)
         User messaging data limit in megabytes to show/warn the level of

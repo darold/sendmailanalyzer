@@ -12,7 +12,7 @@
 
 ## Fill these variables to your needs ##
 NAMESRC=${NAMESRC:-sendmailanalyzer}
-VERSION=${VERSION:-9.3}
+VERSION=${VERSION:-9.4}
 EXT=${EXT:-tar.gz}
 NAMEPKG=${NAMEPKG:-sendmailanalyzer}
 PKGEXT=${PKGEXT:-tgz/txz}
@@ -25,7 +25,7 @@ OUT=${OUT:-$TMP/build}
 ARCH=${ARCH:-i486}
 TARGET=${TARGET:-i486}
 WGET=${WGET:-http://downloads.sourceforge.net/sa-report/$NAMESRC-$VERSION.$EXT}
-DOC="Change* INSTALL README TODO"
+DOC="Change* README TODO"
 SUM=""
 ########################################
 
@@ -88,7 +88,7 @@ make
 make install DESTDIR=$PKG 
 # Please note that some software use INSTALL_ROOT=$PKG or prefix=$PKG/usr or install_root=$PKG ...
 
-DOC="Change* INSTALL README TODO $PNAME.conf"
+DOC="Change* README TODO $PNAME.conf"
 
 # Install a slack-desc
 mkdir -p $PKG/install

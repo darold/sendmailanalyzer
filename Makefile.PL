@@ -410,7 +410,6 @@ pod2man doc/sa_cache.pod doc/sa_cache.3
 install -m 644 doc/sendmailanalyzer.3 $DESTDIR$MANDIR/
 install -m 644 doc/sa_cache.3 $DESTDIR$MANDIR/
 install -m 644 README $DESTDIR$DOCDIR/
-install -m 644 INSTALL $DESTDIR$DOCDIR/
 install -m 644 ChangeLog $DESTDIR$DOCDIR/
 
 };

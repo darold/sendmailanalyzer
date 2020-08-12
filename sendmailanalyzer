@@ -27,7 +27,7 @@ use MIME::QuotedPrint;
 use IO::File;
 
 
-$VERSION     = '9.3';
+$VERSION     = '9.4';
 $AUTHOR = "Gilles Darold <gilles\@darold.net>";
 $COPYRIGHT = "(c) 2002-2018 - Gilles Darold <gilles\@darold.net>";
 

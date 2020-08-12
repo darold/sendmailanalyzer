@@ -36,7 +36,7 @@ my $CONFIG_FILE = "/usr/local/sendmailanalyzer/sendmailanalyzer.conf";
 my $LAST_PARSE_FILE = 'LAST_PARSED';
 
 $SOFTWARE  = "SendmailAnalyzer";
-$VERSION   = '9.3';
+$VERSION   = '9.4';
 $AUTHOR    = "Gilles Darold <gilles\@darold.net>";
 $COPYRIGHT = "&copy; 2002-2018 - Gilles Darold <gilles\@darold.net>";
 

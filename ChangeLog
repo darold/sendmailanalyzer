@@ -1,3 +1,42 @@
+2020-08-12 Version 9.4
+
+This release fix several issues reported by users during the last
+year, it also adds some new features and configuration directives.
+
+  * Add support for dockerization based on the httpd apache2
+    docker image with sa_cache cron support built in.
+    It also comes with a docker-compose example file.
+
+  * Add configuration directive POSTSCREEN_DNSBL_THRESHOLD to set the
+    threshold to detect case where postscreen reject an ip address. By
+    default  reject: RCPT from ... are not logged by postfix, we mark
+    message as DNSBL rejected when DNSBL rank value is upper or equal.
+    Default: 3.
+
+Complete list of change and credits:
+
+  - Fix on possible use of an undefined value as an ARRAY reference.
+    Thanks to Paul Brown for the report.
+  - Change INSTALL file as a symlink to the README file
+  - Update installation prerequisite
+  - Fix previous patch on bounce address validation tag when the email
+    address start with <.
+  - Remove bounce address validation tag (prvs=) from email address.
+    Thanks to Shawn for the feature request.
+  - Add support for dockerization. Thanks to Lukas Elsner for the
+    patch.
+  - Fix week number parameter in URL. Thanks to jassi0001 for the
+    report.
+  - Fix warning: undefined value as an ARRAY reference at line 2619.
+    Thanks to Jason Dishop for the report.
+  - Add configuration directive POSTSCREEN_DNSBL_THRESHOLD to set the
+    threshold to detect case where postscreen reject an ip address.
+    Thanks to Hasan Calisir for the feature request.
+  - Fix debian build with unsupported format in changelog version.
+    Thanks to loopism for the report.
+  - Remove INSTALL file that was duplicating information from README.
+
+
 2019-08-08 Version 9.3
 
 This release fixes some bugs reported since last release and adds several

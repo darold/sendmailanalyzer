@@ -1088,6 +1088,14 @@ and bcc-addr2@domain2.com
 When possible sendmailanalyzer extract the fqdn part of the sender or
 recipient relay. Enable this directive if you just want Ip addresses.
 
+
+=item POSTSCREEN_DNSBL_THRESHOLD
+
+Threshold to detect case where postscreen reject an ip address. By
+default "reject: RCPT from ..." are not logged by postfix, we mark the
+message as DNSBL rejected when DNSBL rank value is upper or equal than
+this threshold value. Default value: 3
+
 =back
 
 =head2 Domain / user views options

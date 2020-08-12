@@ -5,7 +5,7 @@
 
 Name: %{uname}
 Epoch: 0
-Version: 9.3
+Version: 9.4
 Release: 1%{?dist}
 Summary: Sendmail/Postfix log analyser with graphical reports
 
@@ -154,7 +154,7 @@ fi
 
 %files
 %defattr(0644,root,root,0755)
-%doc Change* INSTALL README TODO README.RPM
+%doc Change* README TODO README.RPM
 %attr(0755,root,root) %{_bindir}/%{uname}
 %attr(0755,root,root) %{_bindir}/sa_cache
 %attr(0644,root,root) %{_mandir}/man3/%{uname}.3.gz
@@ -181,11 +181,11 @@ fi
 %dir %{webdir}
 
 %changelog
+* Wed Aug 12 2020 Gilles Darold
+- Remove INSTALL file
+
 * Mon Dec 23 2013 Igor Vuk
 - Remove a rogue tab character, add pt_BR translation
-
-* Tue May 07 2013 Gilles Darold
-- Upgrade for 9.3 changes
 
 * Sun Jan 06 2013 Gilles Darold
 - Add man page for sa_cache.
