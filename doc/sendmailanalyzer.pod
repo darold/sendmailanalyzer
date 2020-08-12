@@ -902,7 +902,7 @@ the menu.
 =item SHOW_SUBJECT
 
 When enabled it allow email subjects to be shown in detailed view. Of course
-The log file must contain this information. Default is disabled.
+the log file must contain this information. Default is disabled.
 
 =back
 
