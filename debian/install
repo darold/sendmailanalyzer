@@ -1,6 +1,7 @@
 sendmailanalyzer              usr/bin
 sa_cache                      usr/bin
 flotr2.js                     usr/share/sendmailanalyzer
+sorttable.js                  usr/share/sendmailanalyzer
 salogo.png                    usr/share/sendmailanalyzer
 cgi-bin/lang                  usr/share/sendmailanalyzer
 cgi-bin/sa_report.cgi         usr/share/sendmailanalyzer
