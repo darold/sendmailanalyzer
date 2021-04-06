@@ -367,17 +367,23 @@ or use one of the starters script provided in the start_scripts/ directory.
 
 	Alias /sareport /usr/local/sendmailanalyzer/www
 	<Directory /usr/local/sendmailanalyzer/www>
-            Options ExecCGI
-            AddHandler cgi-script .cgi
-            DirectoryIndex sa_report.cgi
-            #-- Apache 2.2
-            #Order deny,allow
-            #Deny from all
-            #Allow from 192.168.1.0/24
-            #-- Apache 2.4
-            Require all denied
-            Require ip 192.168.1.0/24
+	    Options ExecCGI
+	    AddHandler cgi-script .cgi
+	    DirectoryIndex sa_report.cgi
+	    #-- Some browser might need this line (Chrome, Safari)
+	    Header always set X-Frame-Options "SAMEORIGIN"
+	    #-- Apache 2.2
+	    #Order deny,allow
+	    #Deny from all
+	    #Allow from 192.168.1.0/24
+	    #-- Apache 2.4
+	    Require all denied
+	    Require ip 192.168.1.0/24
 	</Directory>
+
+If necessary, give additional host access to SendmailAnalyzer.
+To be able to use Header directive be sure that header module is enabled:
+	a2enmod headers
 
 3. If necessary, give additional host access to SendmailAnalyzer. Restart and ensure that httpd is running.
 

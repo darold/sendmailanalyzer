@@ -431,6 +431,8 @@ echo "
 	    Options ExecCGI
 	    AddHandler cgi-script .cgi
 	    DirectoryIndex sa_report.cgi
+	    #-- Some browser might need this line (Chrome, Safari)
+	    Header always set X-Frame-Options "SAMEORIGIN"
 	    #-- Apache 2.2
 	    #Order deny,allow
 	    #Deny from all
@@ -441,6 +443,8 @@ echo "
 	</Directory>
 
    If necessary, give additional host access to SendmailAnalyzer.
+   To be able to use Header directive be sure that header module is enabled:
+       a2enmod headers
    Restart and ensure that httpd is running.
 
 3. Browse to http://mta.host.dom/sareport/ to ensure that things are working
