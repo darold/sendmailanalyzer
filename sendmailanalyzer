@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #
 #    SendmailAnalyzer: maillog parser and statistics reports tool for Sendmail
 #    Copyright (C) 2002-2020 Gilles Darold
