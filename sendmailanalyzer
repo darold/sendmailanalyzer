@@ -804,6 +804,7 @@ sub parse_sendmail
 		}
 		delete $SKIPMSG{$id};
 		delete $KEEP_TEMPORARY{$id};
+		delete $DSN{$host}{$id} if (exists $DSN{$host}{$id});
 		return;
 	# Sendmail subject information
 	} elsif ($str =~ m#^([^:\s]+): Subject:(.*)#) {
@@ -1108,6 +1109,7 @@ sub parse_sendmail
 		my $id = $KEEP_TEMPORARY{$1} || $1;
 		my $to = &edecode($2);
 		my $relay = &clean_relay(lc($3));
+		$FROM{$host}{$id}{relay} = $relay if (exists  $FROM{$host}{$id} && !$FROM{$host}{$id}{relay});
 		my $status = $4;
 		if (!$CONFIG{NO_QUEUE_EXCLUSION} && ($status =~ /queued as ([^\)]+)\)/ && $relay eq 'localhost')) {
 			$KEEP_TEMPORARY{$1} = $id;
@@ -1323,6 +1325,7 @@ sub parse_sendmail
 			push(@{$TO{$host}{$id}{to}}, $t);
 			push(@{$TO{$host}{$id}{status}}, $status);
 		}
+
 	# To clause with no delivery. Most of the time follow a reject.
 	} elsif ($str =~ m#^([^:\s]+): to=(.*), delay=.*, pri=([^,]+), stat=(.*)#) {
 		#debug_rule($1);
