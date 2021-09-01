@@ -364,6 +364,18 @@ RELAY_IP_ONLY	0
 # default  reject: RCPT from ... are not logged by postfix, we mark the
 # message as DNSBL rejected when DNSBL rank value is upper or equal.
 POSTSCREEN_DNSBL_THRESHOLD	3
+
+# Use this directive to defined a custom regular expression that will be applied
+# on status part of a Postfix milter-reject message. A Postfix milter-reject
+# message is of the form: milter-reject: END-OF-MESSAGE from ...  The default is
+# to treat any message with status not containing string "Spam message rejected"
+# as rejected. If you want to treat other messages as spam instead of rejected
+# you can give a regexp that can catch them. For example
+#     MILTER_REJECT_REGEX Mailbox not found
+# will treat all messages with a status including "Mailbox not found" as spam.
+# The value must be a valid Perl regular expression.
+MILTER_REJECT_REGEX	
+
 };
 close(OUTCFG);
 
