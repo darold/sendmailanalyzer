@@ -1606,7 +1606,7 @@ sub parse_sendmail
 				$status =~ s/ \(.*//;
 				#push(@{$TO{$host}{$id}{status}}, &clear_status($status));
 			}
-		} elsif ($status =~ /Spam message rejected/) {
+		} elsif ($status =~ /Spam message rejected/ || ($CONFIG{MILTER_REJECT_REGEX} && $status =~ /$CONFIG{MILTER_REJECT_REGEX}/)) {
 			$SPAM{$host}{$id}{relay} = $relay;
 			$SPAM{$host}{$id}{rule} = 'reject';
 			$SPAM{$host}{$id}{spam} = $status;
