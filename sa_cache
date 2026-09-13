@@ -2699,20 +2699,94 @@ sub do_day_cache
 }
 
 ####
+# Return true when an aggregate cache file must be rebuilt: either it does not
+# exist yet, or at least one of the sub-period cache files it aggregates is
+# more recent than it. This fixes issue #85, where the last day/month of a
+# period was permanently stored as zero: the aggregate cache is first built
+# while its last sub-period is still the "current" one and is therefore
+# skipped (its cache does not exist yet), and it was never rebuilt afterwards
+# once the period had passed. The mtime comparison also transparently repairs
+# already broken historical caches on the next run, then leaves them alone.
+####
+sub cache_is_stale
+{
+	my ($cache, @sources) = @_;
+
+	return 1 if (!-e $cache);
+	my $mtime = (stat($cache))[9];
+
+	foreach my $src (@sources) {
+		next if (!-e $src);
+		return 1 if ((stat($src))[9] > $mtime);
+	}
+
+	return 0;
+}
+
+####
+# Staleness of a month cache versus its daily caches (see cache_is_stale).
+####
+sub month_cache_stale
+{
+	my ($hostname, $DOMAIN, $year, $month) = @_;
+
+	my $mdir = "$CONFIG{OUT_DIR}/$hostname/$year/$month";
+	my @daycaches = ();
+	if (opendir(my $dh, $mdir)) {
+		@daycaches = map { "$mdir/$_/cache.pm\U$DOMAIN\E" }
+				grep { /^\d+$/ && -d "$mdir/$_" } readdir($dh);
+		closedir($dh);
+	}
+
+	return &cache_is_stale("$mdir/cache.pm\U$DOMAIN\E", @daycaches);
+}
+
+####
+# Staleness of a week cache versus the daily caches of that week.
+####
+sub week_cache_stale
+{
+	my ($hostname, $DOMAIN, $year, $week) = @_;
+
+	my @daycaches = map { "$CONFIG{OUT_DIR}/$hostname/$_/cache.pm\U$DOMAIN\E" }
+				&get_week_boundaries($year, $week);
+
+	return &cache_is_stale("$CONFIG{OUT_DIR}/$hostname/$year/weeks/$week/cache.pm\U$DOMAIN\E", @daycaches);
+}
+
+####
+# Staleness of a year cache versus its monthly caches.
+####
+sub year_cache_stale
+{
+	my ($hostname, $DOMAIN, $year) = @_;
+
+	my @monthcaches = map { "$CONFIG{OUT_DIR}/$hostname/$year/$_/cache.pm\U$DOMAIN\E" } ("01" .. "12");
+
+	return &cache_is_stale("$CONFIG{OUT_DIR}/$hostname/$year/cache.pm\U$DOMAIN\E", @monthcaches);
+}
+
+####
 # Month cache statistics
 ####
 sub do_month_cache
 {
 	my ($hostname, $DOMAIN, $year, $month, $curmonth) = @_;
 
-	if (!$DOMAIN && -e "$CONFIG{OUT_DIR}/$hostname/$year/$month/cache.pm" && ("$year$month" < $curmonth)) {
+	# Only past months may be frozen; rebuild if a daily cache is newer than
+	# the month cache, otherwise the last day of the month stays at zero and
+	# is never refreshed once the month has passed (issue #85).
+	my $stale = 0;
+	$stale = &month_cache_stale($hostname, $DOMAIN, $year, $month) if ("$year$month" < $curmonth);
+
+	if (!$DOMAIN && -e "$CONFIG{OUT_DIR}/$hostname/$year/$month/cache.pm" && ("$year$month" < $curmonth) && !$stale) {
 		# reduce disk space storage by deleting or archiving data file
 		if (!$CONFIG{WEEKLY_FREE_SPACE}) {
 			&free_space("$CONFIG{OUT_DIR}/$hostname/$year/$month");
 			return;
 		}
 	}
-	if (-e "$CONFIG{OUT_DIR}/$hostname/$year/$month/cache.pm\U$DOMAIN\E" && ("$year$month" < $curmonth)) {
+	if (-e "$CONFIG{OUT_DIR}/$hostname/$year/$month/cache.pm\U$DOMAIN\E" && ("$year$month" < $curmonth) && !$stale) {
 		return;
 	}
 
@@ -3560,8 +3634,13 @@ sub do_year_cache
 {
 	my ($hostname, $DOMAIN, $year, $curyear) = @_;
 
+	# Rebuild a past year cache when a monthly cache is newer than it, so the
+	# correction of the last month (e.g. its last day) propagates up to the
+	# year graph instead of staying frozen (issue #85).
+	my $stale = 0;
+	$stale = &year_cache_stale($hostname, $DOMAIN, $year) if ($year < $curyear);
 
-	if (-e "$CONFIG{OUT_DIR}/$hostname/$year/cache.pm\U$DOMAIN\E" && ($year < $curyear)) {
+	if (-e "$CONFIG{OUT_DIR}/$hostname/$year/cache.pm\U$DOMAIN\E" && ($year < $curyear) && !$stale) {
 		return;
 	}
 
@@ -4515,7 +4594,13 @@ sub do_week_cache
 {
 	my ($hostname, $DOMAIN, $year, $curyear, $week, $curweek) = @_;
 
-	if (!$DOMAIN && -e "$CONFIG{OUT_DIR}/$hostname/$year/weeks/$week/cache.pm" && ("$year$week" < "$curyear$curweek")) {
+	# Rebuild a past week cache when a daily cache is newer than it, otherwise
+	# the last day of the week stays at zero and is never refreshed once the
+	# week has passed (issue #85).
+	my $stale = 0;
+	$stale = &week_cache_stale($hostname, $DOMAIN, $year, $week) if ("$year$week" < "$curyear$curweek");
+
+	if (!$DOMAIN && -e "$CONFIG{OUT_DIR}/$hostname/$year/weeks/$week/cache.pm" && ("$year$week" < "$curyear$curweek") && !$stale) {
 		if ($CONFIG{WEEKLY_FREE_SPACE}) {
 			my @days = &get_week_boundaries($year, $week);
 			map { s/^/$CONFIG{OUT_DIR}\/$hostname\//; } @days;
@@ -4526,7 +4611,7 @@ sub do_week_cache
 	}
 
 	# This cache have been already build
-	if (-e "$CONFIG{OUT_DIR}/$hostname/$year/weeks/$week/cache.pm\U$DOMAIN\E" && ("$year$week" < "$curyear$curweek")) {
+	if (-e "$CONFIG{OUT_DIR}/$hostname/$year/weeks/$week/cache.pm\U$DOMAIN\E" && ("$year$week" < "$curyear$curweek") && !$stale) {
 		return;
 	}
 
